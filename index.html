@@ -357,7 +357,7 @@ table.veri tr.ana-hesap-satir:hover{background:var(--gri-orta)}
       <li class="menu-oge" data-sayfa="ayarlar"><span class="ikon">⚙️</span><span class="etiket">Ayarlar</span></li>
       <li class="menu-oge" data-sayfa="yedekleme"><span class="ikon">💾</span><span class="etiket">Yedekleme</span></li>
     </ul>
-    <div class="menu-alt">Nizam Soft © 2026<br>Sürüm 1.2 • 18.07.2026</div>
+    <div class="menu-alt">Nizam Soft © 2026<br>Sürüm 1.3 • 18.07.2026</div>
   </nav>
 
   <!-- ANA İÇERİK -->
@@ -960,28 +960,45 @@ const Sayfa = {
       // Ana hesabı gizleme: arama varsa ve alt yoksa ve ana ad eşleşmiyorsa atla
       const anaEsles = !q || (ana.kod+' '+ana.ad).toLocaleLowerCase('tr').indexOf(q)>-1;
       if(q && altlar.length===0 && !anaEsles) return;
-      govde += `<tr class="ana-hesap-satir">
-        <td><span class="kod-rozet">${ana.kod}</span></td>
-        <td>${ana.ad}</td>
+      // Accordion: arama yoksa varsayılan kapalı; arama varsa otomatik açık
+      const acik = q ? true : !!(this._acik && this._acik[ana.kod]);
+      const ok = acik ? '▼' : '▶';
+      govde += `<tr class="ana-hesap-satir" style="cursor:pointer" onclick="Sayfa.anaAcKapa('${ana.kod}')" title="Alt hesapları aç/kapat">
+        <td><span style="display:inline-block;width:14px;color:var(--kirmizi);font-size:11px">${ok}</span> <span class="kod-rozet">${ana.kod}</span></td>
+        <td>${ana.ad} <span style="color:var(--metin-soluk);font-weight:400">(${altlar.length})</span></td>
         <td class="sag-hiza">${Yardimci.paraFormat(Hesap.anaBakiye(ana.kod))}</td>
-        <td class="no-print"><button class="btn btn-kirmizi btn-kucuk" onclick="AltHesap.ekleModal('${ana.kod}')">+ Alt Hesap Ekle</button></td>
+        <td class="no-print"><button class="btn btn-kirmizi btn-kucuk" onclick="event.stopPropagation();AltHesap.ekleModal('${ana.kod}')">+ Alt Hesap Ekle</button></td>
       </tr>`;
-      altlar.forEach(h=>{
-        govde += `<tr onclick="Detay.ac('${h.id}')" style="cursor:pointer">
-          <td class="girinti"><span class="kod-rozet">${h.kod}</span></td>
-          <td>${Yardimci.kacisHTML(Hesap.hesapAdi(h))}</td>
-          <td class="sag-hiza">${Yardimci.paraFormat(Hesap.netBakiye(h.id))}</td>
-          <td class="no-print satir-ic">
-            <button class="btn btn-cizgi btn-kucuk" onclick="event.stopPropagation();Detay.ac('${h.id}')">Aç</button>
-            <button class="btn btn-cizgi btn-kucuk" onclick="event.stopPropagation();AltHesap.duzenleModal('${h.id}')">Düzenle</button>
-            <button class="btn btn-cizgi btn-kucuk" onclick="event.stopPropagation();AltHesap.sil('${h.id}')">Sil</button>
-          </td>
-        </tr>`;
-      });
+      if(acik){
+        if(altlar.length===0){
+          govde += `<tr><td></td><td colspan="3" style="color:var(--metin-soluk);font-style:italic">Alt hesap bulunmuyor.</td></tr>`;
+        }
+        altlar.forEach(h=>{
+          govde += `<tr onclick="Detay.ac('${h.id}')" style="cursor:pointer">
+            <td class="girinti"><span class="kod-rozet">${h.kod}</span></td>
+            <td>${Yardimci.kacisHTML(Hesap.hesapAdi(h))}</td>
+            <td class="sag-hiza">${Yardimci.paraFormat(Hesap.netBakiye(h.id))}</td>
+            <td class="no-print satir-ic">
+              <button class="btn btn-cizgi btn-kucuk" onclick="event.stopPropagation();Detay.ac('${h.id}')">Aç</button>
+              <button class="btn btn-cizgi btn-kucuk" onclick="event.stopPropagation();AltHesap.duzenleModal('${h.id}')">Düzenle</button>
+              <button class="btn btn-cizgi btn-kucuk" onclick="event.stopPropagation();AltHesap.sil('${h.id}')">Sil</button>
+            </td>
+          </tr>`;
+        });
+      }
     });
     el.innerHTML = `<div class="tablo-sar"><table class="veri">
       <thead><tr><th>Hesap Kodu</th><th>Hesap Adı</th><th class="sag-hiza">Bakiye</th><th class="no-print">İşlemler</th></tr></thead>
       <tbody>${govde}</tbody></table></div>`;
+  },
+
+  // Ana hesabın alt hesaplarını aç/kapat (accordion)
+  anaAcKapa(kod){
+    if(!this._acik) this._acik = {};
+    this._acik[kod] = !this._acik[kod];
+    const el = document.getElementById('hesap-tablo');
+    const arama = document.getElementById('hesap-arama');
+    if(el) this.hesapTablo(el, arama ? arama.value : '');
   },
 
   hesapPlaniYazdir(){
@@ -1163,6 +1180,18 @@ const Form = {
     return `<option value="">— Yok —</option>` + opts;
   },
 
+  sahisSecenek(secili){
+    // Şahıs/Firma yalnızca 120 Alıcılar, 320 Satıcılar ve 331 Ortaklara Borçlar alt hesaplarından seçilir
+    let opts = '';
+    Depo.veri.altHesaplar
+      .filter(h=>h.anaKod==='120' || h.anaKod==='320' || h.anaKod==='331')
+      .sort((a,b)=>a.kod.localeCompare(b.kod,'tr'))
+      .forEach(h=>{
+        opts += `<option value="${h.id}" ${h.id===secili?'selected':''}>${h.kod} - ${Yardimci.kacisHTML(Hesap.hesapAdi(h))}</option>`;
+      });
+    return `<option value="">— Seçiniz —</option>` + opts;
+  },
+
   varsayilanTarih(){
     return Depo.veri.ayarlar.varsayilanTarih==='bos' ? '' : Yardimci.bugun();
   },
@@ -1226,7 +1255,7 @@ const Form = {
           <div class="form-alan"><label>Tarih <span class="zorunlu">*</span></label><input type="date" id="bk-tarih" value="${this.varsayilanTarih()}"></div>
           <div class="form-alan"><label>Banka Hesabı <span class="zorunlu">*</span></label><select id="bk-hesap">${this.hesapSecenek('102')}</select></div>
           <div class="form-alan"><label>İşlem Adı <span class="zorunlu">*</span></label><input id="bk-islemad" placeholder="Örn: EFT, Havale, Fatura Ödeme"></div>
-          <div class="form-alan"><label>Şahıs veya Firma</label><input id="bk-sahis"></div>
+          <div class="form-alan"><label>Şahıs veya Firma</label><select id="bk-sahis">${this.sahisSecenek()}</select></div>
           <div class="form-alan"><label>İşlem Türü <span class="zorunlu">*</span></label>
             <select id="bk-tur"><option value="giris">Para Girişi</option><option value="cikis">Para Çıkışı</option></select></div>
           <div class="form-alan"><label>Gider Hesabı</label><select id="bk-gider">${this.giderSecenek()}</select></div>
@@ -1250,7 +1279,7 @@ const Form = {
           <div class="form-alan"><label>Tarih <span class="zorunlu">*</span></label><input type="date" id="kk-tarih" value="${this.varsayilanTarih()}"></div>
           <div class="form-alan"><label>Kredi Kartı Hesabı <span class="zorunlu">*</span></label><select id="kk-hesap">${this.hesapSecenek('309')}</select></div>
           <div class="form-alan"><label>İşlem Adı <span class="zorunlu">*</span></label><input id="kk-islemad" placeholder="Örn: Harcama, Ödeme, İade"></div>
-          <div class="form-alan"><label>Şahıs veya Firma</label><input id="kk-sahis"></div>
+          <div class="form-alan"><label>Şahıs veya Firma</label><select id="kk-sahis">${this.sahisSecenek()}</select></div>
           <div class="form-alan"><label>İşlem Türü <span class="zorunlu">*</span></label>
             <select id="kk-tur"><option value="giris">Para Girişi</option><option value="cikis">Para Çıkışı</option></select></div>
           <div class="form-alan"><label>Gider Hesabı</label><select id="kk-gider">${this.giderSecenek()}</select></div>
@@ -1414,6 +1443,10 @@ const Form = {
     const duzenId = this.aktifKayit[tur];
     const eskiKayit = duzenId ? Depo.veri.islemler.find(x=>x.id===duzenId) : null;
 
+    // Şahıs/Firma: hesap seçimi -> id sakla, ekranlarda gösterim için etiket üret
+    const sahisId = document.getElementById(on+'-sahis').value || null;
+    const sahisH = sahisId ? Hesap.altBul(sahisId) : null;
+
     const islem = {
       id: duzenId || Yardimci.yeniId(),
       no: duzenId ? eskiKayit.no : Depo.yeniIslemNo(),
@@ -1421,7 +1454,8 @@ const Form = {
       tarih: document.getElementById(on+'-tarih').value,
       hesapId: hesapId,
       islemAd: document.getElementById(on+'-islemad').value.trim(),
-      sahis: document.getElementById(on+'-sahis').value.trim(),
+      sahisHesapId: sahisId,
+      sahis: sahisH ? (sahisH.kod + ' ' + Hesap.hesapAdi(sahisH)) : '',
       islemTuru: islemTuru, // giris/cikis
       giderHesapId: document.getElementById(on+'-gider').value || null,
       tutar: tutar,
@@ -1457,7 +1491,14 @@ const Form = {
       const giris = islem.islemTuru==='giris';
       if(giris) hareketler.push(this.hareket(islem, islem.hesapId, islem.tutar, 0, islem.islemAd));
       else hareketler.push(this.hareket(islem, islem.hesapId, 0, islem.tutar, islem.islemAd));
-      // Çift taraflı fiş: gider/ortak (331-770) hesabına aynanın karşıtı hareket
+      // Karşı hesaplar: banka/kart hareketinin AYNASININ TERSİ yönde işlenir
+      // (Para Çıkışı -> karşı hesaba Borç, Para Girişi -> karşı hesaba Alacak)
+      // Şahıs/Firma hesabı (120/320/331)
+      if(islem.sahisHesapId && Hesap.altBul(islem.sahisHesapId)){
+        if(giris) hareketler.push(this.hareket(islem, islem.sahisHesapId, 0, islem.tutar, islem.islemAd));
+        else hareketler.push(this.hareket(islem, islem.sahisHesapId, islem.tutar, 0, islem.islemAd));
+      }
+      // Gider/Ortak hesabı (331/770)
       if(islem.giderHesapId && Hesap.altBul(islem.giderHesapId)){
         if(giris) hareketler.push(this.hareket(islem, islem.giderHesapId, 0, islem.tutar, islem.islemAd));
         else hareketler.push(this.hareket(islem, islem.giderHesapId, islem.tutar, 0, islem.islemAd));
@@ -1524,7 +1565,7 @@ const Form = {
       document.getElementById(on+'-tarih').value = is.tarih;
       document.getElementById(on+'-hesap').value = is.hesapId;
       document.getElementById(on+'-islemad').value = is.islemAd||'';
-      document.getElementById(on+'-sahis').value = is.sahis||'';
+      document.getElementById(on+'-sahis').value = is.sahisHesapId||'';
       document.getElementById(on+'-tur').value = is.islemTuru||'giris';
       document.getElementById(on+'-gider').value = is.giderHesapId||'';
       document.getElementById(on+'-tutar').value = is.tutar;
