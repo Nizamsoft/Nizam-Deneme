@@ -471,12 +471,14 @@ const Depo = {
         {kod:'102', ad:'Bankalar', tur:'banka'},
         {kod:'120', ad:'Alıcılar', tur:'alici'},
         {kod:'309', ad:'Kredi Kartları', tur:'kart'},
-        {kod:'320', ad:'Satıcılar', tur:'satici'}
+        {kod:'320', ad:'Satıcılar', tur:'satici'},
+        {kod:'331', ad:'Ortaklara Borçlar', tur:'ortak'},
+        {kod:'770', ad:'Gider Hesapları', tur:'gider'}
       ],
       altHesaplar:[],   // {id,kod,anaKod,tur,ad, ...alan..., acilis, aciklama}
       islemler:[],      // {id,no,tur,tarih,...alanlar, dosyaId?}
       hareketler:[],    // {id,islemId,hesapId,tarih,islemNo,aciklama,borc,alacak,...}
-      sayaclar:{ islemNo:0, altKod:{'102':0,'120':0,'309':0,'320':0} }
+      sayaclar:{ islemNo:0, altKod:{'102':0,'120':0,'309':0,'320':0,'331':0,'770':0} }
     };
   },
 
@@ -508,6 +510,11 @@ const Depo = {
     if(!this.veri.hareketler) this.veri.hareketler = [];
     if(!this.veri.sayaclar) this.veri.sayaclar = v.sayaclar;
     if(!this.veri.sayaclar.altKod) this.veri.sayaclar.altKod = v.sayaclar.altKod;
+    // Sonradan eklenen sabit ana hesapları (331, 770) eski verilere de tamamla
+    v.anaHesaplar.forEach(ana=>{
+      if(!this.veri.anaHesaplar.find(h=>h.kod===ana.kod)) this.veri.anaHesaplar.push(Object.assign({},ana));
+      if(this.veri.sayaclar.altKod[ana.kod]===undefined) this.veri.sayaclar.altKod[ana.kod]=0;
+    });
   },
 
   kaydet(){
@@ -665,10 +672,10 @@ const Hesap = {
   acilisBakiye(hesap){
     if(!hesap) return 0;
     const a = Number(hesap.acilis)||0;
-    // banka & alıcı: açılış borç (pozitif); satıcı: açılış alacak (borç için negatif bakiye)
-    // kart: açılış borcu -> alacak (negatif bakiye = borç)
-    if(hesap.tur==='banka' || hesap.tur==='alici') return a;
-    if(hesap.tur==='satici' || hesap.tur==='kart') return -a;
+    // Borç nitelikli (açılış borç, pozitif bakiye): banka, alıcı, gider (770)
+    // Alacak nitelikli (açılış alacak, negatif bakiye = borç): satıcı, kart, ortak (331)
+    if(hesap.tur==='banka' || hesap.tur==='alici' || hesap.tur==='gider') return a;
+    if(hesap.tur==='satici' || hesap.tur==='kart' || hesap.tur==='ortak') return -a;
     return a;
   },
 
@@ -688,7 +695,7 @@ const Hesap = {
     let tBorc=0, tAlacak=0;
     const ac = Number(hesap && hesap.acilis)||0;
     if(hesap){
-      if(hesap.tur==='banka' || hesap.tur==='alici') tBorc += ac;
+      if(hesap.tur==='banka' || hesap.tur==='alici' || hesap.tur==='gider') tBorc += ac;
       else tAlacak += ac;
     }
     Depo.veri.hareketler.filter(h=>h.hesapId===hesapId).forEach(h=>{
@@ -1019,7 +1026,7 @@ const Sayfa = {
           <div class="form-alan"><label>Başlangıç Tarihi</label><input type="date" id="rf-bas"></div>
           <div class="form-alan"><label>Bitiş Tarihi</label><input type="date" id="rf-bit"></div>
           <div class="form-alan"><label>Hesap Türü</label>
-            <select id="rf-tur"><option value="">Tümü</option><option value="banka">Banka</option><option value="alici">Alıcı</option><option value="satici">Satıcı</option><option value="kart">Kredi Kartı</option></select></div>
+            <select id="rf-tur"><option value="">Tümü</option><option value="banka">Banka</option><option value="alici">Alıcı</option><option value="satici">Satıcı</option><option value="kart">Kredi Kartı</option><option value="ortak">Ortaklara Borçlar</option><option value="gider">Gider</option></select></div>
           <div class="form-alan"><label>Hesap Seçimi</label><select id="rf-hesap"><option value="">Tümü</option></select></div>
           <div class="form-alan"><label>İşlem Türü</label>
             <select id="rf-islem"><option value="">Tümü</option><option value="borc">Borç (Giriş)</option><option value="alacak">Alacak (Çıkış)</option></select></div>
@@ -1145,11 +1152,14 @@ const Form = {
   },
 
   giderSecenek(secili){
-    // Gider hesabı: 320 satıcılar ve tüm alt hesaplar seçilebilsin (ileri altyapı)
+    // Gider hesabı yalnızca 331 Ortaklara Borçlar ve 770 Gider Hesapları alt hesaplarından seçilir
     let opts = '';
-    Depo.veri.altHesaplar.forEach(h=>{
-      opts += `<option value="${h.id}" ${h.id===secili?'selected':''}>${h.kod} - ${Yardimci.kacisHTML(Hesap.hesapAdi(h))}</option>`;
-    });
+    Depo.veri.altHesaplar
+      .filter(h=>h.anaKod==='331' || h.anaKod==='770')
+      .sort((a,b)=>a.kod.localeCompare(b.kod,'tr'))
+      .forEach(h=>{
+        opts += `<option value="${h.id}" ${h.id===secili?'selected':''}>${h.kod} - ${Yardimci.kacisHTML(Hesap.hesapAdi(h))}</option>`;
+      });
     return `<option value="">— Yok —</option>` + opts;
   },
 
@@ -1443,9 +1453,15 @@ const Form = {
       // Alıcının borcu artar -> Borç (alıcı hesabına)
       hareketler.push(this.hareket(islem, islem.hesapId, islem.tutar, 0, islem.aciklama||islem.faturaNo));
     }else if(islem.tur==='banka' || islem.tur==='kart'){
-      // Para girişi -> Borç, Para çıkışı -> Alacak
-      if(islem.islemTuru==='giris') hareketler.push(this.hareket(islem, islem.hesapId, islem.tutar, 0, islem.islemAd));
+      // Para girişi -> Borç, Para çıkışı -> Alacak (banka/kart hesabına)
+      const giris = islem.islemTuru==='giris';
+      if(giris) hareketler.push(this.hareket(islem, islem.hesapId, islem.tutar, 0, islem.islemAd));
       else hareketler.push(this.hareket(islem, islem.hesapId, 0, islem.tutar, islem.islemAd));
+      // Çift taraflı fiş: gider/ortak (331-770) hesabına aynanın karşıtı hareket
+      if(islem.giderHesapId && Hesap.altBul(islem.giderHesapId)){
+        if(giris) hareketler.push(this.hareket(islem, islem.giderHesapId, 0, islem.tutar, islem.islemAd));
+        else hareketler.push(this.hareket(islem, islem.giderHesapId, islem.tutar, 0, islem.islemAd));
+      }
     }
     Depo.veri.hareketler.push(...hareketler);
   },
@@ -1658,6 +1674,18 @@ const AltHesap = {
       {id:'acilis', ad:'Açılış Borcu', para:true},
       {id:'kesimGun', ad:'Hesap Kesim Günü', gun:true},
       {id:'sonOdemeGun', ad:'Son Ödeme Günü', gun:true},
+      {id:'aciklama', ad:'Açıklama', tam:true}
+    ];
+    if(tur==='ortak') return [
+      {id:'ad', ad:'Ortak Adı', zorunlu:true, ana:true},
+      {id:'telefon', ad:'Telefon'},
+      {id:'eposta', ad:'E-posta'},
+      {id:'acilis', ad:'Açılış Bakiyesi (Borç)', para:true},
+      {id:'aciklama', ad:'Açıklama', tam:true}
+    ];
+    if(tur==='gider') return [
+      {id:'ad', ad:'Gider Adı', zorunlu:true, ana:true},
+      {id:'acilis', ad:'Açılış Bakiyesi', para:true},
       {id:'aciklama', ad:'Açıklama', tam:true}
     ];
     return [];
