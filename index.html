@@ -1,0 +1,2296 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Nizam Soft Ön Muhasebe</title>
+<style>
+/* ============================================================
+   Nizam Soft Ön Muhasebe - Tek Dosya Uygulama
+   Kurumsal Renkler: Kırmızı / Siyah / Antrasit / Beyaz / Açık Gri
+   ============================================================ */
+
+:root{
+  --kirmizi:#d32027;
+  --kirmizi-koyu:#a5161c;
+  --siyah:#111418;
+  --antrasit:#1f2530;
+  --antrasit-acik:#2b3340;
+  --beyaz:#ffffff;
+  --gri:#f2f4f7;
+  --gri-orta:#e2e6ec;
+  --gri-koyu:#c3cad4;
+  --metin:#1f2530;
+  --metin-soluk:#5b6472;
+  --yesil:#1f9d55;
+  --sari:#d9a406;
+  --golge:0 2px 10px rgba(0,0,0,.08);
+  --golge-buyuk:0 12px 40px rgba(0,0,0,.22);
+  --radius:12px;
+  --menu-genislik:250px;
+  --ana-bg:#eef1f5;
+  --kart-bg:#ffffff;
+  --kenar:#e2e6ec;
+}
+/* Koyu tema */
+body.tema-koyu{
+  --ana-bg:#161a20;
+  --kart-bg:#1f2530;
+  --metin:#e8ebf0;
+  --metin-soluk:#9aa4b2;
+  --gri:#242b36;
+  --gri-orta:#2e3744;
+  --gri-koyu:#3a4552;
+  --kenar:#2e3744;
+}
+
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%}
+body{
+  font-family:"Segoe UI",Roboto,Helvetica,Arial,"Apple Color Emoji",sans-serif;
+  background:var(--ana-bg);
+  color:var(--metin);
+  font-size:15px;
+  -webkit-font-smoothing:antialiased;
+  overflow:hidden;
+}
+
+/* ---------------- Yerleşim ---------------- */
+.uygulama{display:flex;height:100vh;width:100%}
+
+/* Sol Menü */
+.yan-menu{
+  width:var(--menu-genislik);
+  background:linear-gradient(180deg,var(--siyah),var(--antrasit));
+  color:#fff;
+  display:flex;flex-direction:column;
+  flex-shrink:0;
+  transition:width .28s cubic-bezier(.4,0,.2,1);
+  z-index:40;
+}
+.marka{
+  padding:22px 18px;
+  display:flex;align-items:center;gap:12px;
+  border-bottom:1px solid rgba(255,255,255,.08);
+}
+.marka-logo{
+  width:44px;height:44px;border-radius:10px;
+  background:var(--kirmizi);
+  display:flex;align-items:center;justify-content:center;
+  font-weight:800;font-size:20px;color:#fff;flex-shrink:0;
+  overflow:hidden;
+}
+.marka-logo img{width:100%;height:100%;object-fit:cover}
+.marka-yazi{line-height:1.2;overflow:hidden;white-space:nowrap}
+.marka-yazi b{font-size:16px;font-weight:700;display:block}
+.marka-yazi span{font-size:11px;color:var(--gri-koyu);letter-spacing:.5px}
+
+.menu-liste{list-style:none;padding:12px 10px;flex:1;overflow-y:auto}
+.menu-oge{
+  display:flex;align-items:center;gap:14px;
+  padding:13px 14px;margin:3px 0;
+  border-radius:10px;cursor:pointer;
+  color:#d4d9e0;font-weight:500;
+  position:relative;overflow:hidden;
+  transition:background .2s,color .2s,transform .15s;
+  white-space:nowrap;
+}
+.menu-oge .ikon{width:22px;text-align:center;font-size:18px;flex-shrink:0}
+.menu-oge:hover{background:rgba(255,255,255,.07);color:#fff;transform:translateX(2px)}
+.menu-oge.aktif{background:var(--kirmizi);color:#fff;box-shadow:0 6px 16px rgba(211,32,39,.4)}
+.menu-oge.aktif::before{
+  content:"";position:absolute;left:0;top:0;bottom:0;width:4px;background:#fff;
+}
+.menu-alt{
+  padding:14px 18px;border-top:1px solid rgba(255,255,255,.08);
+  font-size:11px;color:var(--gri-koyu);text-align:center;
+}
+
+/* Ana içerik */
+.icerik{flex:1;display:flex;flex-direction:column;min-width:0;height:100vh}
+.ust-bar{
+  height:66px;flex-shrink:0;
+  background:var(--kart-bg);
+  border-bottom:1px solid var(--kenar);
+  display:flex;align-items:center;justify-content:space-between;
+  padding:0 24px;box-shadow:var(--golge);z-index:20;
+}
+.ust-bar .sol{display:flex;align-items:center;gap:16px}
+.menu-buton{
+  background:none;border:none;cursor:pointer;font-size:22px;color:var(--metin);
+  width:40px;height:40px;border-radius:8px;display:flex;align-items:center;justify-content:center;
+}
+.menu-buton:hover{background:var(--gri)}
+.sayfa-baslik{font-size:20px;font-weight:700}
+.ust-bar .sag{display:flex;align-items:center;gap:14px;color:var(--metin-soluk);font-size:13px}
+.ust-firma{font-weight:600;color:var(--metin)}
+
+.sayfa-alan{flex:1;overflow-y:auto;padding:24px}
+.sayfa{animation:girisSol .35s ease}
+@keyframes girisSol{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:none}}
+
+/* Menü kapalı durum */
+body.menu-kapali .yan-menu{width:74px}
+body.menu-kapali .marka-yazi,
+body.menu-kapali .menu-oge span.etiket,
+body.menu-kapali .menu-alt{display:none}
+body.menu-kapali .menu-oge{justify-content:center}
+
+/* ---------------- Genel bileşenler ---------------- */
+.kart{
+  background:var(--kart-bg);border:1px solid var(--kenar);
+  border-radius:var(--radius);padding:20px;box-shadow:var(--golge);
+}
+h2.bolum-baslik{font-size:18px;margin-bottom:16px;display:flex;align-items:center;gap:10px}
+h2.bolum-baslik::before{content:"";width:5px;height:22px;background:var(--kirmizi);border-radius:3px}
+
+/* Özet kartları */
+.ozet-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:18px;margin-bottom:24px}
+.ozet-kart{
+  background:var(--kart-bg);border:1px solid var(--kenar);border-radius:var(--radius);
+  padding:20px;box-shadow:var(--golge);position:relative;overflow:hidden;
+  transition:transform .2s,box-shadow .2s;
+}
+.ozet-kart:hover{transform:translateY(-3px);box-shadow:var(--golge-buyuk)}
+.ozet-kart::after{content:"";position:absolute;right:-20px;top:-20px;width:90px;height:90px;border-radius:50%;opacity:.12}
+.ozet-kart .ust{display:flex;align-items:center;gap:12px;margin-bottom:14px}
+.ozet-ikon{width:46px;height:46px;border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:22px;color:#fff}
+.ozet-kart .etiket{font-size:13px;color:var(--metin-soluk);font-weight:600}
+.ozet-kart .deger{font-size:24px;font-weight:800;letter-spacing:-.5px}
+.i-mavi{background:#2563eb}.i-yesil{background:var(--yesil)}.i-kirmizi{background:var(--kirmizi)}.i-turuncu{background:#e8730c}
+
+/* Tablolar */
+.tablo-sar{overflow-x:auto;border-radius:var(--radius);border:1px solid var(--kenar)}
+table.veri{width:100%;border-collapse:collapse;background:var(--kart-bg);font-size:14px}
+table.veri th{
+  background:var(--antrasit);color:#fff;text-align:left;padding:12px 14px;
+  font-weight:600;font-size:13px;white-space:nowrap;position:sticky;top:0;
+}
+table.veri td{padding:11px 14px;border-bottom:1px solid var(--kenar);white-space:nowrap}
+table.veri tbody tr{cursor:default;transition:background .15s}
+table.veri tbody tr:hover{background:rgba(211,32,39,.06)}
+table.veri tbody tr.secili{background:rgba(211,32,39,.14);box-shadow:inset 3px 0 0 var(--kirmizi)}
+table.veri tr.ana-hesap-satir{background:var(--gri);font-weight:700}
+body.tema-koyu table.veri tr.ana-hesap-satir{background:var(--gri-orta)}
+table.veri tr.ana-hesap-satir:hover{background:var(--gri-orta)}
+.sag-hiza{text-align:right}
+.borc{color:var(--yesil);font-weight:600}
+.alacak{color:var(--kirmizi);font-weight:600}
+.bos-mesaj{text-align:center;padding:34px;color:var(--metin-soluk);font-style:italic}
+.girinti{padding-left:34px !important;color:var(--metin-soluk)}
+.kod-rozet{font-family:"Consolas",monospace;font-weight:700;background:var(--gri);padding:2px 8px;border-radius:6px;font-size:13px}
+
+/* Butonlar */
+.btn{
+  display:inline-flex;align-items:center;gap:8px;justify-content:center;
+  border:none;border-radius:10px;padding:11px 18px;font-size:14px;font-weight:600;
+  cursor:pointer;transition:all .18s;font-family:inherit;line-height:1;user-select:none;
+}
+.btn:active{transform:scale(.97)}
+.btn-kirmizi{background:var(--kirmizi);color:#fff}
+.btn-kirmizi:hover{background:var(--kirmizi-koyu)}
+.btn-koyu{background:var(--antrasit);color:#fff}
+.btn-koyu:hover{background:var(--antrasit-acik)}
+.btn-gri{background:var(--gri-orta);color:var(--metin)}
+.btn-gri:hover{background:var(--gri-koyu)}
+.btn-yesil{background:var(--yesil);color:#fff}
+.btn-yesil:hover{filter:brightness(.92)}
+.btn-cizgi{background:transparent;border:2px solid var(--gri-koyu);color:var(--metin)}
+.btn-cizgi:hover{border-color:var(--kirmizi);color:var(--kirmizi)}
+.btn-kucuk{padding:7px 12px;font-size:13px;border-radius:8px}
+.btn-ikon{padding:8px 10px;font-size:15px}
+.buton-grup{display:flex;gap:10px;flex-wrap:wrap}
+
+/* Sekmeler */
+.sekmeler{display:flex;gap:6px;margin-bottom:20px;flex-wrap:wrap;background:var(--kart-bg);padding:8px;border-radius:var(--radius);border:1px solid var(--kenar)}
+.sekme{
+  padding:13px 22px;border-radius:9px;cursor:pointer;font-weight:600;font-size:14px;
+  color:var(--metin-soluk);transition:all .2s;border:none;background:none;font-family:inherit;
+}
+.sekme:hover{background:var(--gri);color:var(--metin)}
+.sekme.aktif{background:var(--kirmizi);color:#fff;box-shadow:0 5px 14px rgba(211,32,39,.35)}
+
+/* Formlar */
+.form-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:18px}
+.form-alan{display:flex;flex-direction:column;gap:7px}
+.form-alan.tam{grid-column:1/-1}
+.form-alan label{font-size:13px;font-weight:600;color:var(--metin-soluk)}
+.form-alan label .zorunlu{color:var(--kirmizi);margin-left:2px}
+.form-alan input,.form-alan select,.form-alan textarea{
+  padding:12px 14px;border:2px solid var(--kenar);border-radius:10px;font-size:15px;
+  font-family:inherit;background:var(--kart-bg);color:var(--metin);transition:border .18s,box-shadow .18s;width:100%;
+}
+.form-alan input:focus,.form-alan select:focus,.form-alan textarea:focus{
+  outline:none;border-color:var(--kirmizi);box-shadow:0 0 0 3px rgba(211,32,39,.12);
+}
+.form-alan input[readonly]{background:var(--gri);color:var(--metin-soluk);cursor:not-allowed}
+.form-alan textarea{resize:vertical;min-height:70px}
+.form-baslik{font-size:16px;font-weight:700;margin-bottom:18px;padding-bottom:12px;border-bottom:2px solid var(--gri-orta)}
+
+/* Dosya alanı */
+.dosya-kutu{border:2px dashed var(--gri-koyu);border-radius:10px;padding:14px;text-align:center}
+.dosya-bilgi{margin-top:10px;font-size:13px;color:var(--metin-soluk)}
+.dosya-adi{font-weight:600;color:var(--metin)}
+
+/* Modal */
+.modal-katman{
+  position:fixed;inset:0;background:rgba(10,14,20,.55);backdrop-filter:blur(3px);
+  display:none;align-items:center;justify-content:center;z-index:100;padding:20px;
+}
+.modal-katman.acik{display:flex;animation:fadeGiris .2s ease}
+@keyframes fadeGiris{from{opacity:0}to{opacity:1}}
+.modal{
+  background:var(--kart-bg);border-radius:16px;box-shadow:var(--golge-buyuk);
+  width:100%;max-width:620px;max-height:90vh;display:flex;flex-direction:column;
+  animation:modalGiris .28s cubic-bezier(.34,1.3,.64,1);
+}
+.modal.genis{max-width:900px}
+@keyframes modalGiris{from{opacity:0;transform:translateY(30px) scale(.96)}to{opacity:1;transform:none}}
+.modal-ust{padding:20px 24px;border-bottom:1px solid var(--kenar);display:flex;align-items:center;justify-content:space-between}
+.modal-ust h3{font-size:18px}
+.modal-kapat{background:none;border:none;font-size:26px;cursor:pointer;color:var(--metin-soluk);line-height:1;width:34px;height:34px;border-radius:8px}
+.modal-kapat:hover{background:var(--gri);color:var(--kirmizi)}
+.modal-govde{padding:24px;overflow-y:auto}
+.modal-alt{padding:16px 24px;border-top:1px solid var(--kenar);display:flex;gap:10px;justify-content:flex-end}
+
+/* Bildirim (toast) */
+.bildirim-alan{position:fixed;top:20px;right:20px;z-index:200;display:flex;flex-direction:column;gap:12px;max-width:360px}
+.bildirim{
+  background:var(--kart-bg);border-left:5px solid var(--metin-soluk);border-radius:10px;
+  padding:15px 18px;box-shadow:var(--golge-buyuk);display:flex;gap:12px;align-items:flex-start;
+  animation:bildirimGiris .3s cubic-bezier(.34,1.3,.64,1);
+}
+@keyframes bildirimGiris{from{opacity:0;transform:translateX(60px)}to{opacity:1;transform:none}}
+.bildirim.cikis{animation:bildirimCikis .3s ease forwards}
+@keyframes bildirimCikis{to{opacity:0;transform:translateX(60px)}}
+.bildirim.basari{border-color:var(--yesil)}
+.bildirim.hata{border-color:var(--kirmizi)}
+.bildirim.uyari{border-color:var(--sari)}
+.bildirim .b-ikon{font-size:20px;flex-shrink:0}
+.bildirim.basari .b-ikon{color:var(--yesil)}
+.bildirim.hata .b-ikon{color:var(--kirmizi)}
+.bildirim.uyari .b-ikon{color:var(--sari)}
+.bildirim .b-metin{font-size:14px;line-height:1.4}
+.bildirim .b-metin b{display:block;margin-bottom:2px}
+
+/* Rozetler / durum */
+.rozet{display:inline-block;padding:4px 11px;border-radius:20px;font-size:12px;font-weight:700}
+.rozet.odendi{background:rgba(31,157,85,.15);color:var(--yesil)}
+.rozet.kismi{background:rgba(217,164,6,.18);color:var(--sari)}
+.rozet.odenmedi{background:rgba(211,32,39,.14);color:var(--kirmizi)}
+
+/* Detay üst bilgi */
+.detay-ust{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:16px;margin-bottom:20px}
+.detay-kutu{background:var(--gri);border-radius:10px;padding:14px 16px}
+.detay-kutu .k-etiket{font-size:12px;color:var(--metin-soluk);font-weight:600;margin-bottom:5px}
+.detay-kutu .k-deger{font-size:19px;font-weight:800}
+
+/* Araç çubuğu */
+.arac-cubuk{display:flex;gap:12px;flex-wrap:wrap;align-items:center;margin-bottom:18px}
+.arama-kutu{position:relative;flex:1;min-width:200px}
+.arama-kutu input{width:100%;padding:11px 14px 11px 40px;border:2px solid var(--kenar);border-radius:10px;font-size:14px;background:var(--kart-bg);color:var(--metin)}
+.arama-kutu input:focus{outline:none;border-color:var(--kirmizi)}
+.arama-kutu::before{content:"🔍";position:absolute;left:13px;top:50%;transform:translateY(-50%);opacity:.5}
+
+.satir-arasi{margin-top:24px}
+.mini-liste-baslik{font-size:14px;font-weight:700;margin:22px 0 12px;color:var(--metin-soluk)}
+
+/* Rapor */
+.rapor-secim{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:14px;margin-bottom:20px}
+.rapor-kutu{
+  background:var(--kart-bg);border:2px solid var(--kenar);border-radius:12px;padding:18px;cursor:pointer;
+  transition:all .2s;display:flex;align-items:center;gap:14px;
+}
+.rapor-kutu:hover{border-color:var(--kirmizi);transform:translateY(-2px);box-shadow:var(--golge)}
+.rapor-kutu.aktif{border-color:var(--kirmizi);background:rgba(211,32,39,.05)}
+.rapor-kutu .r-ikon{font-size:26px}
+.rapor-kutu b{font-size:14px}
+
+/* Yardımcı */
+.satir-ic{display:flex;gap:6px}
+.aralik{height:1px;background:var(--kenar);margin:20px 0}
+.etiket-satir{display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px dashed var(--kenar);font-size:14px}
+.etiket-satir b{font-weight:700}
+
+/* Responsive */
+@media(max-width:820px){
+  body:not(.menu-kapali) .yan-menu{position:fixed;height:100vh;box-shadow:var(--golge-buyuk)}
+  body:not(.menu-kapali) .icerik{margin-left:0}
+  .sayfa-baslik{font-size:17px}
+  .sayfa-alan{padding:16px}
+  .ust-firma-metin{display:none}
+}
+
+/* Yazdırma */
+@media print{
+  body{overflow:visible;height:auto}
+  .yan-menu,.ust-bar,.no-print,.bildirim-alan{display:none !important}
+  .icerik{height:auto;overflow:visible}
+  .sayfa-alan{padding:0;overflow:visible}
+  .kart{box-shadow:none;border:none}
+  .modal-katman{position:static;background:none;display:block !important;padding:0}
+  .modal{box-shadow:none;max-width:100%;max-height:none}
+  .modal-ust .modal-kapat,.modal-alt{display:none !important}
+  table.veri th{background:#333 !important;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+  #yazdir-alan{display:block !important}
+  @page{size:A4;margin:14mm}
+}
+#yazdir-alan{display:none}
+</style>
+</head>
+<body>
+<div class="uygulama">
+  <!-- SOL MENÜ -->
+  <nav class="yan-menu">
+    <div class="marka">
+      <div class="marka-logo" id="marka-logo">NS</div>
+      <div class="marka-yazi">
+        <b>Nizam Soft</b>
+        <span>ÖN MUHASEBE</span>
+      </div>
+    </div>
+    <ul class="menu-liste" id="menu-liste">
+      <li class="menu-oge" data-sayfa="anasayfa"><span class="ikon">🏠</span><span class="etiket">Ana Sayfa</span></li>
+      <li class="menu-oge" data-sayfa="islemler"><span class="ikon">📝</span><span class="etiket">İşlem Girişleri</span></li>
+      <li class="menu-oge" data-sayfa="hesaplar"><span class="ikon">📊</span><span class="etiket">Hesaplar</span></li>
+      <li class="menu-oge" data-sayfa="raporlar"><span class="ikon">📈</span><span class="etiket">Raporlar</span></li>
+      <li class="menu-oge" data-sayfa="ayarlar"><span class="ikon">⚙️</span><span class="etiket">Ayarlar</span></li>
+      <li class="menu-oge" data-sayfa="yedekleme"><span class="ikon">💾</span><span class="etiket">Yedekleme</span></li>
+    </ul>
+    <div class="menu-alt">Nizam Soft © 2026<br>v1.0</div>
+  </nav>
+
+  <!-- ANA İÇERİK -->
+  <div class="icerik">
+    <header class="ust-bar">
+      <div class="sol">
+        <button class="menu-buton" onclick="App.menuToggle()" title="Menü">☰</button>
+        <div class="sayfa-baslik" id="sayfa-baslik">Ana Sayfa</div>
+      </div>
+      <div class="sag">
+        <span class="ust-firma-metin"><span class="ust-firma" id="ust-firma">Firma Adı Girilmedi</span></span>
+      </div>
+    </header>
+    <main class="sayfa-alan" id="sayfa-alan"></main>
+  </div>
+</div>
+
+<!-- Modal -->
+<div class="modal-katman" id="modal-katman">
+  <div class="modal" id="modal-kutu">
+    <div class="modal-ust"><h3 id="modal-baslik">Başlık</h3><button class="modal-kapat" onclick="App.modalKapat()">×</button></div>
+    <div class="modal-govde" id="modal-govde"></div>
+    <div class="modal-alt" id="modal-alt"></div>
+  </div>
+</div>
+
+<!-- Bildirim alanı -->
+<div class="bildirim-alan" id="bildirim-alan"></div>
+
+<!-- Yazdırma alanı -->
+<div id="yazdir-alan"></div>
+
+<script>
+"use strict";
+/* ==================================================================
+   NIZAM SOFT ÖN MUHASEBE
+   Bölüm 1: Yardımcı Fonksiyonlar (format, tarih, doğrulama)
+   ================================================================== */
+const Yardimci = {
+  paraFormat(sayi){
+    const n = Number(sayi) || 0;
+    return new Intl.NumberFormat('tr-TR',{minimumFractionDigits:2,maximumFractionDigits:2}).format(n) + ' TL';
+  },
+  sayiFormat(sayi){
+    const n = Number(sayi) || 0;
+    return new Intl.NumberFormat('tr-TR',{minimumFractionDigits:2,maximumFractionDigits:2}).format(n);
+  },
+  tarihFormat(iso){
+    if(!iso) return '';
+    const p = iso.split('-');
+    if(p.length!==3) return iso;
+    return `${p[2]}.${p[1]}.${p[0]}`;
+  },
+  bugun(){
+    const d = new Date();
+    const ay = String(d.getMonth()+1).padStart(2,'0');
+    const gun = String(d.getDate()).padStart(2,'0');
+    return `${d.getFullYear()}-${ay}-${gun}`;
+  },
+  dosyaTarih(){
+    const d = new Date();
+    const ay = String(d.getMonth()+1).padStart(2,'0');
+    const gun = String(d.getDate()).padStart(2,'0');
+    return `${d.getFullYear()}-${ay}-${gun}`;
+  },
+  paraCoz(deger){
+    // "1.234,56" veya "1234.56" -> number
+    if(typeof deger === 'number') return deger;
+    if(!deger) return 0;
+    let s = String(deger).trim().replace(/\s|TL/gi,'');
+    if(s.indexOf(',')>-1){ s = s.replace(/\./g,'').replace(',','.'); }
+    const n = parseFloat(s);
+    return isNaN(n)?0:n;
+  },
+  kacisHTML(s){
+    if(s===undefined||s===null) return '';
+    return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+  },
+  ibanGecerli(iban){
+    if(!iban) return true; // opsiyonel
+    const t = iban.replace(/\s/g,'').toUpperCase();
+    return /^TR\d{24}$/.test(t);
+  },
+  ibanDuzenle(iban){
+    const t = iban.replace(/\s/g,'').toUpperCase();
+    return t.replace(/(.{4})/g,'$1 ').trim();
+  },
+  boyutFormat(bayt){
+    if(bayt < 1024) return bayt + ' B';
+    if(bayt < 1048576) return (bayt/1024).toFixed(1) + ' KB';
+    return (bayt/1048576).toFixed(2) + ' MB';
+  },
+  yeniId(){
+    return 'id-' + Date.now().toString(36) + '-' + Math.random().toString(36).slice(2,8);
+  }
+};
+
+/* ==================================================================
+   Bölüm 2: Depolama Katmanı (localStorage + IndexedDB dosyalar)
+   ================================================================== */
+const Depo = {
+  ANAHTAR:'nizamSoftMuhasebe',
+  veri:null,
+
+  varsayilan(){
+    return {
+      surum:1,
+      firma:{ ad:'', yetkili:'', telefon:'', eposta:'', vergiDairesi:'', vergiNo:'', adres:'', logo:'' },
+      ayarlar:{ paraBirimi:'TL', varsayilanTarih:'bugun', ondalik:2, tema:'acik', islemBaslangic:1 },
+      anaHesaplar:[
+        {kod:'102', ad:'Bankalar', tur:'banka'},
+        {kod:'120', ad:'Alıcılar', tur:'alici'},
+        {kod:'309', ad:'Kredi Kartları', tur:'kart'},
+        {kod:'320', ad:'Satıcılar', tur:'satici'}
+      ],
+      altHesaplar:[],   // {id,kod,anaKod,tur,ad, ...alan..., acilis, aciklama}
+      islemler:[],      // {id,no,tur,tarih,...alanlar, dosyaId?}
+      hareketler:[],    // {id,islemId,hesapId,tarih,islemNo,aciklama,borc,alacak,...}
+      sayaclar:{ islemNo:0, altKod:{'102':0,'120':0,'309':0,'320':0} }
+    };
+  },
+
+  yukle(){
+    try{
+      const ham = localStorage.getItem(this.ANAHTAR);
+      if(ham){
+        this.veri = JSON.parse(ham);
+        this.butunle();
+      }else{
+        this.veri = this.varsayilan();
+        this.kaydet();
+      }
+    }catch(e){
+      console.error('Yükleme hatası',e);
+      this.veri = this.varsayilan();
+    }
+    return this.veri;
+  },
+
+  // Eksik alanları tamamla (ileri uyumluluk)
+  butunle(){
+    const v = this.varsayilan();
+    if(!this.veri.firma) this.veri.firma = v.firma;
+    if(!this.veri.ayarlar) this.veri.ayarlar = v.ayarlar;
+    if(!this.veri.anaHesaplar || this.veri.anaHesaplar.length===0) this.veri.anaHesaplar = v.anaHesaplar;
+    if(!this.veri.altHesaplar) this.veri.altHesaplar = [];
+    if(!this.veri.islemler) this.veri.islemler = [];
+    if(!this.veri.hareketler) this.veri.hareketler = [];
+    if(!this.veri.sayaclar) this.veri.sayaclar = v.sayaclar;
+    if(!this.veri.sayaclar.altKod) this.veri.sayaclar.altKod = v.sayaclar.altKod;
+  },
+
+  kaydet(){
+    try{
+      localStorage.setItem(this.ANAHTAR, JSON.stringify(this.veri));
+      return true;
+    }catch(e){
+      Bildirim.goster('hata','Kayıt Hatası','Depolama sınırı aşılmış olabilir. Büyük dosyaları kaldırın.');
+      return false;
+    }
+  },
+
+  // --- Sayaç işlemleri ---
+  yeniIslemNo(){
+    const s = this.veri.sayaclar;
+    const baslangic = Number(this.veri.ayarlar.islemBaslangic)||1;
+    if(s.islemNo < baslangic-1) s.islemNo = baslangic-1;
+    s.islemNo++;
+    return 'ISL-' + String(s.islemNo).padStart(6,'0');
+  },
+  yeniAltKod(anaKod){
+    if(this.veri.sayaclar.altKod[anaKod]===undefined) this.veri.sayaclar.altKod[anaKod]=0;
+    this.veri.sayaclar.altKod[anaKod]++;
+    return anaKod + '.' + String(this.veri.sayaclar.altKod[anaKod]).padStart(2,'0');
+  }
+};
+
+/* IndexedDB - fatura dosyaları */
+const DosyaDepo = {
+  db:null,
+  ADI:'nizamSoftDosya', STORE:'dosyalar',
+  ac(){
+    return new Promise((cbz,red)=>{
+      if(this.db) return cbz(this.db);
+      const istek = indexedDB.open(this.ADI,1);
+      istek.onupgradeneeded = e=>{
+        const db = e.target.result;
+        if(!db.objectStoreNames.contains(this.STORE)) db.createObjectStore(this.STORE,{keyPath:'id'});
+      };
+      istek.onsuccess = e=>{ this.db=e.target.result; cbz(this.db); };
+      istek.onerror = e=>red(e.target.error);
+    });
+  },
+  async kaydet(kayit){
+    const db = await this.ac();
+    return new Promise((cbz,red)=>{
+      const t = db.transaction(this.STORE,'readwrite');
+      t.objectStore(this.STORE).put(kayit);
+      t.oncomplete = ()=>cbz(true);
+      t.onerror = e=>red(e.target.error);
+    });
+  },
+  async getir(id){
+    const db = await this.ac();
+    return new Promise((cbz,red)=>{
+      const istek = db.transaction(this.STORE,'readonly').objectStore(this.STORE).get(id);
+      istek.onsuccess = ()=>cbz(istek.result);
+      istek.onerror = e=>red(e.target.error);
+    });
+  },
+  async sil(id){
+    const db = await this.ac();
+    return new Promise((cbz)=>{
+      const t = db.transaction(this.STORE,'readwrite');
+      t.objectStore(this.STORE).delete(id);
+      t.oncomplete = ()=>cbz(true);
+      t.onerror = ()=>cbz(false);
+    });
+  },
+  async hepsi(){
+    const db = await this.ac();
+    return new Promise((cbz,red)=>{
+      const istek = db.transaction(this.STORE,'readonly').objectStore(this.STORE).getAll();
+      istek.onsuccess = ()=>cbz(istek.result||[]);
+      istek.onerror = e=>red(e.target.error);
+    });
+  },
+  async temizle(){
+    const db = await this.ac();
+    return new Promise((cbz)=>{
+      const t = db.transaction(this.STORE,'readwrite');
+      t.objectStore(this.STORE).clear();
+      t.oncomplete = ()=>cbz(true);
+      t.onerror = ()=>cbz(false);
+    });
+  }
+};
+
+/* ==================================================================
+   Bölüm 3: Bildirim ve Modal Sistemi
+   ================================================================== */
+const Bildirim = {
+  goster(tip, baslik, metin, sure=3800){
+    const alan = document.getElementById('bildirim-alan');
+    const ikonlar = {basari:'✓', hata:'✕', uyari:'⚠', bilgi:'ℹ'};
+    const el = document.createElement('div');
+    el.className = 'bildirim ' + tip;
+    el.innerHTML = `<div class="b-ikon">${ikonlar[tip]||'ℹ'}</div>
+      <div class="b-metin"><b>${Yardimci.kacisHTML(baslik)}</b>${Yardimci.kacisHTML(metin||'')}</div>`;
+    alan.appendChild(el);
+    setTimeout(()=>{ el.classList.add('cikis'); setTimeout(()=>el.remove(),300); }, sure);
+  }
+};
+
+const Modal = {
+  onayGeri:null,
+  ac(baslik, govdeHTML, altHTML, genis=false){
+    document.getElementById('modal-baslik').textContent = baslik;
+    document.getElementById('modal-govde').innerHTML = govdeHTML;
+    document.getElementById('modal-alt').innerHTML = altHTML || '';
+    document.getElementById('modal-kutu').className = 'modal' + (genis?' genis':'');
+    document.getElementById('modal-katman').classList.add('acik');
+  },
+  kapat(){
+    document.getElementById('modal-katman').classList.remove('acik');
+  },
+  // Onay diyaloğu
+  onay(baslik, mesaj, cbEvet, evetMetin='Evet, Onayla', tehlikeli=false){
+    const alt = `<button class="btn btn-gri" onclick="Modal.kapat()">Vazgeç</button>
+      <button class="btn ${tehlikeli?'btn-kirmizi':'btn-koyu'}" id="onay-evet">${evetMetin}</button>`;
+    this.ac(baslik, `<p style="font-size:15px;line-height:1.6">${Yardimci.kacisHTML(mesaj)}</p>`, alt);
+    document.getElementById('onay-evet').onclick = ()=>{ this.kapat(); cbEvet(); };
+  }
+};
+
+/* ==================================================================
+   Bölüm 4: Hesap ve Bakiye Hesaplama Motoru
+   ================================================================== */
+const Hesap = {
+  altHesaplarByAna(anaKod){
+    return Depo.veri.altHesaplar.filter(h=>h.anaKod===anaKod)
+      .sort((a,b)=>a.kod.localeCompare(b.kod,'tr'));
+  },
+  altBul(id){ return Depo.veri.altHesaplar.find(h=>h.id===id); },
+  altBulKod(kod){ return Depo.veri.altHesaplar.find(h=>h.kod===kod); },
+  anaBul(kod){ return Depo.veri.anaHesaplar.find(h=>h.kod===kod); },
+
+  // Bir hesaba ait hareketleri tarih+islemNo sırasına göre döndür (Güncel Bakiye ile)
+  hareketler(hesapId){
+    const list = Depo.veri.hareketler.filter(h=>h.hesapId===hesapId);
+    list.sort((a,b)=>{
+      if(a.tarih!==b.tarih) return a.tarih.localeCompare(b.tarih);
+      return (a.islemNo||'').localeCompare(b.islemNo||'');
+    });
+    const hesap = this.altBul(hesapId);
+    let yuruyen = this.acilisBakiye(hesap); // açılış bakiyesi tabanı
+    return list.map(h=>{
+      const etki = (Number(h.borc)||0) - (Number(h.alacak)||0);
+      yuruyen += etki;
+      return Object.assign({}, h, {etki, guncelBakiye:yuruyen});
+    });
+  },
+
+  // Açılış bakiyesinin bakiyeye etkisi (borç-alacak yönünde net değer)
+  acilisBakiye(hesap){
+    if(!hesap) return 0;
+    const a = Number(hesap.acilis)||0;
+    // banka & alıcı: açılış borç (pozitif); satıcı: açılış alacak (borç için negatif bakiye)
+    // kart: açılış borcu -> alacak (negatif bakiye = borç)
+    if(hesap.tur==='banka' || hesap.tur==='alici') return a;
+    if(hesap.tur==='satici' || hesap.tur==='kart') return -a;
+    return a;
+  },
+
+  // Hesabın güncel net bakiyesi (borç - alacak)
+  netBakiye(hesapId){
+    const hesap = this.altBul(hesapId);
+    let toplam = this.acilisBakiye(hesap);
+    Depo.veri.hareketler.filter(h=>h.hesapId===hesapId).forEach(h=>{
+      toplam += (Number(h.borc)||0) - (Number(h.alacak)||0);
+    });
+    return toplam;
+  },
+
+  // Toplam borç / alacak (açılış dahil)
+  toplamlar(hesapId){
+    const hesap = this.altBul(hesapId);
+    let tBorc=0, tAlacak=0;
+    const ac = Number(hesap && hesap.acilis)||0;
+    if(hesap){
+      if(hesap.tur==='banka' || hesap.tur==='alici') tBorc += ac;
+      else tAlacak += ac;
+    }
+    Depo.veri.hareketler.filter(h=>h.hesapId===hesapId).forEach(h=>{
+      tBorc += Number(h.borc)||0;
+      tAlacak += Number(h.alacak)||0;
+    });
+    return {tBorc,tAlacak};
+  },
+
+  // Ana hesap bakiyesi = alt hesap bakiyelerinin toplamı
+  anaBakiye(anaKod){
+    return this.altHesaplarByAna(anaKod).reduce((t,h)=>t+this.netBakiye(h.id),0);
+  },
+
+  // Kart güncel borcu (pozitif değer)
+  kartBorc(hesapId){
+    const b = this.netBakiye(hesapId);
+    return b<0 ? -b : 0;
+  },
+
+  // Görüntüleme için hesap adı
+  hesapAdi(hesap){
+    if(!hesap) return '';
+    return hesap.ad || hesap.firmaAd || hesap.kartAd || hesap.bankaAd || '';
+  }
+};
+
+/* ==================================================================
+   Bölüm 5: CSV / Excel ve Yazdırma
+   ================================================================== */
+const Disari = {
+  csv(baslıklar, satirlar, dosyaAd){
+    const ayrac = ';';
+    const kacir = (v)=>{
+      let s = (v===undefined||v===null)?'':String(v);
+      if(s.indexOf('"')>-1 || s.indexOf(ayrac)>-1 || s.indexOf('\n')>-1){
+        s = '"' + s.replace(/"/g,'""') + '"';
+      }
+      return s;
+    };
+    let icerik = baslıklar.map(kacir).join(ayrac) + '\r\n';
+    satirlar.forEach(r=>{ icerik += r.map(kacir).join(ayrac) + '\r\n'; });
+    const bom = '﻿';
+    const blob = new Blob([bom+icerik], {type:'text/csv;charset=utf-8;'});
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url; a.download = dosyaAd.replace(/\.csv$/,'') + '.csv';
+    a.click();
+    URL.revokeObjectURL(url);
+    Bildirim.goster('basari','Dışa Aktarıldı','CSV dosyası indirildi.');
+  },
+  yazdir(baslik, icerikHTML){
+    const alan = document.getElementById('yazdir-alan');
+    const firma = Depo.veri.firma.ad || 'Nizam Soft Ön Muhasebe';
+    alan.innerHTML = `
+      <div style="font-family:Segoe UI,Arial,sans-serif;padding:0">
+        <div style="display:flex;justify-content:space-between;align-items:center;border-bottom:3px solid #d32027;padding-bottom:12px;margin-bottom:18px">
+          <div><h1 style="font-size:22px;color:#111">${Yardimci.kacisHTML(firma)}</h1>
+          <div style="font-size:13px;color:#666">${Yardimci.kacisHTML(baslik)}</div></div>
+          <div style="font-size:12px;color:#666;text-align:right">Tarih: ${Yardimci.tarihFormat(Yardimci.bugun())}</div>
+        </div>
+        ${icerikHTML}
+        <div style="margin-top:30px;font-size:11px;color:#999;text-align:center;border-top:1px solid #ddd;padding-top:10px">
+          Nizam Soft Ön Muhasebe ile oluşturulmuştur.
+        </div>
+      </div>`;
+    window.print();
+    setTimeout(()=>{ alan.innerHTML=''; }, 500);
+  },
+  // HTML tabloyu yazdırılabilir tabloya dönüştür
+  tabloHTML(baslıklar, satirlar){
+    let h = '<table style="width:100%;border-collapse:collapse;font-size:12px">';
+    h += '<thead><tr>' + baslıklar.map(b=>`<th style="background:#1f2530;color:#fff;padding:8px;text-align:left;border:1px solid #ccc">${Yardimci.kacisHTML(b)}</th>`).join('') + '</tr></thead><tbody>';
+    satirlar.forEach(r=>{
+      h += '<tr>' + r.map(c=>`<td style="padding:7px;border:1px solid #ddd">${Yardimci.kacisHTML(c)}</td>`).join('') + '</tr>';
+    });
+    h += '</tbody></table>';
+    return h;
+  }
+};
+
+/* ==================================================================
+   Bölüm 6: Ana Uygulama - Yönlendirme ve Sayfalar
+   ================================================================== */
+const App = {
+  aktifSayfa:'anasayfa',
+  aktifSekme:'alis',
+  aktifRapor:null,
+
+  baslat(){
+    Depo.yukle();
+    this.temaUygula();
+    this.firmaGuncelle();
+    this.menuBagla();
+    this.sayfaGit('anasayfa');
+    // Menü başlangıçta açık; küçük ekranda kapalı
+    if(window.innerWidth<820) document.body.classList.add('menu-kapali');
+  },
+
+  menuBagla(){
+    document.querySelectorAll('.menu-oge').forEach(el=>{
+      el.addEventListener('click',()=>this.sayfaGit(el.dataset.sayfa));
+    });
+  },
+  menuToggle(){ document.body.classList.toggle('menu-kapali'); },
+
+  temaUygula(){
+    document.body.classList.toggle('tema-koyu', Depo.veri.ayarlar.tema==='koyu');
+  },
+
+  firmaGuncelle(){
+    const f = Depo.veri.firma;
+    document.getElementById('ust-firma').textContent = f.ad || 'Firma Adı Girilmedi';
+    const logoEl = document.getElementById('marka-logo');
+    if(f.logo){ logoEl.innerHTML = `<img src="${f.logo}" alt="logo">`; }
+    else{ logoEl.textContent = 'NS'; }
+  },
+
+  sayfaGit(sayfa){
+    this.aktifSayfa = sayfa;
+    document.querySelectorAll('.menu-oge').forEach(el=>el.classList.toggle('aktif', el.dataset.sayfa===sayfa));
+    const basliklar = {anasayfa:'Ana Sayfa', islemler:'İşlem Girişleri', hesaplar:'Hesaplar', raporlar:'Raporlar', ayarlar:'Ayarlar', yedekleme:'Yedekleme'};
+    document.getElementById('sayfa-baslik').textContent = basliklar[sayfa]||'';
+    const alan = document.getElementById('sayfa-alan');
+    alan.innerHTML = '';
+    const sarma = document.createElement('div');
+    sarma.className = 'sayfa';
+    alan.appendChild(sarma);
+    switch(sayfa){
+      case 'anasayfa': Sayfa.anasayfa(sarma); break;
+      case 'islemler': Sayfa.islemler(sarma); break;
+      case 'hesaplar': Sayfa.hesaplar(sarma); break;
+      case 'raporlar': Sayfa.raporlar(sarma); break;
+      case 'ayarlar': Sayfa.ayarlar(sarma); break;
+      case 'yedekleme': Sayfa.yedekleme(sarma); break;
+    }
+    if(window.innerWidth<820) document.body.classList.add('menu-kapali');
+  },
+
+  modalKapat(){ Modal.kapat(); }
+};
+
+/* ==================================================================
+   Bölüm 7: Sayfa Oluşturucular
+   ================================================================== */
+const Sayfa = {
+  /* ---------- ANA SAYFA ---------- */
+  anasayfa(el){
+    const bankaBakiye = Depo.veri.anaHesaplar.length ? Hesap.anaBakiye('102') : 0;
+    const alacaklar = Hesap.anaBakiye('120');       // müşteri borcu = bizim alacağımız
+    const saticiBorc = -Hesap.anaBakiye('320');     // satıcıya borcumuz (alacak yönlü)
+    const kartBorc = -Hesap.anaBakiye('309');       // kart borcu
+
+    el.innerHTML = `
+      <div class="ozet-grid">
+        ${this.ozetKart('i-mavi','🏦','Toplam Banka Bakiyesi', bankaBakiye)}
+        ${this.ozetKart('i-yesil','📥','Toplam Alacaklar', alacaklar)}
+        ${this.ozetKart('i-kirmizi','📤','Toplam Satıcı Borçları', saticiBorc)}
+        ${this.ozetKart('i-turuncu','💳','Toplam Kredi Kartı Borcu', kartBorc)}
+      </div>
+      <div class="kart">
+        <h2 class="bolum-baslik">Son İşlemler</h2>
+        <div id="son-islemler"></div>
+      </div>`;
+    this.sonIslemler(el.querySelector('#son-islemler'));
+  },
+
+  ozetKart(renk, ikon, etiket, deger){
+    return `<div class="ozet-kart">
+      <div class="ust"><div class="ozet-ikon ${renk}">${ikon}</div>
+        <div><div class="etiket">${etiket}</div></div></div>
+      <div class="deger">${Yardimci.paraFormat(deger)}</div>
+    </div>`;
+  },
+
+  sonIslemler(el){
+    const islemler = [...Depo.veri.islemler].sort((a,b)=>(b.no||'').localeCompare(a.no||'')).slice(0,12);
+    if(islemler.length===0){
+      el.innerHTML = `<div class="bos-mesaj">Henüz kayıtlı işlem bulunmuyor.</div>`;
+      return;
+    }
+    const satir = islemler.map(is=>{
+      const hesap = this.islemHesapAdi(is);
+      const tur = this.islemTurAdi(is.tur);
+      const {borc,alacak} = this.islemBorcAlacak(is);
+      return `<tr>
+        <td><span class="kod-rozet">${is.no}</span></td>
+        <td>${Yardimci.tarihFormat(is.tarih)}</td>
+        <td>${tur}</td>
+        <td>${Yardimci.kacisHTML(hesap)}</td>
+        <td>${Yardimci.kacisHTML(is.aciklama||'')}</td>
+        <td class="sag-hiza borc">${borc?Yardimci.paraFormat(borc):'-'}</td>
+        <td class="sag-hiza alacak">${alacak?Yardimci.paraFormat(alacak):'-'}</td>
+      </tr>`;
+    }).join('');
+    el.innerHTML = `<div class="tablo-sar"><table class="veri">
+      <thead><tr><th>İşlem No</th><th>Tarih</th><th>İşlem Türü</th><th>Hesap</th><th>Açıklama</th><th class="sag-hiza">Borç</th><th class="sag-hiza">Alacak</th></tr></thead>
+      <tbody>${satir}</tbody></table></div>`;
+  },
+
+  islemTurAdi(tur){
+    return {alis:'Alış Faturası', satis:'Satış Faturası', banka:'Banka Hareketi', kart:'Kredi Kartı'}[tur]||tur;
+  },
+  islemHesapAdi(is){
+    const h = Hesap.altBul(is.hesapId);
+    return h ? (h.kod + ' ' + Hesap.hesapAdi(h)) : '-';
+  },
+  islemBorcAlacak(is){
+    // ana hesaba yansıyan borç/alacak
+    const har = Depo.veri.hareketler.find(h=>h.islemId===is.id);
+    if(har) return {borc:Number(har.borc)||0, alacak:Number(har.alacak)||0};
+    return {borc:0,alacak:0};
+  },
+
+  /* ---------- İŞLEM GİRİŞLERİ ---------- */
+  islemler(el){
+    el.innerHTML = `
+      <div class="sekmeler no-print">
+        <button class="sekme" data-sekme="alis">Alış Faturaları</button>
+        <button class="sekme" data-sekme="satis">Satış Faturaları</button>
+        <button class="sekme" data-sekme="banka">Banka Hareketleri</button>
+        <button class="sekme" data-sekme="kart">Kredi Kartı Ödemeleri</button>
+      </div>
+      <div id="sekme-icerik"></div>`;
+    el.querySelectorAll('.sekme').forEach(s=>{
+      s.addEventListener('click',()=>{ App.aktifSekme = s.dataset.sekme; this.sekmeGuncelle(el); });
+    });
+    this.sekmeGuncelle(el);
+  },
+
+  sekmeGuncelle(el){
+    el.querySelectorAll('.sekme').forEach(s=>s.classList.toggle('aktif', s.dataset.sekme===App.aktifSekme));
+    const ic = el.querySelector('#sekme-icerik');
+    Form.render(ic, App.aktifSekme);
+  },
+
+  /* ---------- HESAPLAR ---------- */
+  hesaplar(el){
+    el.innerHTML = `
+      <div class="kart">
+        <h2 class="bolum-baslik">Hesap Planı</h2>
+        <div class="arac-cubuk no-print">
+          <div class="arama-kutu"><input type="text" id="hesap-arama" placeholder="Hesap kodu, adı, banka, alıcı, satıcı veya kart ara..."></div>
+          <button class="btn btn-koyu btn-kucuk" onclick="Disari.yazdir('Hesap Planı', Sayfa.hesapPlaniYazdir())">🖨 Yazdır</button>
+          <button class="btn btn-yesil btn-kucuk" onclick="Sayfa.hesapPlaniExcel()">📊 Excel</button>
+        </div>
+        <div id="hesap-tablo"></div>
+      </div>`;
+    el.querySelector('#hesap-arama').addEventListener('input', e=>this.hesapTablo(el.querySelector('#hesap-tablo'), e.target.value));
+    this.hesapTablo(el.querySelector('#hesap-tablo'),'');
+  },
+
+  hesapTablo(el, aranan){
+    const q = (aranan||'').toLocaleLowerCase('tr');
+    let govde = '';
+    Depo.veri.anaHesaplar.forEach(ana=>{
+      const altlar = Hesap.altHesaplarByAna(ana.kod).filter(h=>{
+        if(!q) return true;
+        const metin = (h.kod+' '+Hesap.hesapAdi(h)+' '+(h.bankaAd||'')+' '+(h.ad||'')).toLocaleLowerCase('tr');
+        return metin.indexOf(q)>-1;
+      });
+      // Ana hesabı gizleme: arama varsa ve alt yoksa ve ana ad eşleşmiyorsa atla
+      const anaEsles = !q || (ana.kod+' '+ana.ad).toLocaleLowerCase('tr').indexOf(q)>-1;
+      if(q && altlar.length===0 && !anaEsles) return;
+      govde += `<tr class="ana-hesap-satir">
+        <td><span class="kod-rozet">${ana.kod}</span></td>
+        <td>${ana.ad}</td>
+        <td class="sag-hiza">${Yardimci.paraFormat(Hesap.anaBakiye(ana.kod))}</td>
+        <td class="no-print"><button class="btn btn-kirmizi btn-kucuk" onclick="AltHesap.ekleModal('${ana.kod}')">+ Alt Hesap Ekle</button></td>
+      </tr>`;
+      altlar.forEach(h=>{
+        govde += `<tr onclick="Detay.ac('${h.id}')" style="cursor:pointer">
+          <td class="girinti"><span class="kod-rozet">${h.kod}</span></td>
+          <td>${Yardimci.kacisHTML(Hesap.hesapAdi(h))}</td>
+          <td class="sag-hiza">${Yardimci.paraFormat(Hesap.netBakiye(h.id))}</td>
+          <td class="no-print satir-ic">
+            <button class="btn btn-cizgi btn-kucuk" onclick="event.stopPropagation();Detay.ac('${h.id}')">Aç</button>
+            <button class="btn btn-cizgi btn-kucuk" onclick="event.stopPropagation();AltHesap.duzenleModal('${h.id}')">Düzenle</button>
+            <button class="btn btn-cizgi btn-kucuk" onclick="event.stopPropagation();AltHesap.sil('${h.id}')">Sil</button>
+          </td>
+        </tr>`;
+      });
+    });
+    el.innerHTML = `<div class="tablo-sar"><table class="veri">
+      <thead><tr><th>Hesap Kodu</th><th>Hesap Adı</th><th class="sag-hiza">Bakiye</th><th class="no-print">İşlemler</th></tr></thead>
+      <tbody>${govde}</tbody></table></div>`;
+  },
+
+  hesapPlaniYazdir(){
+    const satirlar = [];
+    Depo.veri.anaHesaplar.forEach(ana=>{
+      satirlar.push([ana.kod, ana.ad, Yardimci.paraFormat(Hesap.anaBakiye(ana.kod))]);
+      Hesap.altHesaplarByAna(ana.kod).forEach(h=>{
+        satirlar.push(['   '+h.kod, Hesap.hesapAdi(h), Yardimci.paraFormat(Hesap.netBakiye(h.id))]);
+      });
+    });
+    return Disari.tabloHTML(['Hesap Kodu','Hesap Adı','Bakiye'], satirlar);
+  },
+  hesapPlaniExcel(){
+    const satirlar = [];
+    Depo.veri.anaHesaplar.forEach(ana=>{
+      satirlar.push([ana.kod, ana.ad, Yardimci.sayiFormat(Hesap.anaBakiye(ana.kod))]);
+      Hesap.altHesaplarByAna(ana.kod).forEach(h=>{
+        satirlar.push([h.kod, Hesap.hesapAdi(h), Yardimci.sayiFormat(Hesap.netBakiye(h.id))]);
+      });
+    });
+    Disari.csv(['Hesap Kodu','Hesap Adı','Bakiye'], satirlar, 'hesap-plani');
+  },
+
+  /* ---------- RAPORLAR ---------- */
+  raporlar(el){
+    const raporlar = [
+      {id:'banka', ikon:'🏦', ad:'Banka Bakiye Raporu'},
+      {id:'alici', ikon:'📥', ad:'Alıcı Bakiye Raporu'},
+      {id:'satici', ikon:'📤', ad:'Satıcı Bakiye Raporu'},
+      {id:'kart', ikon:'💳', ad:'Kredi Kartı Bakiye Raporu'},
+      {id:'tarih', ikon:'📅', ad:'Tarih Aralığına Göre İşlemler'},
+      {id:'borcalacak', ikon:'⚖️', ad:'Borç ve Alacak Raporu'},
+      {id:'fatura', ikon:'🧾', ad:'Fatura Raporu'}
+    ];
+    el.innerHTML = `
+      <div class="kart" style="margin-bottom:20px">
+        <h2 class="bolum-baslik">Rapor Seçimi</h2>
+        <div class="rapor-secim no-print">
+          ${raporlar.map(r=>`<div class="rapor-kutu" data-rapor="${r.id}"><div class="r-ikon">${r.ikon}</div><b>${r.ad}</b></div>`).join('')}
+        </div>
+        <div class="form-grid no-print" style="margin-top:6px">
+          <div class="form-alan"><label>Başlangıç Tarihi</label><input type="date" id="rf-bas"></div>
+          <div class="form-alan"><label>Bitiş Tarihi</label><input type="date" id="rf-bit"></div>
+          <div class="form-alan"><label>Hesap Türü</label>
+            <select id="rf-tur"><option value="">Tümü</option><option value="banka">Banka</option><option value="alici">Alıcı</option><option value="satici">Satıcı</option><option value="kart">Kredi Kartı</option></select></div>
+          <div class="form-alan"><label>Hesap Seçimi</label><select id="rf-hesap"><option value="">Tümü</option></select></div>
+          <div class="form-alan"><label>İşlem Türü</label>
+            <select id="rf-islem"><option value="">Tümü</option><option value="borc">Borç (Giriş)</option><option value="alacak">Alacak (Çıkış)</option></select></div>
+          <div class="form-alan"><label>Minimum Tutar</label><input type="number" id="rf-min" min="0" step="0.01" placeholder="0,00"></div>
+          <div class="form-alan"><label>Maksimum Tutar</label><input type="number" id="rf-max" min="0" step="0.01" placeholder="0,00"></div>
+        </div>
+        <div class="buton-grup no-print" style="margin-top:6px">
+          <button class="btn btn-kirmizi" onclick="Rapor.getir()">Raporu Getir</button>
+          <button class="btn btn-gri" onclick="Rapor.temizle()">Filtreleri Temizle</button>
+          <button class="btn btn-koyu" onclick="Rapor.yazdir()">🖨 Yazdır</button>
+          <button class="btn btn-yesil" onclick="Rapor.excel()">📊 Excel'e Aktar</button>
+        </div>
+      </div>
+      <div class="kart"><div id="rapor-sonuc"><div class="bos-mesaj">Bir rapor türü seçip "Raporu Getir" butonuna basın.</div></div></div>`;
+
+    el.querySelectorAll('.rapor-kutu').forEach(k=>{
+      k.addEventListener('click',()=>{
+        el.querySelectorAll('.rapor-kutu').forEach(x=>x.classList.remove('aktif'));
+        k.classList.add('aktif');
+        App.aktifRapor = k.dataset.rapor;
+      });
+    });
+    // hesap seçim listesini doldur
+    Rapor.hesapListesiDoldur();
+  },
+
+  /* ---------- AYARLAR ---------- */
+  ayarlar(el){
+    const f = Depo.veri.firma, a = Depo.veri.ayarlar;
+    el.innerHTML = `
+      <div class="kart" style="margin-bottom:20px">
+        <h2 class="bolum-baslik">Firma Bilgileri</h2>
+        <div class="form-grid">
+          <div class="form-alan"><label>Firma Adı</label><input id="f-ad" value="${Yardimci.kacisHTML(f.ad)}"></div>
+          <div class="form-alan"><label>Yetkili Kişi</label><input id="f-yetkili" value="${Yardimci.kacisHTML(f.yetkili)}"></div>
+          <div class="form-alan"><label>Telefon</label><input id="f-telefon" value="${Yardimci.kacisHTML(f.telefon)}"></div>
+          <div class="form-alan"><label>E-posta</label><input id="f-eposta" value="${Yardimci.kacisHTML(f.eposta)}"></div>
+          <div class="form-alan"><label>Vergi Dairesi</label><input id="f-vd" value="${Yardimci.kacisHTML(f.vergiDairesi)}"></div>
+          <div class="form-alan"><label>Vergi Numarası</label><input id="f-vno" value="${Yardimci.kacisHTML(f.vergiNo)}"></div>
+          <div class="form-alan tam"><label>Adres</label><textarea id="f-adres">${Yardimci.kacisHTML(f.adres)}</textarea></div>
+          <div class="form-alan"><label>Logo Yükleme</label><input type="file" id="f-logo" accept="image/*"></div>
+          <div class="form-alan"><label>Mevcut Logo</label><div id="logo-onizle">${f.logo?`<img src="${f.logo}" style="height:46px;border-radius:8px">`:'<span style="color:var(--metin-soluk)">Logo yüklenmedi</span>'}</div></div>
+        </div>
+      </div>
+      <div class="kart" style="margin-bottom:20px">
+        <h2 class="bolum-baslik">Program Ayarları</h2>
+        <div class="form-grid">
+          <div class="form-alan"><label>Para Birimi</label><input id="a-para" value="${Yardimci.kacisHTML(a.paraBirimi)}" readonly></div>
+          <div class="form-alan"><label>Varsayılan Tarih</label>
+            <select id="a-tarih"><option value="bugun" ${a.varsayilanTarih==='bugun'?'selected':''}>Bugünün Tarihi</option><option value="bos" ${a.varsayilanTarih==='bos'?'selected':''}>Boş</option></select></div>
+          <div class="form-alan"><label>Ondalık Gösterimi</label>
+            <select id="a-ondalik"><option value="2" ${a.ondalik==2?'selected':''}>2 Basamak (0,00)</option><option value="0" ${a.ondalik==0?'selected':''}>0 Basamak (0)</option></select></div>
+          <div class="form-alan"><label>Tema Seçimi</label>
+            <select id="a-tema"><option value="acik" ${a.tema==='acik'?'selected':''}>Açık Tema</option><option value="koyu" ${a.tema==='koyu'?'selected':''}>Koyu Tema</option></select></div>
+          <div class="form-alan"><label>İşlem Numarası Başlangıcı</label><input type="number" id="a-baslangic" min="1" value="${a.islemBaslangic}"></div>
+        </div>
+        <div class="buton-grup" style="margin-top:20px">
+          <button class="btn btn-kirmizi" onclick="Ayar.kaydet()">💾 Ayarları Kaydet</button>
+        </div>
+      </div>`;
+    el.querySelector('#f-logo').addEventListener('change', e=>Ayar.logoYukle(e));
+  },
+
+  /* ---------- YEDEKLEME ---------- */
+  yedekleme(el){
+    el.innerHTML = `
+      <div class="kart" style="margin-bottom:20px">
+        <h2 class="bolum-baslik">Veri Yedekleme</h2>
+        <p style="color:var(--metin-soluk);margin-bottom:20px;line-height:1.6">
+          Tüm verileriniz tarayıcınızın yerel deposunda (localStorage) tutulur. Verilerinizi güvence altına almak için düzenli olarak JSON yedeği alın.
+        </p>
+        <div class="buton-grup">
+          <button class="btn btn-yesil" onclick="Yedek.al()">⬇ JSON Yedeği Al</button>
+          <button class="btn btn-koyu" onclick="document.getElementById('yedek-dosya').click()">⬆ JSON Yedeğini Geri Yükle</button>
+          <input type="file" id="yedek-dosya" accept=".json" style="display:none">
+          <button class="btn btn-kirmizi" onclick="Yedek.temizleUyari()">🗑 Tüm Verileri Temizle</button>
+        </div>
+      </div>
+      <div class="kart">
+        <h2 class="bolum-baslik">Yedek İçeriği</h2>
+        <div class="etiket-satir"><span>Firma Bilgileri</span><b>${Depo.veri.firma.ad?'✓ Kayıtlı':'— Boş'}</b></div>
+        <div class="etiket-satir"><span>Ana Hesaplar</span><b>${Depo.veri.anaHesaplar.length} adet</b></div>
+        <div class="etiket-satir"><span>Alt Hesaplar</span><b>${Depo.veri.altHesaplar.length} adet</b></div>
+        <div class="etiket-satir"><span>İşlem Kayıtları</span><b>${Depo.veri.islemler.length} adet</b></div>
+        <div class="etiket-satir"><span>Hesap Hareketleri</span><b>${Depo.veri.hareketler.length} adet</b></div>
+        <div class="etiket-satir"><span>İşlem No Sayacı</span><b>${Depo.veri.sayaclar.islemNo}</b></div>
+      </div>`;
+    el.querySelector('#yedek-dosya').addEventListener('change', e=>Yedek.geriYukle(e));
+  }
+};
+
+/* ==================================================================
+   Bölüm 8: İşlem Giriş Formları
+   ================================================================== */
+const Form = {
+  aktifKayit:{alis:null, satis:null, banka:null, kart:null},
+  bekleyenDosya:null, // {ad,tur,boyut,data}
+
+  render(el, tur){
+    this.bekleyenDosya = null;
+    if(tur==='alis') this.alis(el);
+    else if(tur==='satis') this.satis(el);
+    else if(tur==='banka') this.banka(el);
+    else if(tur==='kart') this.kart(el);
+  },
+
+  butonlar(tur){
+    return `<div class="buton-grup no-print" style="margin-top:22px">
+      <button class="btn btn-koyu" onclick="Form.yeni('${tur}')">＋ Yeni Kayıt</button>
+      <button class="btn btn-kirmizi" onclick="Form.kaydet('${tur}')">💾 Kaydet</button>
+      <button class="btn btn-gri" onclick="Form.duzenleAktif('${tur}')">✎ Düzenle</button>
+      <button class="btn btn-gri" onclick="Form.sil('${tur}')">🗑 Sil</button>
+      <button class="btn btn-cizgi" onclick="Form.vazgec('${tur}')">✕ Vazgeç</button>
+      <button class="btn btn-koyu" onclick="Form.yazdir('${tur}')">🖨 Yazdır</button>
+      <button class="btn btn-yesil" onclick="Form.excel('${tur}')">📊 Excel'e Aktar</button>
+    </div>`;
+  },
+
+  hesapSecenek(anaKod, secili){
+    const opts = Hesap.altHesaplarByAna(anaKod).map(h=>
+      `<option value="${h.id}" ${h.id===secili?'selected':''}>${h.kod} - ${Yardimci.kacisHTML(Hesap.hesapAdi(h))}</option>`).join('');
+    return `<option value="">— Seçiniz —</option>` + opts;
+  },
+
+  giderSecenek(secili){
+    // Gider hesabı: 320 satıcılar ve tüm alt hesaplar seçilebilsin (ileri altyapı)
+    let opts = '';
+    Depo.veri.altHesaplar.forEach(h=>{
+      opts += `<option value="${h.id}" ${h.id===secili?'selected':''}>${h.kod} - ${Yardimci.kacisHTML(Hesap.hesapAdi(h))}</option>`;
+    });
+    return `<option value="">— Yok —</option>` + opts;
+  },
+
+  varsayilanTarih(){
+    return Depo.veri.ayarlar.varsayilanTarih==='bos' ? '' : Yardimci.bugun();
+  },
+
+  /* --- ALIŞ FATURASI --- */
+  alis(el){
+    const no = 'ISL-' + String((Depo.veri.sayaclar.islemNo||0)+1).padStart(6,'0');
+    el.innerHTML = `
+      <div class="kart">
+        <div class="form-baslik">Alış Faturası Girişi</div>
+        <div class="form-grid">
+          <div class="form-alan"><label>İşlem No</label><input id="al-no" value="${no}" readonly></div>
+          <div class="form-alan"><label>Tarih <span class="zorunlu">*</span></label><input type="date" id="al-tarih" value="${this.varsayilanTarih()}"></div>
+          <div class="form-alan"><label>Satıcı Hesabı <span class="zorunlu">*</span></label><select id="al-hesap">${this.hesapSecenek('320')}</select></div>
+          <div class="form-alan"><label>Fatura No <span class="zorunlu">*</span></label><input id="al-faturano" placeholder="Örn: A-2026-001"></div>
+          <div class="form-alan"><label>Fatura Tutarı <span class="zorunlu">*</span></label><input type="number" id="al-tutar" min="0" step="0.01" placeholder="0,00"></div>
+          <div class="form-alan"><label>Ödeme Durumu</label>
+            <select id="al-durum"><option value="odenmedi">Ödenmedi</option><option value="kismi">Kısmi Ödendi</option><option value="odendi">Ödendi</option></select></div>
+          <div class="form-alan tam"><label>Açıklama</label><input id="al-aciklama" placeholder="Fatura açıklaması"></div>
+          ${this.dosyaAlan()}
+          <div class="form-alan tam"><label>Ek Not</label><textarea id="al-not"></textarea></div>
+        </div>
+        ${this.butonlar('alis')}
+      </div>
+      ${this.kayitListesi('alis')}`;
+    this.dosyaBagla('alis');
+  },
+
+  /* --- SATIŞ FATURASI --- */
+  satis(el){
+    const no = 'ISL-' + String((Depo.veri.sayaclar.islemNo||0)+1).padStart(6,'0');
+    el.innerHTML = `
+      <div class="kart">
+        <div class="form-baslik">Satış Faturası Girişi</div>
+        <div class="form-grid">
+          <div class="form-alan"><label>İşlem No</label><input id="sa-no" value="${no}" readonly></div>
+          <div class="form-alan"><label>Tarih <span class="zorunlu">*</span></label><input type="date" id="sa-tarih" value="${this.varsayilanTarih()}"></div>
+          <div class="form-alan"><label>Alıcı Hesabı <span class="zorunlu">*</span></label><select id="sa-hesap">${this.hesapSecenek('120')}</select></div>
+          <div class="form-alan"><label>Fatura No <span class="zorunlu">*</span></label><input id="sa-faturano" placeholder="Örn: S-2026-001"></div>
+          <div class="form-alan"><label>Fatura Tutarı <span class="zorunlu">*</span></label><input type="number" id="sa-tutar" min="0" step="0.01" placeholder="0,00"></div>
+          <div class="form-alan"><label>Tahsilat Durumu</label>
+            <select id="sa-durum"><option value="odenmedi">Tahsil Edilmedi</option><option value="kismi">Kısmi Tahsil Edildi</option><option value="odendi">Tahsil Edildi</option></select></div>
+          <div class="form-alan tam"><label>Açıklama</label><input id="sa-aciklama" placeholder="Fatura açıklaması"></div>
+          ${this.dosyaAlan()}
+          <div class="form-alan tam"><label>Ek Not</label><textarea id="sa-not"></textarea></div>
+        </div>
+        ${this.butonlar('satis')}
+      </div>
+      ${this.kayitListesi('satis')}`;
+    this.dosyaBagla('satis');
+  },
+
+  /* --- BANKA HAREKETİ --- */
+  banka(el){
+    const no = 'ISL-' + String((Depo.veri.sayaclar.islemNo||0)+1).padStart(6,'0');
+    el.innerHTML = `
+      <div class="kart">
+        <div class="form-baslik">Banka Hareketi Girişi</div>
+        <div class="form-grid">
+          <div class="form-alan"><label>İşlem No</label><input id="bk-no" value="${no}" readonly></div>
+          <div class="form-alan"><label>Tarih <span class="zorunlu">*</span></label><input type="date" id="bk-tarih" value="${this.varsayilanTarih()}"></div>
+          <div class="form-alan"><label>Banka Hesabı <span class="zorunlu">*</span></label><select id="bk-hesap">${this.hesapSecenek('102')}</select></div>
+          <div class="form-alan"><label>İşlem Adı <span class="zorunlu">*</span></label><input id="bk-islemad" placeholder="Örn: EFT, Havale, Fatura Ödeme"></div>
+          <div class="form-alan"><label>Şahıs veya Firma</label><input id="bk-sahis"></div>
+          <div class="form-alan"><label>İşlem Türü <span class="zorunlu">*</span></label>
+            <select id="bk-tur"><option value="giris">Para Girişi</option><option value="cikis">Para Çıkışı</option></select></div>
+          <div class="form-alan"><label>Gider Hesabı</label><select id="bk-gider">${this.giderSecenek()}</select></div>
+          <div class="form-alan"><label>Tutar <span class="zorunlu">*</span></label><input type="number" id="bk-tutar" min="0" step="0.01" placeholder="0,00"></div>
+          <div class="form-alan tam"><label>Açıklama</label><input id="bk-aciklama"></div>
+          <div class="form-alan tam"><label>Banka Açıklaması</label><input id="bk-bankaac" placeholder="Banka dekontundaki açıklama"></div>
+        </div>
+        ${this.butonlar('banka')}
+      </div>
+      ${this.kayitListesi('banka')}`;
+  },
+
+  /* --- KREDİ KARTI ÖDEMESİ --- */
+  kart(el){
+    const no = 'ISL-' + String((Depo.veri.sayaclar.islemNo||0)+1).padStart(6,'0');
+    el.innerHTML = `
+      <div class="kart">
+        <div class="form-baslik">Kredi Kartı İşlemi Girişi</div>
+        <div class="form-grid">
+          <div class="form-alan"><label>İşlem No</label><input id="kk-no" value="${no}" readonly></div>
+          <div class="form-alan"><label>Tarih <span class="zorunlu">*</span></label><input type="date" id="kk-tarih" value="${this.varsayilanTarih()}"></div>
+          <div class="form-alan"><label>Kredi Kartı Hesabı <span class="zorunlu">*</span></label><select id="kk-hesap">${this.hesapSecenek('309')}</select></div>
+          <div class="form-alan"><label>İşlem Adı <span class="zorunlu">*</span></label><input id="kk-islemad" placeholder="Örn: Harcama, Ödeme, İade"></div>
+          <div class="form-alan"><label>Şahıs veya Firma</label><input id="kk-sahis"></div>
+          <div class="form-alan"><label>İşlem Türü <span class="zorunlu">*</span></label>
+            <select id="kk-tur"><option value="giris">Para Girişi</option><option value="cikis">Para Çıkışı</option></select></div>
+          <div class="form-alan"><label>Gider Hesabı</label><select id="kk-gider">${this.giderSecenek()}</select></div>
+          <div class="form-alan"><label>Tutar <span class="zorunlu">*</span></label><input type="number" id="kk-tutar" min="0" step="0.01" placeholder="0,00"></div>
+          <div class="form-alan tam"><label>Açıklama</label><input id="kk-aciklama"></div>
+          <div class="form-alan tam"><label>Banka Açıklaması</label><input id="kk-bankaac"></div>
+        </div>
+        ${this.butonlar('kart')}
+      </div>
+      ${this.kayitListesi('kart')}`;
+  },
+
+  dosyaAlan(){
+    return `<div class="form-alan tam"><label>Fatura Dosyası (PDF, JPG, PNG)</label>
+      <div class="dosya-kutu">
+        <input type="file" id="dosya-giris" accept=".pdf,.jpg,.jpeg,.png">
+        <div class="dosya-bilgi" id="dosya-bilgi"><span style="color:var(--metin-soluk)">Dosya seçilmedi</span></div>
+        <div class="buton-grup no-print" id="dosya-butonlar" style="margin-top:10px;display:none">
+          <button type="button" class="btn btn-cizgi btn-kucuk" onclick="Form.dosyaGoruntule()">👁 Görüntüle</button>
+          <button type="button" class="btn btn-cizgi btn-kucuk" onclick="Form.dosyaIndir()">⬇ İndir</button>
+          <button type="button" class="btn btn-cizgi btn-kucuk" onclick="Form.dosyaKaldir()">✕ Dosyayı Kaldır</button>
+        </div>
+      </div></div>`;
+  },
+
+  dosyaBagla(tur){
+    const giris = document.getElementById('dosya-giris');
+    if(!giris) return;
+    giris.addEventListener('change', e=>{
+      const dosya = e.target.files[0];
+      if(!dosya) return;
+      const uzanti = dosya.name.split('.').pop().toLowerCase();
+      if(!['pdf','jpg','jpeg','png'].includes(uzanti)){
+        Bildirim.goster('hata','Geçersiz Dosya','Yalnızca PDF, JPG, JPEG veya PNG dosyası seçebilirsiniz.');
+        e.target.value=''; return;
+      }
+      const SINIR = 4.5*1024*1024;
+      if(dosya.size > SINIR){
+        Bildirim.goster('uyari','Dosya Çok Büyük','Dosya boyutu tarayıcı depolama sınırını aşabilir. Lütfen daha küçük bir dosya seçin.');
+        e.target.value=''; return;
+      }
+      const okuyucu = new FileReader();
+      okuyucu.onload = ()=>{
+        this.bekleyenDosya = {ad:dosya.name, tur:dosya.type, boyut:dosya.size, data:okuyucu.result};
+        this.dosyaBilgiGoster();
+      };
+      okuyucu.readAsDataURL(dosya);
+    });
+  },
+
+  dosyaBilgiGoster(){
+    const bilgi = document.getElementById('dosya-bilgi');
+    const butonlar = document.getElementById('dosya-butonlar');
+    if(!bilgi) return;
+    if(this.bekleyenDosya){
+      bilgi.innerHTML = `<span class="dosya-adi">📎 ${Yardimci.kacisHTML(this.bekleyenDosya.ad)}</span> <span style="color:var(--metin-soluk)">(${Yardimci.boyutFormat(this.bekleyenDosya.boyut)})</span>`;
+      if(butonlar) butonlar.style.display = 'flex';
+    }else{
+      bilgi.innerHTML = `<span style="color:var(--metin-soluk)">Dosya seçilmedi</span>`;
+      if(butonlar) butonlar.style.display = 'none';
+    }
+  },
+
+  dosyaGoruntule(){ if(this.bekleyenDosya) DosyaGoster.goster(this.bekleyenDosya); },
+  dosyaIndir(){ if(this.bekleyenDosya) DosyaGoster.indir(this.bekleyenDosya); },
+  dosyaKaldir(){ this.bekleyenDosya=null; const g=document.getElementById('dosya-giris'); if(g)g.value=''; this.dosyaBilgiGoster(); },
+
+  // Zorunlu alan doğrulama
+  dogrula(alanlar){
+    for(const a of alanlar){
+      const el = document.getElementById(a.id);
+      const deger = el ? el.value.trim() : '';
+      if(!deger){
+        Bildirim.goster('hata','Eksik Alan', a.ad + ' alanı zorunludur.');
+        if(el) el.focus();
+        return false;
+      }
+      if(a.sayi){
+        const n = Yardimci.paraCoz(deger);
+        if(n<=0){ Bildirim.goster('hata','Geçersiz Tutar', a.ad + ' sıfırdan büyük olmalıdır.'); if(el)el.focus(); return false; }
+      }
+    }
+    return true;
+  },
+
+  /* ---- KAYDET ---- */
+  async kaydet(tur){
+    if(tur==='alis') return this.kaydetFatura('alis');
+    if(tur==='satis') return this.kaydetFatura('satis');
+    if(tur==='banka') return this.kaydetHareket('banka');
+    if(tur==='kart') return this.kaydetHareket('kart');
+  },
+
+  async kaydetFatura(tur){
+    const on = tur==='alis'?'al':'sa';
+    const anaKod = tur==='alis'?'320':'120';
+    if(!this.dogrula([
+      {id:on+'-tarih', ad:'Tarih'},
+      {id:on+'-hesap', ad:(tur==='alis'?'Satıcı':'Alıcı')+' Hesabı'},
+      {id:on+'-faturano', ad:'Fatura No'},
+      {id:on+'-tutar', ad:'Fatura Tutarı', sayi:true}
+    ])) return;
+
+    const hesapId = document.getElementById(on+'-hesap').value;
+    const tutar = Yardimci.paraCoz(document.getElementById(on+'-tutar').value);
+    const duzenId = this.aktifKayit[tur];
+
+    // dosya kaydı
+    let dosyaId = null, dosyaMeta = null;
+    const eskiKayit = duzenId ? Depo.veri.islemler.find(x=>x.id===duzenId) : null;
+    if(this.bekleyenDosya){
+      if(eskiKayit && eskiKayit.dosyaId){ await DosyaDepo.sil(eskiKayit.dosyaId); }
+      dosyaId = Yardimci.yeniId();
+      await DosyaDepo.kaydet({id:dosyaId, ad:this.bekleyenDosya.ad, tur:this.bekleyenDosya.tur, boyut:this.bekleyenDosya.boyut, data:this.bekleyenDosya.data});
+      dosyaMeta = {ad:this.bekleyenDosya.ad, tur:this.bekleyenDosya.tur, boyut:this.bekleyenDosya.boyut};
+    }else if(eskiKayit){
+      dosyaId = eskiKayit.dosyaId; dosyaMeta = eskiKayit.dosyaMeta;
+    }
+
+    const islem = {
+      id: duzenId || Yardimci.yeniId(),
+      no: duzenId ? eskiKayit.no : Depo.yeniIslemNo(),
+      tur: tur,
+      tarih: document.getElementById(on+'-tarih').value,
+      hesapId: hesapId,
+      faturaNo: document.getElementById(on+'-faturano').value.trim(),
+      aciklama: document.getElementById(on+'-aciklama').value.trim(),
+      tutar: tutar,
+      durum: document.getElementById(on+'-durum').value,
+      ekNot: document.getElementById(on+'-not').value.trim(),
+      dosyaId: dosyaId,
+      dosyaMeta: dosyaMeta
+    };
+
+    if(duzenId){
+      const i = Depo.veri.islemler.findIndex(x=>x.id===duzenId);
+      Depo.veri.islemler[i] = islem;
+    }else{
+      Depo.veri.islemler.push(islem);
+    }
+    this.hareketUret(islem);
+    Depo.kaydet();
+    Bildirim.goster('basari','Başarılı', duzenId?'Kayıt başarıyla güncellendi.':'Kayıt başarıyla oluşturuldu.');
+    this.aktifKayit[tur]=null; this.bekleyenDosya=null;
+    App.sayfaGit('islemler');
+  },
+
+  async kaydetHareket(tur){
+    const on = tur==='banka'?'bk':'kk';
+    const anaKod = tur==='banka'?'102':'309';
+    if(!this.dogrula([
+      {id:on+'-tarih', ad:'Tarih'},
+      {id:on+'-hesap', ad:(tur==='banka'?'Banka':'Kredi Kartı')+' Hesabı'},
+      {id:on+'-islemad', ad:'İşlem Adı'},
+      {id:on+'-tutar', ad:'Tutar', sayi:true}
+    ])) return;
+
+    const hesapId = document.getElementById(on+'-hesap').value;
+    const tutar = Yardimci.paraCoz(document.getElementById(on+'-tutar').value);
+    const islemTuru = document.getElementById(on+'-tur').value;
+    const duzenId = this.aktifKayit[tur];
+    const eskiKayit = duzenId ? Depo.veri.islemler.find(x=>x.id===duzenId) : null;
+
+    const islem = {
+      id: duzenId || Yardimci.yeniId(),
+      no: duzenId ? eskiKayit.no : Depo.yeniIslemNo(),
+      tur: tur,
+      tarih: document.getElementById(on+'-tarih').value,
+      hesapId: hesapId,
+      islemAd: document.getElementById(on+'-islemad').value.trim(),
+      sahis: document.getElementById(on+'-sahis').value.trim(),
+      islemTuru: islemTuru, // giris/cikis
+      giderHesapId: document.getElementById(on+'-gider').value || null,
+      tutar: tutar,
+      aciklama: document.getElementById(on+'-aciklama').value.trim(),
+      bankaAciklama: document.getElementById(on+'-bankaac').value.trim()
+    };
+    if(duzenId){
+      const i = Depo.veri.islemler.findIndex(x=>x.id===duzenId);
+      Depo.veri.islemler[i]=islem;
+    }else{
+      Depo.veri.islemler.push(islem);
+    }
+    this.hareketUret(islem);
+    Depo.kaydet();
+    Bildirim.goster('basari','Başarılı', duzenId?'Kayıt başarıyla güncellendi.':'Kayıt başarıyla oluşturuldu.');
+    this.aktifKayit[tur]=null;
+    App.sayfaGit('islemler');
+  },
+
+  // İşlemden hesap hareketi/hareketleri üret (çoklu hesaba genişletilebilir yapı)
+  hareketUret(islem){
+    // önce bu işleme ait eski hareketleri kaldır
+    Depo.veri.hareketler = Depo.veri.hareketler.filter(h=>h.islemId!==islem.id);
+    const hareketler = [];
+    if(islem.tur==='alis'){
+      // Satıcıya borç artar -> Alacak (satıcı hesabına)
+      hareketler.push(this.hareket(islem, islem.hesapId, 0, islem.tutar, islem.aciklama||islem.faturaNo));
+    }else if(islem.tur==='satis'){
+      // Alıcının borcu artar -> Borç (alıcı hesabına)
+      hareketler.push(this.hareket(islem, islem.hesapId, islem.tutar, 0, islem.aciklama||islem.faturaNo));
+    }else if(islem.tur==='banka' || islem.tur==='kart'){
+      // Para girişi -> Borç, Para çıkışı -> Alacak
+      if(islem.islemTuru==='giris') hareketler.push(this.hareket(islem, islem.hesapId, islem.tutar, 0, islem.islemAd));
+      else hareketler.push(this.hareket(islem, islem.hesapId, 0, islem.tutar, islem.islemAd));
+    }
+    Depo.veri.hareketler.push(...hareketler);
+  },
+
+  hareket(islem, hesapId, borc, alacak, aciklama){
+    return {
+      id: Yardimci.yeniId(),
+      islemId: islem.id,
+      islemNo: islem.no,
+      hesapId: hesapId,
+      tarih: islem.tarih,
+      aciklama: aciklama || islem.aciklama || '',
+      borc: Number(borc)||0,
+      alacak: Number(alacak)||0
+    };
+  },
+
+  /* ---- YENİ / DÜZENLE / SİL / VAZGEÇ ---- */
+  yeni(tur){ this.aktifKayit[tur]=null; App.sayfaGit('islemler'); Bildirim.goster('bilgi','Yeni Kayıt','Form yeni kayıt için temizlendi.',1800); },
+  vazgec(tur){ this.aktifKayit[tur]=null; App.sayfaGit('islemler'); },
+  duzenleAktif(tur){
+    if(!this.aktifKayit[tur]){ Bildirim.goster('uyari','Seçim Yok','Düzenlemek için aşağıdaki listeden bir kayıt seçin.'); return; }
+    Bildirim.goster('bilgi','Düzenleme Modu','Kaydı değiştirip Kaydet butonuna basın.',2200);
+  },
+  sil(tur){
+    const id = this.aktifKayit[tur];
+    if(!id){ Bildirim.goster('uyari','Seçim Yok','Silmek için aşağıdaki listeden bir kayıt seçin.'); return; }
+    Modal.onay('Kayıt Sil','Bu kaydı silmek istediğinize emin misiniz?', async ()=>{
+      const kayit = Depo.veri.islemler.find(x=>x.id===id);
+      if(kayit && kayit.dosyaId) await DosyaDepo.sil(kayit.dosyaId);
+      Depo.veri.islemler = Depo.veri.islemler.filter(x=>x.id!==id);
+      Depo.veri.hareketler = Depo.veri.hareketler.filter(h=>h.islemId!==id);
+      Depo.kaydet();
+      this.aktifKayit[tur]=null;
+      Bildirim.goster('basari','Silindi','Kayıt başarıyla silindi.');
+      App.sayfaGit('islemler');
+    }, 'Evet, Sil', true);
+  },
+
+  // İşlem listesini forma yükle
+  yukle(tur, id){
+    const is = Depo.veri.islemler.find(x=>x.id===id);
+    if(!is) return;
+    this.aktifKayit[tur]=id;
+    this.bekleyenDosya = null;
+    if(tur==='alis'||tur==='satis'){
+      const on = tur==='alis'?'al':'sa';
+      document.getElementById(on+'-no').value = is.no;
+      document.getElementById(on+'-tarih').value = is.tarih;
+      document.getElementById(on+'-hesap').value = is.hesapId;
+      document.getElementById(on+'-faturano').value = is.faturaNo||'';
+      document.getElementById(on+'-tutar').value = is.tutar;
+      document.getElementById(on+'-durum').value = is.durum||'odenmedi';
+      document.getElementById(on+'-aciklama').value = is.aciklama||'';
+      document.getElementById(on+'-not').value = is.ekNot||'';
+      if(is.dosyaMeta){ this.bekleyenDosya=null; this.mevcutDosyaGoster(is); }
+    }else{
+      const on = tur==='banka'?'bk':'kk';
+      document.getElementById(on+'-no').value = is.no;
+      document.getElementById(on+'-tarih').value = is.tarih;
+      document.getElementById(on+'-hesap').value = is.hesapId;
+      document.getElementById(on+'-islemad').value = is.islemAd||'';
+      document.getElementById(on+'-sahis').value = is.sahis||'';
+      document.getElementById(on+'-tur').value = is.islemTuru||'giris';
+      document.getElementById(on+'-gider').value = is.giderHesapId||'';
+      document.getElementById(on+'-tutar').value = is.tutar;
+      document.getElementById(on+'-aciklama').value = is.aciklama||'';
+      document.getElementById(on+'-bankaac').value = is.bankaAciklama||'';
+    }
+    this.listeVurgu(tur, id);
+    Bildirim.goster('bilgi','Kayıt Yüklendi', is.no + ' düzenlemeye hazır.',1800);
+    document.getElementById('sekme-icerik').scrollIntoView({behavior:'smooth',block:'start'});
+  },
+
+  mevcutDosyaGoster(is){
+    const bilgi = document.getElementById('dosya-bilgi');
+    const butonlar = document.getElementById('dosya-butonlar');
+    if(bilgi && is.dosyaMeta){
+      bilgi.innerHTML = `<span class="dosya-adi">📎 ${Yardimci.kacisHTML(is.dosyaMeta.ad)}</span> <span style="color:var(--metin-soluk)">(${Yardimci.boyutFormat(is.dosyaMeta.boyut)})</span>`;
+      if(butonlar){
+        butonlar.style.display='flex';
+        butonlar.innerHTML = `
+          <button type="button" class="btn btn-cizgi btn-kucuk" onclick="DosyaGoster.islemDosya('${is.id}','goster')">👁 Görüntüle</button>
+          <button type="button" class="btn btn-cizgi btn-kucuk" onclick="DosyaGoster.islemDosya('${is.id}','indir')">⬇ İndir</button>
+          <button type="button" class="btn btn-cizgi btn-kucuk" onclick="Form.dosyaKaldir()">✕ Dosyayı Kaldır</button>`;
+      }
+    }
+  },
+
+  listeVurgu(tur, id){
+    document.querySelectorAll(`#liste-${tur} tr`).forEach(tr=>tr.classList.toggle('secili', tr.dataset.id===id));
+  },
+
+  /* ---- Kayıt Listesi (form altında) ---- */
+  kayitListesi(tur){
+    const kayitlar = Depo.veri.islemler.filter(x=>x.tur===tur).sort((a,b)=>(b.no||'').localeCompare(a.no||''));
+    let ic;
+    if(kayitlar.length===0){
+      ic = `<div class="bos-mesaj">Henüz bu türde kayıt bulunmuyor.</div>`;
+    }else if(tur==='alis'||tur==='satis'){
+      const durumRozet = {odenmedi:'<span class="rozet odenmedi">'+(tur==='alis'?'Ödenmedi':'Tahsil Edilmedi')+'</span>', kismi:'<span class="rozet kismi">Kısmi</span>', odendi:'<span class="rozet odendi">'+(tur==='alis'?'Ödendi':'Tahsil Edildi')+'</span>'};
+      ic = `<div class="tablo-sar"><table class="veri" id="liste-${tur}"><thead><tr>
+        <th>İşlem No</th><th>Tarih</th><th>Hesap</th><th>Fatura No</th><th>Açıklama</th><th class="sag-hiza">Tutar</th><th>Durum</th><th>Dosya</th></tr></thead><tbody>
+        ${kayitlar.map(k=>{
+          const h = Hesap.altBul(k.hesapId);
+          return `<tr data-id="${k.id}" onclick="Form.yukle('${tur}','${k.id}')">
+            <td><span class="kod-rozet">${k.no}</span></td>
+            <td>${Yardimci.tarihFormat(k.tarih)}</td>
+            <td>${h?Yardimci.kacisHTML(h.kod+' '+Hesap.hesapAdi(h)):'-'}</td>
+            <td>${Yardimci.kacisHTML(k.faturaNo||'')}</td>
+            <td>${Yardimci.kacisHTML(k.aciklama||'')}</td>
+            <td class="sag-hiza">${Yardimci.paraFormat(k.tutar)}</td>
+            <td>${durumRozet[k.durum]||''}</td>
+            <td>${k.dosyaMeta?`<button class="btn btn-cizgi btn-kucuk" onclick="event.stopPropagation();DosyaGoster.islemDosya('${k.id}','goster')">👁</button>`:'-'}</td>
+          </tr>`;
+        }).join('')}
+      </tbody></table></div>`;
+    }else{
+      ic = `<div class="tablo-sar"><table class="veri" id="liste-${tur}"><thead><tr>
+        <th>İşlem No</th><th>Tarih</th><th>Hesap</th><th>İşlem Adı</th><th>Şahıs/Firma</th><th>Tür</th><th class="sag-hiza">Tutar</th></tr></thead><tbody>
+        ${kayitlar.map(k=>{
+          const h = Hesap.altBul(k.hesapId);
+          return `<tr data-id="${k.id}" onclick="Form.yukle('${tur}','${k.id}')">
+            <td><span class="kod-rozet">${k.no}</span></td>
+            <td>${Yardimci.tarihFormat(k.tarih)}</td>
+            <td>${h?Yardimci.kacisHTML(h.kod+' '+Hesap.hesapAdi(h)):'-'}</td>
+            <td>${Yardimci.kacisHTML(k.islemAd||'')}</td>
+            <td>${Yardimci.kacisHTML(k.sahis||'')}</td>
+            <td>${k.islemTuru==='giris'?'<span class="borc">Para Girişi</span>':'<span class="alacak">Para Çıkışı</span>'}</td>
+            <td class="sag-hiza">${Yardimci.paraFormat(k.tutar)}</td>
+          </tr>`;
+        }).join('')}
+      </tbody></table></div>`;
+    }
+    return `<div class="satir-arasi"><div class="mini-liste-baslik">Kayıtlı ${Sayfa.islemTurAdi(tur)} Listesi (${kayitlar.length})</div>${ic}</div>`;
+  },
+
+  /* ---- YAZDIR / EXCEL ---- */
+  yazdir(tur){
+    const kayitlar = Depo.veri.islemler.filter(x=>x.tur===tur);
+    if(kayitlar.length===0){ Bildirim.goster('uyari','Kayıt Yok','Yazdırılacak kayıt bulunmuyor.'); return; }
+    let bas, satirlar;
+    if(tur==='alis'||tur==='satis'){
+      bas = ['İşlem No','Tarih','Hesap','Fatura No','Açıklama','Tutar','Durum'];
+      satirlar = kayitlar.map(k=>{const h=Hesap.altBul(k.hesapId);return [k.no,Yardimci.tarihFormat(k.tarih),h?h.kod+' '+Hesap.hesapAdi(h):'',k.faturaNo,k.aciklama,Yardimci.paraFormat(k.tutar),k.durum];});
+    }else{
+      bas = ['İşlem No','Tarih','Hesap','İşlem Adı','Şahıs','Tür','Tutar'];
+      satirlar = kayitlar.map(k=>{const h=Hesap.altBul(k.hesapId);return [k.no,Yardimci.tarihFormat(k.tarih),h?h.kod+' '+Hesap.hesapAdi(h):'',k.islemAd,k.sahis,k.islemTuru==='giris'?'Para Girişi':'Para Çıkışı',Yardimci.paraFormat(k.tutar)];});
+    }
+    Disari.yazdir(Sayfa.islemTurAdi(tur)+' Listesi', Disari.tabloHTML(bas,satirlar));
+  },
+  excel(tur){
+    const kayitlar = Depo.veri.islemler.filter(x=>x.tur===tur);
+    if(kayitlar.length===0){ Bildirim.goster('uyari','Kayıt Yok','Aktarılacak kayıt bulunmuyor.'); return; }
+    let bas, satirlar;
+    if(tur==='alis'||tur==='satis'){
+      bas = ['İşlem No','Tarih','Hesap','Fatura No','Açıklama','Tutar','Durum'];
+      satirlar = kayitlar.map(k=>{const h=Hesap.altBul(k.hesapId);return [k.no,Yardimci.tarihFormat(k.tarih),h?h.kod+' '+Hesap.hesapAdi(h):'',k.faturaNo,k.aciklama,Yardimci.sayiFormat(k.tutar),k.durum];});
+    }else{
+      bas = ['İşlem No','Tarih','Hesap','İşlem Adı','Şahıs','Tür','Tutar'];
+      satirlar = kayitlar.map(k=>{const h=Hesap.altBul(k.hesapId);return [k.no,Yardimci.tarihFormat(k.tarih),h?h.kod+' '+Hesap.hesapAdi(h):'',k.islemAd,k.sahis,k.islemTuru==='giris'?'Para Girişi':'Para Çıkışı',Yardimci.sayiFormat(k.tutar)];});
+    }
+    Disari.csv(bas, satirlar, tur+'-listesi');
+  }
+};
+
+/* ==================================================================
+   Bölüm 9: Alt Hesap Ekleme / Düzenleme / Silme
+   ================================================================== */
+const AltHesap = {
+  duzenlenenId:null,
+
+  alanTanim(tur){
+    if(tur==='banka') return [
+      {id:'ad', ad:'Banka Adı', zorunlu:true, ana:true},
+      {id:'sube', ad:'Şube Adı'},
+      {id:'hesapAd', ad:'Hesap Adı'},
+      {id:'iban', ad:'IBAN', iban:true},
+      {id:'hesapNo', ad:'Hesap Numarası'},
+      {id:'acilis', ad:'Açılış Bakiyesi', para:true},
+      {id:'aciklama', ad:'Açıklama', tam:true}
+    ];
+    if(tur==='alici') return [
+      {id:'ad', ad:'Alıcı veya Firma Adı', zorunlu:true, ana:true},
+      {id:'yetkili', ad:'Yetkili Kişi'},
+      {id:'telefon', ad:'Telefon'},
+      {id:'eposta', ad:'E-posta'},
+      {id:'vergiDairesi', ad:'Vergi Dairesi'},
+      {id:'vergiNo', ad:'Vergi Numarası'},
+      {id:'adres', ad:'Adres', tam:true},
+      {id:'acilis', ad:'Açılış Bakiyesi', para:true},
+      {id:'aciklama', ad:'Açıklama', tam:true}
+    ];
+    if(tur==='satici') return [
+      {id:'ad', ad:'Satıcı veya Firma Adı', zorunlu:true, ana:true},
+      {id:'yetkili', ad:'Yetkili Kişi'},
+      {id:'telefon', ad:'Telefon'},
+      {id:'eposta', ad:'E-posta'},
+      {id:'vergiDairesi', ad:'Vergi Dairesi'},
+      {id:'vergiNo', ad:'Vergi Numarası'},
+      {id:'adres', ad:'Adres', tam:true},
+      {id:'acilis', ad:'Açılış Bakiyesi', para:true},
+      {id:'aciklama', ad:'Açıklama', tam:true}
+    ];
+    if(tur==='kart') return [
+      {id:'ad', ad:'Kart Adı', zorunlu:true, ana:true},
+      {id:'bankaAd', ad:'Banka Adı'},
+      {id:'sonDort', ad:'Kartın Son Dört Hanesi', dort:true},
+      {id:'limit', ad:'Kart Limiti', para:true},
+      {id:'acilis', ad:'Açılış Borcu', para:true},
+      {id:'kesimGun', ad:'Hesap Kesim Günü', gun:true},
+      {id:'sonOdemeGun', ad:'Son Ödeme Günü', gun:true},
+      {id:'aciklama', ad:'Açıklama', tam:true}
+    ];
+    return [];
+  },
+
+  ekleModal(anaKod){
+    this.duzenlenenId = null;
+    const ana = Hesap.anaBul(anaKod);
+    const yeniKod = Depo.veri.anaHesaplar.length ? (anaKod + '.' + String((Depo.veri.sayaclar.altKod[anaKod]||0)+1).padStart(2,'0')) : '';
+    this.formGoster(ana.tur, anaKod, yeniKod, null, `${anaKod} ${ana.ad} - Yeni Alt Hesap`);
+  },
+
+  duzenleModal(id){
+    const h = Hesap.altBul(id);
+    if(!h) return;
+    this.duzenlenenId = id;
+    const ana = Hesap.anaBul(h.anaKod);
+    this.formGoster(h.tur, h.anaKod, h.kod, h, `${h.kod} - Alt Hesap Düzenle`);
+  },
+
+  formGoster(tur, anaKod, kod, veri, baslik){
+    const alanlar = this.alanTanim(tur);
+    let govde = `<div class="form-grid">
+      <div class="form-alan"><label>Hesap Kodu</label><input id="ah-kod" value="${kod}" readonly></div>`;
+    alanlar.forEach(a=>{
+      const deger = veri ? (veri[a.id]!==undefined?veri[a.id]:'') : '';
+      const zorunlu = a.zorunlu?' <span class="zorunlu">*</span>':'';
+      if(a.tam){
+        govde += `<div class="form-alan tam"><label>${a.ad}${zorunlu}</label><textarea id="ah-${a.id}">${Yardimci.kacisHTML(deger)}</textarea></div>`;
+      }else if(a.para){
+        govde += `<div class="form-alan"><label>${a.ad}${zorunlu}</label><input type="number" min="0" step="0.01" id="ah-${a.id}" value="${deger||''}" placeholder="0,00"></div>`;
+      }else if(a.gun){
+        govde += `<div class="form-alan"><label>${a.ad}${zorunlu}</label><input type="number" min="1" max="31" id="ah-${a.id}" value="${deger||''}"></div>`;
+      }else if(a.dort){
+        govde += `<div class="form-alan"><label>${a.ad}${zorunlu}</label><input maxlength="4" id="ah-${a.id}" value="${Yardimci.kacisHTML(deger)}" placeholder="1234"></div>`;
+      }else{
+        govde += `<div class="form-alan"><label>${a.ad}${zorunlu}</label><input id="ah-${a.id}" value="${Yardimci.kacisHTML(deger)}"></div>`;
+      }
+    });
+    govde += `</div>`;
+    const alt = `<button class="btn btn-gri" onclick="Modal.kapat()">Vazgeç</button>
+      <button class="btn btn-kirmizi" onclick="AltHesap.kaydet('${tur}','${anaKod}','${kod}')">💾 Kaydet</button>`;
+    Modal.ac(baslik, govde, alt, true);
+  },
+
+  kaydet(tur, anaKod, kod){
+    const alanlar = this.alanTanim(tur);
+    const kayit = {};
+    for(const a of alanlar){
+      const el = document.getElementById('ah-'+a.id);
+      let deger = el ? el.value.trim() : '';
+      if(a.zorunlu && !deger){ Bildirim.goster('hata','Eksik Alan', a.ad + ' zorunludur.'); el.focus(); return; }
+      if(a.iban && deger && !Yardimci.ibanGecerli(deger)){ Bildirim.goster('hata','Geçersiz IBAN','IBAN "TR" ile başlamalı ve 26 karakter olmalıdır.'); el.focus(); return; }
+      if(a.dort && deger && !/^\d{4}$/.test(deger)){ Bildirim.goster('hata','Geçersiz Değer','Kartın son dört hanesi sadece 4 rakam olmalıdır.'); el.focus(); return; }
+      if(a.para){ deger = Yardimci.paraCoz(deger); if(deger<0){ Bildirim.goster('hata','Geçersiz Tutar','Negatif tutar girilemez.'); el.focus(); return; } }
+      if(a.gun && deger){ const g=parseInt(deger); if(g<1||g>31){ Bildirim.goster('hata','Geçersiz Gün','Gün 1-31 arasında olmalıdır.'); el.focus(); return; } }
+      if(a.iban && deger) deger = Yardimci.ibanDuzenle(deger);
+      kayit[a.id] = deger;
+    }
+
+    // Aynı isim kontrolü
+    const isim = kayit.ad;
+    const cakisma = Depo.veri.altHesaplar.find(h=>h.anaKod===anaKod && h.id!==this.duzenlenenId && (h.ad||'').toLocaleLowerCase('tr')===isim.toLocaleLowerCase('tr'));
+    if(cakisma){ Bildirim.goster('uyari','Tekrar Eden İsim','Bu ana hesap altında aynı isimde bir hesap zaten mevcut.'); return; }
+
+    if(this.duzenlenenId){
+      const i = Depo.veri.altHesaplar.findIndex(h=>h.id===this.duzenlenenId);
+      Depo.veri.altHesaplar[i] = Object.assign({}, Depo.veri.altHesaplar[i], kayit);
+      Bildirim.goster('basari','Güncellendi','Alt hesap başarıyla güncellendi.');
+    }else{
+      const yeniKod = Depo.yeniAltKod(anaKod);
+      Depo.veri.altHesaplar.push(Object.assign({
+        id: Yardimci.yeniId(), kod: yeniKod, anaKod: anaKod, tur: tur
+      }, kayit));
+      Bildirim.goster('basari','Oluşturuldu','Yeni alt hesap (' + yeniKod + ') başarıyla oluşturuldu.');
+    }
+    Depo.kaydet();
+    Modal.kapat();
+    App.sayfaGit('hesaplar');
+  },
+
+  sil(id){
+    const h = Hesap.altBul(id);
+    if(!h) return;
+    const hareketVar = Depo.veri.hareketler.some(x=>x.hesapId===id);
+    const mesaj = hareketVar
+      ? 'Bu hesaba ait işlem hareketleri bulunuyor. Hesabı silerseniz bağlı hareketler de silinecektir. Devam edilsin mi?'
+      : 'Bu alt hesabı silmek istediğinize emin misiniz?';
+    Modal.onay('Alt Hesap Sil', mesaj, ()=>{
+      // Bağlı işlemleri ve hareketleri sil
+      const silinenIslemIds = Depo.veri.hareketler.filter(x=>x.hesapId===id).map(x=>x.islemId);
+      Depo.veri.hareketler = Depo.veri.hareketler.filter(x=>x.hesapId!==id);
+      Depo.veri.islemler = Depo.veri.islemler.filter(x=>!(x.hesapId===id));
+      Depo.veri.altHesaplar = Depo.veri.altHesaplar.filter(x=>x.id!==id);
+      // Not: hesap kodu sayacı geri alınmaz (kod tekrar kullanılmaz)
+      Depo.kaydet();
+      Bildirim.goster('basari','Silindi','Alt hesap silindi. (Hesap kodu tekrar kullanılmayacak)');
+      App.sayfaGit('hesaplar');
+    }, 'Evet, Sil', true);
+  }
+};
+
+/* ==================================================================
+   Bölüm 10: Alt Hesap Detay Ekranı ve Hareket Tabloları
+   ================================================================== */
+const Detay = {
+  aktifId:null,
+
+  ac(id){
+    const h = Hesap.altBul(id);
+    if(!h) return;
+    this.aktifId = id;
+    App.aktifSayfa='hesaplar';
+    document.getElementById('sayfa-baslik').textContent = h.kod + ' - ' + Hesap.hesapAdi(h);
+    const alan = document.getElementById('sayfa-alan');
+    alan.innerHTML = '';
+    const sarma = document.createElement('div'); sarma.className='sayfa'; alan.appendChild(sarma);
+    this.render(sarma, h);
+  },
+
+  render(el, h){
+    const netB = Hesap.netBakiye(h.id);
+    const {tBorc,tAlacak} = Hesap.toplamlar(h.id);
+    let detayEk = '';
+    if(h.tur==='kart'){
+      const borc = Hesap.kartBorc(h.id);
+      const limit = Number(h.limit)||0;
+      const kullanilabilir = limit - borc;
+      detayEk = `<div class="detay-ust">
+        <div class="detay-kutu"><div class="k-etiket">Kart Limiti</div><div class="k-deger">${Yardimci.paraFormat(limit)}</div></div>
+        <div class="detay-kutu"><div class="k-etiket">Güncel Borç</div><div class="k-deger" style="color:var(--kirmizi)">${Yardimci.paraFormat(borc)}</div></div>
+        <div class="detay-kutu"><div class="k-etiket">Kullanılabilir Limit</div><div class="k-deger" style="color:var(--yesil)">${Yardimci.paraFormat(kullanilabilir)}</div></div>
+        <div class="detay-kutu"><div class="k-etiket">Hesap Kesim Günü</div><div class="k-deger">${h.kesimGun?'Her ayın '+h.kesimGun+'.':'-'}</div></div>
+        <div class="detay-kutu"><div class="k-etiket">Son Ödeme Günü</div><div class="k-deger">${h.sonOdemeGun?'Her ayın '+h.sonOdemeGun+'.':'-'}</div></div>
+      </div>`;
+    }
+
+    el.innerHTML = `
+      <div class="kart">
+        <div class="detay-ust">
+          <div class="detay-kutu"><div class="k-etiket">Hesap Kodu</div><div class="k-deger"><span class="kod-rozet">${h.kod}</span></div></div>
+          <div class="detay-kutu"><div class="k-etiket">Hesap Adı</div><div class="k-deger" style="font-size:16px">${Yardimci.kacisHTML(Hesap.hesapAdi(h))}</div></div>
+          <div class="detay-kutu"><div class="k-etiket">Güncel Bakiye</div><div class="k-deger" style="color:${netB>=0?'var(--yesil)':'var(--kirmizi)'}">${Yardimci.paraFormat(netB)}</div></div>
+          <div class="detay-kutu"><div class="k-etiket">Toplam Borç</div><div class="k-deger borc">${Yardimci.paraFormat(tBorc)}</div></div>
+          <div class="detay-kutu"><div class="k-etiket">Toplam Alacak</div><div class="k-deger alacak">${Yardimci.paraFormat(tAlacak)}</div></div>
+        </div>
+        ${detayEk}
+        <div class="buton-grup no-print" style="margin-bottom:18px">
+          <button class="btn btn-kirmizi" onclick="Detay.yeniIslem('${h.id}')">＋ Yeni İşlem</button>
+          <button class="btn btn-gri" onclick="AltHesap.duzenleModal('${h.id}')">✎ Düzenle</button>
+          <button class="btn btn-gri" onclick="AltHesap.sil('${h.id}')">🗑 Sil</button>
+          <button class="btn btn-koyu" onclick="Detay.yazdir('${h.id}')">🖨 Yazdır</button>
+          <button class="btn btn-yesil" onclick="Detay.excel('${h.id}')">📊 Excel'e Aktar</button>
+          <button class="btn btn-cizgi" onclick="App.sayfaGit('hesaplar')">← Geri Dön</button>
+        </div>
+        <div class="arac-cubuk no-print">
+          <div class="arama-kutu"><input type="text" id="har-arama" placeholder="Hareketlerde ara..."></div>
+          <input type="date" id="har-bas" class="btn btn-gri" style="padding:9px" title="Başlangıç">
+          <input type="date" id="har-bit" class="btn btn-gri" style="padding:9px" title="Bitiş">
+          <button class="btn btn-koyu btn-kucuk" onclick="Detay.filtrele('${h.id}')">Filtrele</button>
+        </div>
+        <div id="hareket-tablo"></div>
+      </div>`;
+    this.hareketTablo(h, '', '', '');
+    const arama = el.querySelector('#har-arama');
+    if(arama) arama.addEventListener('input', ()=>this.filtrele(h.id));
+  },
+
+  filtrele(id){
+    const h = Hesap.altBul(id);
+    const q = (document.getElementById('har-arama').value||'');
+    const bas = document.getElementById('har-bas').value;
+    const bit = document.getElementById('har-bit').value;
+    this.hareketTablo(h, q, bas, bit);
+  },
+
+  hareketTablo(h, aranan, bas, bit){
+    let hareketler = Hesap.hareketler(h.id);
+    const q = (aranan||'').toLocaleLowerCase('tr');
+    if(q) hareketler = hareketler.filter(x=>((x.islemNo||'')+' '+(x.aciklama||'')).toLocaleLowerCase('tr').indexOf(q)>-1);
+    if(bas) hareketler = hareketler.filter(x=>x.tarih>=bas);
+    if(bit) hareketler = hareketler.filter(x=>x.tarih<=bit);
+
+    const el = document.getElementById('hareket-tablo');
+    if(hareketler.length===0){
+      el.innerHTML = `<div class="bos-mesaj">Bu hesaba ait hareket bulunmuyor.</div>`;
+      return;
+    }
+    if(h.tur==='alici' || h.tur==='satici') el.innerHTML = this.tabloCari(h, hareketler);
+    else el.innerHTML = this.tabloBankaKart(h, hareketler);
+  },
+
+  // Banka & Kredi kartı hareket tablosu
+  tabloBankaKart(h, hareketler){
+    const satir = hareketler.map(x=>{
+      const is = Depo.veri.islemler.find(i=>i.id===x.islemId) || {};
+      const gider = is.giderHesapId ? Hesap.altBul(is.giderHesapId) : null;
+      const etkiRenk = x.etki>=0 ? 'borc' : 'alacak';
+      const etkiYazi = (x.etki>=0?'+':'') + Yardimci.paraFormat(x.etki);
+      return `<tr>
+        <td><span class="kod-rozet">${x.islemNo}</span></td>
+        <td>${Yardimci.tarihFormat(x.tarih)}</td>
+        <td>${Yardimci.kacisHTML(is.islemAd||'')}</td>
+        <td>${Yardimci.kacisHTML(is.sahis||'')}</td>
+        <td>${Yardimci.kacisHTML(is.aciklama||'')}</td>
+        <td>${Yardimci.kacisHTML(is.bankaAciklama||'')}</td>
+        <td>${gider?Yardimci.kacisHTML(gider.kod+' '+Hesap.hesapAdi(gider)):'-'}</td>
+        <td class="sag-hiza borc">${x.borc?Yardimci.paraFormat(x.borc):'-'}</td>
+        <td class="sag-hiza alacak">${x.alacak?Yardimci.paraFormat(x.alacak):'-'}</td>
+        <td class="sag-hiza ${etkiRenk}">${etkiYazi}</td>
+        <td class="sag-hiza"><b>${Yardimci.paraFormat(x.guncelBakiye)}</b></td>
+        <td class="no-print satir-ic">
+          <button class="btn btn-cizgi btn-kucuk" onclick="Detay.islemDuzenle('${x.islemId}')">✎</button>
+          <button class="btn btn-cizgi btn-kucuk" onclick="Detay.islemSil('${x.islemId}','${h.id}')">🗑</button>
+        </td>
+      </tr>`;
+    }).join('');
+    return `<div class="tablo-sar"><table class="veri"><thead><tr>
+      <th>İşlem No</th><th>Tarih</th><th>İşlem Adı</th><th>Şahıs</th><th>Açıklama</th><th>Banka Açıklaması</th><th>Gider Hesabı</th>
+      <th class="sag-hiza">Borç</th><th class="sag-hiza">Alacak</th><th class="sag-hiza">Bakiye</th><th class="sag-hiza">Güncel Bakiye</th><th class="no-print">İşlemler</th>
+    </tr></thead><tbody>${satir}</tbody></table></div>`;
+  },
+
+  // Alıcı & Satıcı (cari) hareket tablosu
+  tabloCari(h, hareketler){
+    const satir = hareketler.map(x=>{
+      const is = Depo.veri.islemler.find(i=>i.id===x.islemId) || {};
+      const faturaTur = is.tur==='satis'?'Satış Faturası':(is.tur==='alis'?'Alış Faturası':'-');
+      const etkiRenk = x.etki>=0 ? 'borc' : 'alacak';
+      const etkiYazi = (x.etki>=0?'+':'') + Yardimci.paraFormat(x.etki);
+      let faturaHtml = '-';
+      if(is.tur==='alis'||is.tur==='satis'){
+        faturaHtml = faturaTur;
+        if(is.dosyaMeta){
+          faturaHtml += ` <button class="btn btn-cizgi btn-kucuk no-print" onclick="DosyaGoster.islemDosya('${is.id}','goster')">👁</button>
+            <button class="btn btn-cizgi btn-kucuk no-print" onclick="DosyaGoster.islemDosya('${is.id}','indir')">⬇</button>`;
+        }
+      }
+      return `<tr>
+        <td><span class="kod-rozet">${x.islemNo}</span></td>
+        <td>${Yardimci.tarihFormat(x.tarih)}</td>
+        <td>${Yardimci.kacisHTML(x.aciklama||'')}</td>
+        <td class="sag-hiza borc">${x.borc?Yardimci.paraFormat(x.borc):'-'}</td>
+        <td class="sag-hiza alacak">${x.alacak?Yardimci.paraFormat(x.alacak):'-'}</td>
+        <td class="sag-hiza ${etkiRenk}">${etkiYazi}</td>
+        <td class="sag-hiza"><b>${Yardimci.paraFormat(x.guncelBakiye)}</b></td>
+        <td>${faturaHtml}</td>
+        <td>${Yardimci.kacisHTML(is.faturaNo||'-')}</td>
+        <td class="no-print satir-ic">
+          <button class="btn btn-cizgi btn-kucuk" onclick="Detay.islemDuzenle('${x.islemId}')">✎</button>
+          <button class="btn btn-cizgi btn-kucuk" onclick="Detay.islemSil('${x.islemId}','${h.id}')">🗑</button>
+        </td>
+      </tr>`;
+    }).join('');
+    return `<div class="tablo-sar"><table class="veri"><thead><tr>
+      <th>İşlem No</th><th>Tarih</th><th>Açıklama</th><th class="sag-hiza">Borç</th><th class="sag-hiza">Alacak</th>
+      <th class="sag-hiza">Bakiye</th><th class="sag-hiza">Güncel Bakiye</th><th>Fatura</th><th>Fatura No</th><th class="no-print">İşlemler</th>
+    </tr></thead><tbody>${satir}</tbody></table></div>`;
+  },
+
+  yeniIslem(hesapId){
+    const h = Hesap.altBul(hesapId);
+    // İlgili işlem sekmesine yönlendir
+    const eslesme = {banka:'banka', kart:'kart', alici:'satis', satici:'alis'};
+    App.aktifSekme = eslesme[h.tur]||'banka';
+    App.sayfaGit('islemler');
+    setTimeout(()=>{
+      const on = {banka:'bk', kart:'kk', satis:'sa', alis:'al'}[App.aktifSekme];
+      const sel = document.getElementById(on+'-hesap');
+      if(sel){ sel.value = hesapId; }
+    },100);
+    Bildirim.goster('bilgi','Yeni İşlem', h.kod + ' için işlem giriş formu açıldı.',2200);
+  },
+
+  islemDuzenle(islemId){
+    const is = Depo.veri.islemler.find(x=>x.id===islemId);
+    if(!is) return;
+    App.aktifSekme = is.tur;
+    App.sayfaGit('islemler');
+    setTimeout(()=>Form.yukle(is.tur, islemId), 120);
+  },
+
+  islemSil(islemId, hesapId){
+    Modal.onay('İşlem Sil','Bu kaydı silmek istediğinize emin misiniz?', async ()=>{
+      const kayit = Depo.veri.islemler.find(x=>x.id===islemId);
+      if(kayit && kayit.dosyaId) await DosyaDepo.sil(kayit.dosyaId);
+      Depo.veri.islemler = Depo.veri.islemler.filter(x=>x.id!==islemId);
+      Depo.veri.hareketler = Depo.veri.hareketler.filter(h=>h.islemId!==islemId);
+      Depo.kaydet();
+      Bildirim.goster('basari','Silindi','İşlem başarıyla silindi.');
+      Detay.ac(hesapId);
+    }, 'Evet, Sil', true);
+  },
+
+  yazdir(hesapId){
+    const h = Hesap.altBul(hesapId);
+    const hareketler = Hesap.hareketler(hesapId);
+    const netB = Hesap.netBakiye(hesapId);
+    let bas, satirlar;
+    if(h.tur==='alici'||h.tur==='satici'){
+      bas = ['İşlem No','Tarih','Açıklama','Borç','Alacak','Güncel Bakiye','Fatura No'];
+      satirlar = hareketler.map(x=>{const is=Depo.veri.islemler.find(i=>i.id===x.islemId)||{};return [x.islemNo,Yardimci.tarihFormat(x.tarih),x.aciklama,x.borc?Yardimci.paraFormat(x.borc):'',x.alacak?Yardimci.paraFormat(x.alacak):'',Yardimci.paraFormat(x.guncelBakiye),is.faturaNo||''];});
+    }else{
+      bas = ['İşlem No','Tarih','İşlem Adı','Şahıs','Borç','Alacak','Güncel Bakiye'];
+      satirlar = hareketler.map(x=>{const is=Depo.veri.islemler.find(i=>i.id===x.islemId)||{};return [x.islemNo,Yardimci.tarihFormat(x.tarih),is.islemAd||'',is.sahis||'',x.borc?Yardimci.paraFormat(x.borc):'',x.alacak?Yardimci.paraFormat(x.alacak):'',Yardimci.paraFormat(x.guncelBakiye)];});
+    }
+    const ust = `<p style="margin-bottom:10px"><b>Hesap:</b> ${h.kod} - ${Yardimci.kacisHTML(Hesap.hesapAdi(h))} &nbsp;|&nbsp; <b>Güncel Bakiye:</b> ${Yardimci.paraFormat(netB)}</p>`;
+    Disari.yazdir('Hesap Ekstresi', ust + Disari.tabloHTML(bas, satirlar));
+  },
+
+  excel(hesapId){
+    const h = Hesap.altBul(hesapId);
+    const hareketler = Hesap.hareketler(hesapId);
+    let bas, satirlar;
+    if(h.tur==='alici'||h.tur==='satici'){
+      bas = ['İşlem No','Tarih','Açıklama','Borç','Alacak','Bakiye','Güncel Bakiye','Fatura No'];
+      satirlar = hareketler.map(x=>{const is=Depo.veri.islemler.find(i=>i.id===x.islemId)||{};return [x.islemNo,Yardimci.tarihFormat(x.tarih),x.aciklama,Yardimci.sayiFormat(x.borc),Yardimci.sayiFormat(x.alacak),Yardimci.sayiFormat(x.etki),Yardimci.sayiFormat(x.guncelBakiye),is.faturaNo||''];});
+    }else{
+      bas = ['İşlem No','Tarih','İşlem Adı','Şahıs','Açıklama','Banka Açıklaması','Borç','Alacak','Bakiye','Güncel Bakiye'];
+      satirlar = hareketler.map(x=>{const is=Depo.veri.islemler.find(i=>i.id===x.islemId)||{};return [x.islemNo,Yardimci.tarihFormat(x.tarih),is.islemAd||'',is.sahis||'',is.aciklama||'',is.bankaAciklama||'',Yardimci.sayiFormat(x.borc),Yardimci.sayiFormat(x.alacak),Yardimci.sayiFormat(x.etki),Yardimci.sayiFormat(x.guncelBakiye)];});
+    }
+    Disari.csv(bas, satirlar, h.kod + '-ekstre');
+  }
+};
+
+/* ==================================================================
+   Bölüm 11: Dosya Görüntüleme / İndirme
+   ================================================================== */
+const DosyaGoster = {
+  goster(dosya){
+    const veri = dosya.data;
+    const isPdf = (dosya.tur && dosya.tur.indexOf('pdf')>-1) || /\.pdf$/i.test(dosya.ad);
+    let ic;
+    if(isPdf){
+      ic = `<iframe src="${veri}" style="width:100%;height:70vh;border:none;border-radius:8px"></iframe>`;
+    }else{
+      ic = `<img src="${veri}" style="max-width:100%;border-radius:8px;display:block;margin:0 auto">`;
+    }
+    const alt = `<button class="btn btn-gri" onclick="Modal.kapat()">Kapat</button>`;
+    Modal.ac('📎 ' + dosya.ad, ic, alt, true);
+  },
+  indir(dosya){
+    const a = document.createElement('a');
+    a.href = dosya.data; a.download = dosya.ad; a.click();
+  },
+  async islemDosya(islemId, eylem){
+    const is = Depo.veri.islemler.find(x=>x.id===islemId);
+    if(!is || !is.dosyaId){ Bildirim.goster('uyari','Dosya Yok','Bu işleme ait dosya bulunamadı.'); return; }
+    const dosya = await DosyaDepo.getir(is.dosyaId);
+    if(!dosya){ Bildirim.goster('hata','Dosya Bulunamadı','Dosya deposunda kayıt yok.'); return; }
+    if(eylem==='goster') this.goster(dosya);
+    else this.indir(dosya);
+  }
+};
+
+/* ==================================================================
+   Bölüm 12: Raporlar
+   ================================================================== */
+const Rapor = {
+  sonRapor:null,
+
+  hesapListesiDoldur(){
+    const turSel = document.getElementById('rf-tur');
+    const hesapSel = document.getElementById('rf-hesap');
+    if(!turSel||!hesapSel) return;
+    const guncelle = ()=>{
+      const tur = turSel.value;
+      let opts = '<option value="">Tümü</option>';
+      Depo.veri.altHesaplar.filter(h=>!tur||h.tur===tur).forEach(h=>{
+        opts += `<option value="${h.id}">${h.kod} - ${Yardimci.kacisHTML(Hesap.hesapAdi(h))}</option>`;
+      });
+      hesapSel.innerHTML = opts;
+    };
+    turSel.addEventListener('change', guncelle);
+    guncelle();
+  },
+
+  filtreOku(){
+    return {
+      bas: document.getElementById('rf-bas').value,
+      bit: document.getElementById('rf-bit').value,
+      tur: document.getElementById('rf-tur').value,
+      hesap: document.getElementById('rf-hesap').value,
+      islem: document.getElementById('rf-islem').value,
+      min: document.getElementById('rf-min').value?Yardimci.paraCoz(document.getElementById('rf-min').value):null,
+      max: document.getElementById('rf-max').value?Yardimci.paraCoz(document.getElementById('rf-max').value):null
+    };
+  },
+
+  temizle(){
+    ['rf-bas','rf-bit','rf-hesap','rf-islem','rf-min','rf-max'].forEach(id=>{const e=document.getElementById(id);if(e)e.value='';});
+    document.getElementById('rf-tur').value='';
+    this.hesapListesiDoldur();
+    document.getElementById('rapor-sonuc').innerHTML = `<div class="bos-mesaj">Bir rapor türü seçip "Raporu Getir" butonuna basın.</div>`;
+    this.sonRapor=null;
+  },
+
+  getir(){
+    if(!App.aktifRapor){ Bildirim.goster('uyari','Rapor Seçilmedi','Lütfen bir rapor türü seçin.'); return; }
+    const f = this.filtreOku();
+    let sonuc;
+    switch(App.aktifRapor){
+      case 'banka': sonuc = this.bakiyeRapor('banka','Banka Bakiye Raporu'); break;
+      case 'alici': sonuc = this.bakiyeRapor('alici','Alıcı Bakiye Raporu'); break;
+      case 'satici': sonuc = this.bakiyeRapor('satici','Satıcı Bakiye Raporu'); break;
+      case 'kart': sonuc = this.kartRapor(); break;
+      case 'tarih': sonuc = this.islemRapor(f, 'Tarih Aralığına Göre İşlemler'); break;
+      case 'borcalacak': sonuc = this.borcAlacakRapor(f); break;
+      case 'fatura': sonuc = this.faturaRapor(f); break;
+    }
+    const el = document.getElementById('rapor-sonuc');
+    if(!sonuc || sonuc.satirlar.length===0){
+      el.innerHTML = `<div class="bos-mesaj">Seçilen kriterlere uygun kayıt bulunamadı.</div>`;
+      this.sonRapor = null;
+      return;
+    }
+    this.sonRapor = sonuc;
+    el.innerHTML = `<h2 class="bolum-baslik">${sonuc.baslik}</h2>
+      <div class="tablo-sar"><table class="veri"><thead><tr>${sonuc.basliklar.map(b=>`<th${b.sag?' class="sag-hiza"':''}>${b.ad||b}</th>`).join('')}</tr></thead>
+      <tbody>${sonuc.satirlar.map(r=>`<tr>${r.map((c,i)=>`<td${sonuc.basliklar[i]&&sonuc.basliklar[i].sag?' class="sag-hiza"':''}>${Yardimci.kacisHTML(c)}</td>`).join('')}</tr>`).join('')}</tbody></table></div>`;
+  },
+
+  bakiyeRapor(tur, baslik){
+    const basliklar = [{ad:'Hesap Kodu'},{ad:'Hesap Adı'},{ad:'Toplam Borç',sag:true},{ad:'Toplam Alacak',sag:true},{ad:'Güncel Bakiye',sag:true}];
+    const satirlar = Depo.veri.altHesaplar.filter(h=>h.tur===tur).map(h=>{
+      const {tBorc,tAlacak} = Hesap.toplamlar(h.id);
+      return [h.kod, Hesap.hesapAdi(h), Yardimci.paraFormat(tBorc), Yardimci.paraFormat(tAlacak), Yardimci.paraFormat(Hesap.netBakiye(h.id))];
+    });
+    return {baslik, basliklar, satirlar};
+  },
+
+  kartRapor(){
+    const basliklar = [{ad:'Hesap Kodu'},{ad:'Kart Adı'},{ad:'Kart Limiti',sag:true},{ad:'Güncel Borç',sag:true},{ad:'Kullanılabilir Limit',sag:true}];
+    const satirlar = Depo.veri.altHesaplar.filter(h=>h.tur==='kart').map(h=>{
+      const borc = Hesap.kartBorc(h.id);
+      const limit = Number(h.limit)||0;
+      return [h.kod, Hesap.hesapAdi(h), Yardimci.paraFormat(limit), Yardimci.paraFormat(borc), Yardimci.paraFormat(limit-borc)];
+    });
+    return {baslik:'Kredi Kartı Bakiye Raporu', basliklar, satirlar};
+  },
+
+  islemRapor(f, baslik){
+    const basliklar = [{ad:'İşlem No'},{ad:'Tarih'},{ad:'Tür'},{ad:'Hesap'},{ad:'Açıklama'},{ad:'Borç',sag:true},{ad:'Alacak',sag:true}];
+    let hareketler = this.hareketFiltre(f);
+    const satirlar = hareketler.map(x=>{
+      const h = Hesap.altBul(x.hesapId);
+      const is = Depo.veri.islemler.find(i=>i.id===x.islemId)||{};
+      return [x.islemNo, Yardimci.tarihFormat(x.tarih), Sayfa.islemTurAdi(is.tur), h?h.kod+' '+Hesap.hesapAdi(h):'', x.aciklama, x.borc?Yardimci.paraFormat(x.borc):'', x.alacak?Yardimci.paraFormat(x.alacak):''];
+    });
+    return {baslik, basliklar, satirlar};
+  },
+
+  borcAlacakRapor(f){
+    const basliklar = [{ad:'İşlem No'},{ad:'Tarih'},{ad:'Hesap'},{ad:'Açıklama'},{ad:'Borç',sag:true},{ad:'Alacak',sag:true}];
+    let hareketler = this.hareketFiltre(f);
+    let tB=0,tA=0;
+    const satirlar = hareketler.map(x=>{
+      const h = Hesap.altBul(x.hesapId);
+      tB+=Number(x.borc)||0; tA+=Number(x.alacak)||0;
+      return [x.islemNo, Yardimci.tarihFormat(x.tarih), h?h.kod+' '+Hesap.hesapAdi(h):'', x.aciklama, x.borc?Yardimci.paraFormat(x.borc):'', x.alacak?Yardimci.paraFormat(x.alacak):''];
+    });
+    if(satirlar.length) satirlar.push(['','','','TOPLAM', Yardimci.paraFormat(tB), Yardimci.paraFormat(tA)]);
+    return {baslik:'Borç ve Alacak Raporu', basliklar, satirlar};
+  },
+
+  faturaRapor(f){
+    const basliklar = [{ad:'İşlem No'},{ad:'Tarih'},{ad:'Tür'},{ad:'Hesap'},{ad:'Fatura No'},{ad:'Tutar',sag:true},{ad:'Durum'},{ad:'Dosya'}];
+    let fat = Depo.veri.islemler.filter(x=>x.tur==='alis'||x.tur==='satis');
+    if(f.bas) fat = fat.filter(x=>x.tarih>=f.bas);
+    if(f.bit) fat = fat.filter(x=>x.tarih<=f.bit);
+    if(f.tur==='alici') fat = fat.filter(x=>x.tur==='satis');
+    if(f.tur==='satici') fat = fat.filter(x=>x.tur==='alis');
+    if(f.hesap) fat = fat.filter(x=>x.hesapId===f.hesap);
+    if(f.min!=null) fat = fat.filter(x=>x.tutar>=f.min);
+    if(f.max!=null) fat = fat.filter(x=>x.tutar<=f.max);
+    const durumAd = {odenmedi:'Ödenmedi/Tahsil Edilmedi',kismi:'Kısmi',odendi:'Ödendi/Tahsil Edildi'};
+    const satirlar = fat.map(x=>{
+      const h = Hesap.altBul(x.hesapId);
+      return [x.no, Yardimci.tarihFormat(x.tarih), Sayfa.islemTurAdi(x.tur), h?h.kod+' '+Hesap.hesapAdi(h):'', x.faturaNo, Yardimci.paraFormat(x.tutar), durumAd[x.durum]||'', x.dosyaMeta?'Var':'Yok'];
+    });
+    return {baslik:'Fatura Raporu', basliklar, satirlar};
+  },
+
+  hareketFiltre(f){
+    let hareketler = [...Depo.veri.hareketler];
+    if(f.bas) hareketler = hareketler.filter(x=>x.tarih>=f.bas);
+    if(f.bit) hareketler = hareketler.filter(x=>x.tarih<=f.bit);
+    if(f.hesap) hareketler = hareketler.filter(x=>x.hesapId===f.hesap);
+    if(f.tur){ const ids = Depo.veri.altHesaplar.filter(h=>h.tur===f.tur).map(h=>h.id); hareketler = hareketler.filter(x=>ids.includes(x.hesapId)); }
+    if(f.islem==='borc') hareketler = hareketler.filter(x=>Number(x.borc)>0);
+    if(f.islem==='alacak') hareketler = hareketler.filter(x=>Number(x.alacak)>0);
+    if(f.min!=null) hareketler = hareketler.filter(x=>(Number(x.borc)||Number(x.alacak))>=f.min);
+    if(f.max!=null) hareketler = hareketler.filter(x=>(Number(x.borc)||Number(x.alacak))<=f.max);
+    hareketler.sort((a,b)=> a.tarih!==b.tarih ? a.tarih.localeCompare(b.tarih) : (a.islemNo||'').localeCompare(b.islemNo||''));
+    return hareketler;
+  },
+
+  yazdir(){
+    if(!this.sonRapor){ Bildirim.goster('uyari','Rapor Yok','Önce bir rapor getirin.'); return; }
+    const s = this.sonRapor;
+    Disari.yazdir(s.baslik, Disari.tabloHTML(s.basliklar.map(b=>b.ad||b), s.satirlar));
+  },
+  excel(){
+    if(!this.sonRapor){ Bildirim.goster('uyari','Rapor Yok','Önce bir rapor getirin.'); return; }
+    const s = this.sonRapor;
+    Disari.csv(s.basliklar.map(b=>b.ad||b), s.satirlar, 'rapor');
+  }
+};
+
+/* ==================================================================
+   Bölüm 13: Ayarlar
+   ================================================================== */
+const Ayar = {
+  logoGecici:null,
+  logoYukle(e){
+    const dosya = e.target.files[0];
+    if(!dosya) return;
+    if(dosya.size > 1024*1024){ Bildirim.goster('uyari','Logo Büyük','Logo dosyası 1 MB altında olmalıdır.'); return; }
+    const okuyucu = new FileReader();
+    okuyucu.onload = ()=>{
+      this.logoGecici = okuyucu.result;
+      document.getElementById('logo-onizle').innerHTML = `<img src="${okuyucu.result}" style="height:46px;border-radius:8px">`;
+      Bildirim.goster('bilgi','Logo Seçildi','Kaydetmek için "Ayarları Kaydet" butonuna basın.',2200);
+    };
+    okuyucu.readAsDataURL(dosya);
+  },
+  kaydet(){
+    const f = Depo.veri.firma;
+    f.ad = document.getElementById('f-ad').value.trim();
+    f.yetkili = document.getElementById('f-yetkili').value.trim();
+    f.telefon = document.getElementById('f-telefon').value.trim();
+    f.eposta = document.getElementById('f-eposta').value.trim();
+    f.vergiDairesi = document.getElementById('f-vd').value.trim();
+    f.vergiNo = document.getElementById('f-vno').value.trim();
+    f.adres = document.getElementById('f-adres').value.trim();
+    if(this.logoGecici) f.logo = this.logoGecici;
+
+    const a = Depo.veri.ayarlar;
+    a.varsayilanTarih = document.getElementById('a-tarih').value;
+    a.ondalik = parseInt(document.getElementById('a-ondalik').value);
+    a.tema = document.getElementById('a-tema').value;
+    a.islemBaslangic = parseInt(document.getElementById('a-baslangic').value)||1;
+
+    Depo.kaydet();
+    App.temaUygula();
+    App.firmaGuncelle();
+    this.logoGecici = null;
+    Bildirim.goster('basari','Kaydedildi','Ayarlar başarıyla kaydedildi.');
+  }
+};
+
+/* ==================================================================
+   Bölüm 14: Yedekleme
+   ================================================================== */
+const Yedek = {
+  async al(){
+    const veri = JSON.parse(JSON.stringify(Depo.veri));
+    // dosyaları da ekle
+    let dosyalar = [];
+    try{ dosyalar = await DosyaDepo.hepsi(); }catch(e){}
+    const paket = { uygulama:'Nizam Soft Ön Muhasebe', tarih:Yardimci.bugun(), veri, dosyalar };
+    const blob = new Blob([JSON.stringify(paket,null,2)], {type:'application/json'});
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url; a.download = 'nizam-soft-yedek-' + Yardimci.dosyaTarih() + '.json';
+    a.click();
+    URL.revokeObjectURL(url);
+    Bildirim.goster('basari','Yedek Alındı','JSON yedek dosyası indirildi.');
+  },
+
+  geriYukle(e){
+    const dosya = e.target.files[0];
+    if(!dosya) return;
+    const okuyucu = new FileReader();
+    okuyucu.onload = ()=>{
+      let paket;
+      try{ paket = JSON.parse(okuyucu.result); }
+      catch(err){ Bildirim.goster('hata','Geçersiz Dosya','JSON dosyası okunamadı.'); return; }
+      if(!paket.veri || !paket.veri.anaHesaplar){ Bildirim.goster('hata','Geçersiz Yedek','Bu dosya geçerli bir yedek değil.'); return; }
+      Modal.onay('Yedeği Geri Yükle',
+        'Mevcut tüm veriler bu yedek ile değiştirilecektir. Bu işlem geri alınamaz. Devam etmek istiyor musunuz?',
+        async ()=>{
+          Depo.veri = paket.veri;
+          Depo.butunle();
+          Depo.kaydet();
+          // dosyaları geri yükle
+          if(paket.dosyalar && paket.dosyalar.length){
+            await DosyaDepo.temizle();
+            for(const d of paket.dosyalar){ await DosyaDepo.kaydet(d); }
+          }
+          App.temaUygula();
+          App.firmaGuncelle();
+          Bildirim.goster('basari','Geri Yüklendi','Yedek başarıyla geri yüklendi.');
+          App.sayfaGit('anasayfa');
+        }, 'Evet, Geri Yükle', true);
+    };
+    okuyucu.readAsText(dosya);
+    e.target.value='';
+  },
+
+  temizleUyari(){
+    Modal.onay('⚠ TÜM VERİLERİ TEMİZLE',
+      'DİKKAT! Bütün firma bilgileri, hesaplar, işlemler ve fatura dosyaları KALICI olarak silinecektir. Bu işlem geri alınamaz!',
+      ()=>this.temizleIkinci(), 'Devam Et', true);
+  },
+  temizleIkinci(){
+    Modal.onay('Son Onay',
+      'Bu işlem GERİ ALINAMAZ. Tüm verilerin silinmesini gerçekten onaylıyor musunuz?',
+      async ()=>{
+        await DosyaDepo.temizle();
+        localStorage.removeItem(Depo.ANAHTAR);
+        Depo.veri = Depo.varsayilan(); // ana hesaplar otomatik yeniden oluşur
+        Depo.kaydet();
+        App.temaUygula();
+        App.firmaGuncelle();
+        Bildirim.goster('basari','Temizlendi','Tüm veriler silindi. Ana hesaplar yeniden oluşturuldu.');
+        App.sayfaGit('anasayfa');
+      }, 'EVET, HEPSİNİ SİL', true);
+  }
+};
+
+/* ==================================================================
+   Bölüm 15: Başlatma
+   ================================================================== */
+window.addEventListener('DOMContentLoaded', ()=>{
+  App.baslat();
+  // Modal dış tıklama ile kapat
+  document.getElementById('modal-katman').addEventListener('click', e=>{
+    if(e.target.id==='modal-katman') Modal.kapat();
+  });
+  // ESC ile modal kapat
+  document.addEventListener('keydown', e=>{ if(e.key==='Escape') Modal.kapat(); });
+});
+</script>
+</body>
+</html>
