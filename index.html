@@ -460,7 +460,7 @@ table.nakit th.bugun-sutun{background:var(--kirmizi)}
         </ul>
       </li>
     </ul>
-    <div class="menu-alt">Nizam Soft © 2026<br>Sürüm 1.6.8 • 19.07.2026</div>
+    <div class="menu-alt">Nizam Soft © 2026<br>Sürüm 1.6.9 • 19.07.2026</div>
   </nav>
 
   <!-- ANA İÇERİK -->
@@ -639,6 +639,8 @@ const Depo = {
         this.veri = this.varsayilan();
       }
       this.sistemKur();
+      // Ana hesapları hesap koduna göre sırala (102, 120, 190, 191, 255, ...)
+      this.veri.anaHesaplar.sort((a,b)=>String(a.kod).localeCompare(String(b.kod),'tr'));
       this.kaydet();
     }catch(e){
       console.error('Yükleme hatası',e);
