@@ -101,6 +101,25 @@ body{
 .menu-oge.aktif::before{
   content:"";position:absolute;left:0;top:0;bottom:0;width:4px;background:#fff;
 }
+/* Katlanır menü grupları */
+.menu-grup{list-style:none;margin:3px 0}
+.menu-grup-baslik{
+  display:flex;align-items:center;gap:14px;padding:13px 14px;border-radius:10px;cursor:pointer;
+  color:#d4d9e0;font-weight:500;white-space:nowrap;transition:background .2s,color .2s;
+}
+.menu-grup-baslik .ikon{width:22px;text-align:center;font-size:18px;flex-shrink:0}
+.menu-grup-baslik:hover{background:rgba(255,255,255,.07);color:#fff}
+.menu-grup-baslik .ok{margin-left:auto;font-size:11px;transition:transform .25s;opacity:.7}
+.menu-grup.acik>.menu-grup-baslik{color:#fff}
+.menu-grup.acik>.menu-grup-baslik .ok{transform:rotate(90deg)}
+.menu-alt-liste{list-style:none;max-height:0;overflow:hidden;transition:max-height .3s ease;padding-left:8px}
+.menu-grup.acik>.menu-alt-liste{max-height:300px}
+.menu-oge.alt{padding:11px 14px 11px 30px;font-size:14px}
+.menu-oge.alt::after{content:"";position:absolute;left:18px;top:50%;width:6px;height:6px;border-radius:50%;background:rgba(255,255,255,.25);transform:translateY(-50%)}
+.menu-oge.alt.aktif::after{background:#fff}
+body.menu-kapali .menu-grup-baslik .etiket,body.menu-kapali .menu-grup-baslik .ok{display:none}
+body.menu-kapali .menu-grup-baslik{justify-content:center}
+body.menu-kapali .menu-alt-liste{max-height:0 !important}
 .menu-alt{
   padding:14px 18px;border-top:1px solid rgba(255,255,255,.08);
   font-size:11px;color:var(--gri-koyu);text-align:center;
@@ -388,14 +407,29 @@ table.nakit th.bugun-sutun{background:var(--kirmizi)}
       <li class="menu-oge" data-sayfa="anasayfa"><span class="ikon">🏠</span><span class="etiket">Ana Sayfa</span></li>
       <li class="menu-oge" data-sayfa="islemler"><span class="ikon">📝</span><span class="etiket">İşlem Girişleri</span></li>
       <li class="menu-oge" data-sayfa="hesaplar"><span class="ikon">📊</span><span class="etiket">Hesaplar</span></li>
-      <li class="menu-oge" data-sayfa="nakit"><span class="ikon">💧</span><span class="etiket">Nakit Akışı</span></li>
-      <li class="menu-oge" data-sayfa="raporlar"><span class="ikon">📈</span><span class="etiket">Raporlar</span></li>
-      <li class="menu-oge" data-sayfa="vergi"><span class="ikon">🧾</span><span class="etiket">Vergi Hesaplamaları</span></li>
-      <li class="menu-oge" data-sayfa="donem"><span class="ikon">📅</span><span class="etiket">Dönem Sonu</span></li>
-      <li class="menu-oge" data-sayfa="ayarlar"><span class="ikon">⚙️</span><span class="etiket">Ayarlar</span></li>
-      <li class="menu-oge" data-sayfa="yedekleme"><span class="ikon">💾</span><span class="etiket">Yedekleme</span></li>
+      <li class="menu-grup" data-grup="raporlar">
+        <div class="menu-grup-baslik"><span class="ikon">📈</span><span class="etiket">Raporlar</span><span class="ok">▸</span></div>
+        <ul class="menu-alt-liste">
+          <li class="menu-oge alt" data-sayfa="raporlar"><span class="etiket">Genel Raporlar</span></li>
+          <li class="menu-oge alt" data-sayfa="nakit"><span class="etiket">Nakit Akışı</span></li>
+        </ul>
+      </li>
+      <li class="menu-grup" data-grup="resmi">
+        <div class="menu-grup-baslik"><span class="ikon">🏛️</span><span class="etiket">Resmi Muhasebe Süreçleri</span><span class="ok">▸</span></div>
+        <ul class="menu-alt-liste">
+          <li class="menu-oge alt" data-sayfa="vergi"><span class="etiket">Vergi Hesaplamaları</span></li>
+          <li class="menu-oge alt" data-sayfa="donem"><span class="etiket">Dönem Sonu</span></li>
+        </ul>
+      </li>
+      <li class="menu-grup" data-grup="ayarlargrup">
+        <div class="menu-grup-baslik"><span class="ikon">⚙️</span><span class="etiket">Ayarlar</span><span class="ok">▸</span></div>
+        <ul class="menu-alt-liste">
+          <li class="menu-oge alt" data-sayfa="ayarlar"><span class="etiket">Genel Ayarlar</span></li>
+          <li class="menu-oge alt" data-sayfa="yedekleme"><span class="etiket">Yedekleme</span></li>
+        </ul>
+      </li>
     </ul>
-    <div class="menu-alt">Nizam Soft © 2026<br>Sürüm 1.6 • 19.07.2026</div>
+    <div class="menu-alt">Nizam Soft © 2026<br>Sürüm 1.6.1 • 19.07.2026</div>
   </nav>
 
   <!-- ANA İÇERİK -->
@@ -906,9 +940,18 @@ const App = {
     if(window.innerWidth<820) document.body.classList.add('menu-kapali');
   },
 
+  // Alt sayfa -> ait olduğu grup
+  sayfaGrup:{ raporlar:'raporlar', nakit:'raporlar', vergi:'resmi', donem:'resmi', ayarlar:'ayarlargrup', yedekleme:'ayarlargrup' },
+
   menuBagla(){
     document.querySelectorAll('.menu-oge').forEach(el=>{
       el.addEventListener('click',()=>this.sayfaGit(el.dataset.sayfa));
+    });
+    document.querySelectorAll('.menu-grup-baslik').forEach(el=>{
+      el.addEventListener('click',()=>{
+        if(document.body.classList.contains('menu-kapali')) document.body.classList.remove('menu-kapali');
+        el.parentElement.classList.toggle('acik');
+      });
     });
   },
   menuToggle(){ document.body.classList.toggle('menu-kapali'); },
@@ -928,7 +971,10 @@ const App = {
   sayfaGit(sayfa){
     this.aktifSayfa = sayfa;
     document.querySelectorAll('.menu-oge').forEach(el=>el.classList.toggle('aktif', el.dataset.sayfa===sayfa));
-    const basliklar = {anasayfa:'Ana Sayfa', islemler:'İşlem Girişleri', hesaplar:'Hesaplar', nakit:'Nakit Akışı', vergi:'Vergi Hesaplamaları', raporlar:'Raporlar', donem:'Dönem Sonu İşlemleri', ayarlar:'Ayarlar', yedekleme:'Yedekleme'};
+    // aktif sayfanın grubunu aç
+    const grup = this.sayfaGrup[sayfa];
+    document.querySelectorAll('.menu-grup').forEach(g=>{ if(g.dataset.grup===grup) g.classList.add('acik'); });
+    const basliklar = {anasayfa:'Ana Sayfa', islemler:'İşlem Girişleri', hesaplar:'Hesaplar', nakit:'Nakit Akışı', vergi:'Vergi Hesaplamaları', raporlar:'Genel Raporlar', donem:'Dönem Sonu İşlemleri', ayarlar:'Ayarlar', yedekleme:'Yedekleme'};
     document.getElementById('sayfa-baslik').textContent = basliklar[sayfa]||'';
     const alan = document.getElementById('sayfa-alan');
     alan.innerHTML = '';
@@ -1870,11 +1916,12 @@ const Form = {
     }else if(islem.tur==='kart'){
       // Kredi kartı HARCAMASI -> kart borcu artar (kart hesabına Alacak)
       hareketler.push(this.hareket(islem, islem.hesapId, 0, islem.tutar, islem.islemAd));
-      // Karşı gider/şahıs hesabına Borç (mirror)
-      if(islem.giderHesapId && Hesap.altBul(islem.giderHesapId)){
-        hareketler.push(this.hareket(islem, islem.giderHesapId, islem.tutar, 0, islem.islemAd));
-      }else if(islem.sahisHesapId && Hesap.altBul(islem.sahisHesapId)){
+      // Karşı Borç kaydı: CARİ ÖNCELİKLİ. Satıcı/Şahıs (120/320/331) seçiliyse Borç oraya
+      // yazılır ve o hesap kapanır; yalnızca cari seçilmediyse Gider hesabına yazılır.
+      if(islem.sahisHesapId && Hesap.altBul(islem.sahisHesapId)){
         hareketler.push(this.hareket(islem, islem.sahisHesapId, islem.tutar, 0, islem.islemAd));
+      }else if(islem.giderHesapId && Hesap.altBul(islem.giderHesapId)){
+        hareketler.push(this.hareket(islem, islem.giderHesapId, islem.tutar, 0, islem.islemAd));
       }
     }
     Depo.veri.hareketler.push(...hareketler);
