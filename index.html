@@ -390,11 +390,12 @@ table.nakit th.bugun-sutun{background:var(--kirmizi)}
       <li class="menu-oge" data-sayfa="hesaplar"><span class="ikon">📊</span><span class="etiket">Hesaplar</span></li>
       <li class="menu-oge" data-sayfa="nakit"><span class="ikon">💧</span><span class="etiket">Nakit Akışı</span></li>
       <li class="menu-oge" data-sayfa="raporlar"><span class="ikon">📈</span><span class="etiket">Raporlar</span></li>
+      <li class="menu-oge" data-sayfa="vergi"><span class="ikon">🧾</span><span class="etiket">Vergi Hesaplamaları</span></li>
       <li class="menu-oge" data-sayfa="donem"><span class="ikon">📅</span><span class="etiket">Dönem Sonu</span></li>
       <li class="menu-oge" data-sayfa="ayarlar"><span class="ikon">⚙️</span><span class="etiket">Ayarlar</span></li>
       <li class="menu-oge" data-sayfa="yedekleme"><span class="ikon">💾</span><span class="etiket">Yedekleme</span></li>
     </ul>
-    <div class="menu-alt">Nizam Soft © 2026<br>Sürüm 1.5 • 19.07.2026</div>
+    <div class="menu-alt">Nizam Soft © 2026<br>Sürüm 1.6 • 19.07.2026</div>
   </nav>
 
   <!-- ANA İÇERİK -->
@@ -554,7 +555,10 @@ const Depo = {
       ongoruGercek:[],  // forecastOccurrences (istisna/override) {id,kuralId,tarih,durum,gercekTutar,gerceklesenTarih,bankaHareketId,not}
       gruplar:[],       // incomeExpenseGroups {id,tur,ad}
       eslesmeler:[],    // transactionMatches {id,tur,kaynakId,hareketId,tarih}
-      nakitAyar:{ aralik:'1ay', gorunum:'tahmin', bankaFiltre:[], yaklasanGun:7, dusukBakiye:0 },
+      nakitAyar:{ aralik:'1ay', gorunum:'tahmin', bankaFiltre:[], yaklasanGun:7, dusukBakiye:0, ozelBas:'', ozelBit:'' },
+      vergiAyar:{ kdvOranlari:[0,1,10,20], kdvOdemeGunu:28 }, // taxSettings
+      kdvDonemleri:[], // vatPeriods (override kayıtları) {donem,devredenOverride,muhasebeciTutar,odemeTarihi,duzeltmeler:[],durum}
+      vergiNakitBaglari:[], // taxCashFlowLinks {id,tur,donem,ongoruId,hareketId,tutar,tarih}
       sayaclar:{ islemNo:0, altKod:{'102':0,'120':0,'309':0,'320':0,'331':0,'600':0,'770':0,'191':0,'391':0,'190':0,'360':0,'690':0,'590':0,'591':0} }
     };
   },
@@ -589,9 +593,11 @@ const Depo = {
     if(!this.veri.sayaclar) this.veri.sayaclar = v.sayaclar;
     if(!this.veri.sayaclar.altKod) this.veri.sayaclar.altKod = v.sayaclar.altKod;
     // Nakit akışı / taksit / öngörü koleksiyonları (eski yedeklerde eksikse tamamla)
-    ['taksitPlanlari','taksitler','ongoruler','ongoruGercek','gruplar','eslesmeler'].forEach(k=>{ if(!Array.isArray(this.veri[k])) this.veri[k]=[]; });
+    ['taksitPlanlari','taksitler','ongoruler','ongoruGercek','gruplar','eslesmeler','kdvDonemleri','vergiNakitBaglari'].forEach(k=>{ if(!Array.isArray(this.veri[k])) this.veri[k]=[]; });
     if(!this.veri.nakitAyar) this.veri.nakitAyar = v.nakitAyar;
     else { const na=v.nakitAyar; for(const key in na){ if(this.veri.nakitAyar[key]===undefined) this.veri.nakitAyar[key]=na[key]; } }
+    if(!this.veri.vergiAyar) this.veri.vergiAyar = v.vergiAyar;
+    else { const va=v.vergiAyar; for(const key in va){ if(this.veri.vergiAyar[key]===undefined) this.veri.vergiAyar[key]=va[key]; } }
     // Sonradan eklenen sabit ana hesapları (331, 600, 770, KDV, kapanış) eski verilere de tamamla
     v.anaHesaplar.forEach(ana=>{
       if(!this.veri.anaHesaplar.find(h=>h.kod===ana.kod)) this.veri.anaHesaplar.push(Object.assign({},ana));
@@ -922,7 +928,7 @@ const App = {
   sayfaGit(sayfa){
     this.aktifSayfa = sayfa;
     document.querySelectorAll('.menu-oge').forEach(el=>el.classList.toggle('aktif', el.dataset.sayfa===sayfa));
-    const basliklar = {anasayfa:'Ana Sayfa', islemler:'İşlem Girişleri', hesaplar:'Hesaplar', nakit:'Nakit Akışı', raporlar:'Raporlar', donem:'Dönem Sonu İşlemleri', ayarlar:'Ayarlar', yedekleme:'Yedekleme'};
+    const basliklar = {anasayfa:'Ana Sayfa', islemler:'İşlem Girişleri', hesaplar:'Hesaplar', nakit:'Nakit Akışı', vergi:'Vergi Hesaplamaları', raporlar:'Raporlar', donem:'Dönem Sonu İşlemleri', ayarlar:'Ayarlar', yedekleme:'Yedekleme'};
     document.getElementById('sayfa-baslik').textContent = basliklar[sayfa]||'';
     const alan = document.getElementById('sayfa-alan');
     alan.innerHTML = '';
@@ -934,6 +940,7 @@ const App = {
       case 'islemler': Sayfa.islemler(sarma); break;
       case 'hesaplar': Sayfa.hesaplar(sarma); break;
       case 'nakit': Sayfa.nakit(sarma); break;
+      case 'vergi': Vergi.sayfa(sarma); break;
       case 'raporlar': Sayfa.raporlar(sarma); break;
       case 'donem': Sayfa.donem(sarma); break;
       case 'ayarlar': Sayfa.ayarlar(sarma); break;
@@ -1191,24 +1198,14 @@ const Sayfa = {
   donem(el){
     el.innerHTML = `
       <div class="kart" style="margin-bottom:20px">
-        <h2 class="bolum-baslik">1) KDV Mahsubu (Hesaplanan − İndirilecek)</h2>
-        <p style="color:var(--metin-soluk);margin-bottom:16px;line-height:1.6">
-          Belirtilen tarihe kadarki <b>Hesaplanan KDV (391)</b> ile <b>İndirilecek KDV (191)</b> karşılaştırılır.
-          Fark pozitifse <b>Ödenecek KDV (360)</b>, negatifse <b>Devreden KDV (190)</b> olarak kaydedilir.
+        <p style="color:var(--metin-soluk);line-height:1.6">
+          💡 <b>KDV mahsubu ve KDV hesaplamaları</b> artık <b>Vergi Hesaplamaları</b> sayfasında toplanmıştır.
+          Bu sayfada yalnızca dönem sonu kâr/zarar kapanışı yapılır.
         </p>
-        <div class="form-grid">
-          <div class="form-alan"><label>Dönem Sonu Tarihi <span class="zorunlu">*</span></label><input type="date" id="kdv-tarih" value="${Yardimci.bugun()}"></div>
-          <div class="form-alan"><label>Dönem Adı</label><input id="kdv-donem" placeholder="Örn: Temmuz 2026"></div>
-        </div>
-        <div class="buton-grup" style="margin-top:14px">
-          <button class="btn btn-koyu" onclick="Donem.kdvHesaplaGoster()">Hesapla</button>
-          <button class="btn btn-kirmizi" onclick="Donem.kdvMahsupOlustur()">💾 KDV Mahsup Fişi Oluştur</button>
-        </div>
-        <div id="kdv-sonuc" style="margin-top:16px"></div>
       </div>
 
       <div class="kart" style="margin-bottom:20px">
-        <h2 class="bolum-baslik">2) Dönem Sonu Kâr/Zarar Kapanışı (600 &amp; 770 → 690 → 590/591)</h2>
+        <h2 class="bolum-baslik">Dönem Sonu Kâr/Zarar Kapanışı (600 &amp; 770 → 690 → 590/591)</h2>
         <p style="color:var(--metin-soluk);margin-bottom:16px;line-height:1.6">
           Gelir (600) ve gider (770) hesapları kapatılıp <b>690 Dönem Kâr/Zararı</b>'na aktarılır.
           Sonuç kârsa <b>590 Dönem Net Kârı</b>, zararsa <b>591 Dönem Net Zararı</b> hesabına taşınır.
@@ -1268,9 +1265,11 @@ const Sayfa = {
           <button class="btn btn-kirmizi" onclick="Ayar.kaydet()">💾 Ayarları Kaydet</button>
         </div>
       </div>
+      <div class="kart" style="margin-bottom:20px" id="vergi-ayar-kart"></div>
       <div class="kart" style="margin-bottom:20px" id="gruplar-kart"></div>
       <div class="kart" id="ongoru-kart"></div>`;
     el.querySelector('#f-logo').addEventListener('change', e=>Ayar.logoYukle(e));
+    Vergi.ayarKart(el.querySelector('#vergi-ayar-kart'));
     Gruplar.kart(el.querySelector('#gruplar-kart'));
     Ongoru.kart(el.querySelector('#ongoru-kart'));
   },
@@ -1360,27 +1359,51 @@ const Form = {
     return `<option value="">— Seçiniz —</option>` + opts;
   },
 
-  // KDV alanları: kullanıcı KDV DAHİL tutarı ve oranı girer; matrah ve KDV otomatik hesaplanır
-  kdvAlan(on){
-    return `
-      <div class="form-alan"><label>Fatura Tutarı (KDV Dahil) <span class="zorunlu">*</span></label>
-        <input type="number" id="${on}-tutar" min="0" step="0.01" placeholder="0,00" oninput="Form.kdvHesapla('${on}')"></div>
-      <div class="form-alan"><label>KDV Oranı (%)</label>
-        <input type="number" id="${on}-kdvoran" list="kdv-oranlar" min="0" max="100" step="1" value="20" oninput="Form.kdvHesapla('${on}')">
-        <datalist id="kdv-oranlar"><option value="0"><option value="1"><option value="10"><option value="20"></datalist></div>
-      <div class="form-alan"><label>Matrah (KDV Hariç)</label><input id="${on}-matrah" readonly placeholder="0,00"></div>
-      <div class="form-alan"><label>KDV Tutarı</label><input id="${on}-kdv" readonly placeholder="0,00"></div>`;
+  // KDV oran seçenekleri (Ayarlar'dan yönetilir)
+  kdvOranOpts(){
+    return (Depo.veri.vergiAyar.kdvOranlari||[0,1,10,20]).map(o=>`<option value="${o}">`).join('');
   },
-
-  // KDV dahil tutar + oran -> matrah ve KDV
+  // KDV alanları: Tutar Giriş Şekli (KDV Hariç/Dahil) + 4 alan (matrah/oran/kdv/dahil toplam)
+  kdvAlan(on){
+    const kdvAd = on==='sa' ? 'Hesaplanan KDV' : 'İndirilecek KDV';
+    return `
+      <div class="form-alan"><label>Tutar Giriş Şekli</label>
+        <select id="${on}-giristipi" onchange="Form.kdvGirisTipi('${on}')">
+          <option value="dahil" selected>KDV Dahil</option><option value="haric">KDV Hariç</option></select></div>
+      <div class="form-alan"><label>KDV Oranı (%)</label>
+        <input type="number" id="${on}-kdvoran" list="kdv-oranlar-${on}" min="0" max="100" step="1" value="20" oninput="Form.kdvHesapla('${on}')">
+        <datalist id="kdv-oranlar-${on}">${this.kdvOranOpts()}</datalist></div>
+      <div class="form-alan"><label>KDV Hariç Tutar (Matrah)</label>
+        <input type="text" inputmode="decimal" id="${on}-matrah" placeholder="0,00" readonly oninput="Form.kdvHesapla('${on}')"></div>
+      <div class="form-alan"><label>KDV Dahil Genel Toplam <span class="zorunlu">*</span></label>
+        <input type="text" inputmode="decimal" id="${on}-tutar" placeholder="0,00" oninput="Form.kdvHesapla('${on}')"></div>
+      <div class="form-alan"><label>${kdvAd}</label><input type="text" id="${on}-kdv" readonly placeholder="0,00"></div>`;
+  },
+  kdvGirisTipi(on){
+    const tip = document.getElementById(on+'-giristipi').value;
+    const m = document.getElementById(on+'-matrah'), t = document.getElementById(on+'-tutar');
+    if(tip==='dahil'){ t.readOnly=false; m.readOnly=true; }
+    else{ m.readOnly=false; t.readOnly=true; }
+    this.kdvHesapla(on);
+  },
+  // Giriş şekline göre matrah/kdv/dahil toplamı hesapla (2 ondalık)
   kdvHesapla(on){
-    const toplam = Yardimci.paraCoz(document.getElementById(on+'-tutar').value);
+    const tip = (document.getElementById(on+'-giristipi')||{}).value || 'dahil';
     const oran = Number(document.getElementById(on+'-kdvoran').value)||0;
-    const matrah = oran>0 ? toplam/(1+oran/100) : toplam;
-    const kdv = toplam - matrah;
-    const mEl = document.getElementById(on+'-matrah'), kEl = document.getElementById(on+'-kdv');
-    if(mEl) mEl.value = Yardimci.sayiFormat(matrah);
-    if(kEl) kEl.value = Yardimci.sayiFormat(kdv);
+    const yuvarla = v => Math.round(v*100)/100;
+    let matrah, kdv, toplam;
+    if(tip==='dahil'){
+      toplam = Yardimci.paraCoz(document.getElementById(on+'-tutar').value);
+      matrah = oran>0 ? yuvarla(toplam/(1+oran/100)) : toplam;
+      kdv = yuvarla(toplam - matrah);
+      const mEl=document.getElementById(on+'-matrah'); if(mEl) mEl.value = Yardimci.sayiFormat(matrah);
+    }else{
+      matrah = Yardimci.paraCoz(document.getElementById(on+'-matrah').value);
+      kdv = yuvarla(matrah*oran/100);
+      toplam = yuvarla(matrah + kdv);
+      const tEl=document.getElementById(on+'-tutar'); if(tEl) tEl.value = Yardimci.sayiFormat(toplam);
+    }
+    const kEl=document.getElementById(on+'-kdv'); if(kEl) kEl.value = Yardimci.sayiFormat(kdv);
   },
 
   varsayilanTarih(){
@@ -1401,6 +1424,9 @@ const Form = {
           ${this.kdvAlan('al')}
           <div class="form-alan"><label>Ödeme Durumu</label>
             <select id="al-durum"><option value="odenmedi">Ödenmedi</option><option value="kismi">Kısmi Ödendi</option><option value="odendi">Ödendi</option></select></div>
+          <div class="form-alan"><label>&nbsp;</label>
+            <label style="display:flex;align-items:center;gap:7px;font-weight:400"><input type="checkbox" id="al-kdvharic" checked> KDV hesabına dahil</label>
+            <label style="display:flex;align-items:center;gap:7px;font-weight:400;margin-top:6px"><input type="checkbox" id="al-iptal"> İptal edildi</label></div>
           <div class="form-alan tam"><label>Açıklama</label><input id="al-aciklama" placeholder="Fatura açıklaması"></div>
           ${this.dosyaAlan()}
           <div class="form-alan tam"><label>Ek Not</label><textarea id="al-not"></textarea></div>
@@ -1425,6 +1451,9 @@ const Form = {
           ${this.kdvAlan('sa')}
           <div class="form-alan"><label>Tahsilat Durumu</label>
             <select id="sa-durum"><option value="odenmedi">Tahsil Edilmedi</option><option value="kismi">Kısmi Tahsil Edildi</option><option value="odendi">Tahsil Edildi</option></select></div>
+          <div class="form-alan"><label>&nbsp;</label>
+            <label style="display:flex;align-items:center;gap:7px;font-weight:400"><input type="checkbox" id="sa-kdvharic" checked> KDV hesabına dahil</label>
+            <label style="display:flex;align-items:center;gap:7px;font-weight:400;margin-top:6px"><input type="checkbox" id="sa-iptal"> İptal edildi</label></div>
           <div class="form-alan tam"><label>Açıklama</label><input id="sa-aciklama" placeholder="Fatura açıklaması"></div>
           ${this.dosyaAlan()}
           <div class="form-alan tam"><label>Ek Not</label><textarea id="sa-not"></textarea></div>
@@ -1704,11 +1733,12 @@ const Form = {
       {id:on+'-tutar', ad:'Fatura Tutarı', sayi:true}
     ])) return;
 
+    this.kdvHesapla(on); // alanları senkronla
     const hesapId = document.getElementById(on+'-hesap').value;
-    const tutar = Yardimci.paraCoz(document.getElementById(on+'-tutar').value); // KDV DAHİL toplam
+    const tutar = Yardimci.paraCoz(document.getElementById(on+'-tutar').value);  // KDV DAHİL toplam
     const kdvOran = Number(document.getElementById(on+'-kdvoran').value)||0;
-    const matrah = kdvOran>0 ? tutar/(1+kdvOran/100) : tutar;
-    const kdvTutar = tutar - matrah;
+    const matrah = Yardimci.paraCoz(document.getElementById(on+'-matrah').value);
+    const kdvTutar = Yardimci.paraCoz(document.getElementById(on+'-kdv').value);
     const duzenId = this.aktifKayit[tur];
 
     // dosya kaydı
@@ -1735,6 +1765,8 @@ const Form = {
       matrah: matrah,      // KDV hariç
       kdvOran: kdvOran,
       kdvTutar: kdvTutar,
+      kdvDahilHesap: !document.getElementById(on+'-kdvharic') || document.getElementById(on+'-kdvharic').checked, // KDV hesabına dahil mi
+      iptal: document.getElementById(on+'-iptal') ? document.getElementById(on+'-iptal').checked : false,
       durum: document.getElementById(on+'-durum').value,
       ekNot: document.getElementById(on+'-not').value.trim(),
       dosyaId: dosyaId,
@@ -1901,9 +1933,12 @@ const Form = {
       document.getElementById(on+'-tarih').value = is.tarih;
       document.getElementById(on+'-hesap').value = is.hesapId;
       document.getElementById(on+'-faturano').value = is.faturaNo||'';
-      document.getElementById(on+'-tutar').value = is.tutar;
+      document.getElementById(on+'-giristipi').value = 'dahil';
+      document.getElementById(on+'-tutar').value = Yardimci.sayiFormat(is.tutar);
       document.getElementById(on+'-kdvoran').value = (is.kdvOran!==undefined?is.kdvOran:20);
-      this.kdvHesapla(on);
+      this.kdvGirisTipi(on);
+      const kh=document.getElementById(on+'-kdvharic'); if(kh) kh.checked = is.kdvDahilHesap!==false;
+      const ip=document.getElementById(on+'-iptal'); if(ip) ip.checked = !!is.iptal;
       document.getElementById(on+'-durum').value = is.durum||'odenmedi';
       document.getElementById(on+'-aciklama').value = is.aciklama||'';
       document.getElementById(on+'-not').value = is.ekNot||'';
@@ -3115,7 +3150,7 @@ const Ongoru = {
   tekrarAd(o){
     if(o.tekrar==='tek') return 'Tek Seferlik';
     if(o.tekrar==='haftalik') return 'Haftalık ('+this.HAFTA[o.haftaGunu||1]+')';
-    if(o.tekrar==='aylik') return 'Aylık (her '+ (o.gun||1) +')';
+    if(o.tekrar==='aylik') return o.ayinSonu ? 'Aylık (ayın son günü)' : 'Aylık (her '+ (o.gun||1) +')';
     if(o.tekrar==='yillik') return 'Yıllık ('+(o.gun||1)+'.'+(o.ay||1)+')';
     return o.tekrar;
   },
@@ -3139,6 +3174,10 @@ const Ongoru = {
           <option value="yillik" ${g('tekrar','')==='yillik'?'selected':''}>Yıllık</option></select></div>
       <div class="form-alan" id="og-alan-tarih"><label>Net Tarih</label><input type="date" id="og-nettarih" value="${g('nettarih','')}"></div>
       <div class="form-alan" id="og-alan-hafta"><label>Haftanın Günü</label><select id="og-hafta">${this.HAFTA.map((h,i)=>`<option value="${i}" ${g('haftaGunu',1)==i?'selected':''}>${h}</option>`).join('')}</select></div>
+      <div class="form-alan" id="og-alan-yontem"><label>Tarih Yöntemi</label>
+        <select id="og-yontem" onchange="Ongoru.tekrarAlan()">
+          <option value="gun" ${g('ayinSonu',false)?'':'selected'}>Ayın Belirli Günü</option>
+          <option value="son" ${g('ayinSonu',false)?'selected':''}>Ayın Son Günü</option></select></div>
       <div class="form-alan" id="og-alan-gun"><label>Ayın Günü</label><input type="number" min="1" max="31" id="og-gun" value="${g('gun',1)}"></div>
       <div class="form-alan" id="og-alan-ay"><label>Ay</label><input type="number" min="1" max="12" id="og-ay" value="${g('ay',1)}"></div>
       <div class="form-alan"><label>Başlangıç Tarihi</label><input type="date" id="og-bas" value="${g('baslangic',Yardimci.bugun())}"></div>
@@ -3153,10 +3192,13 @@ const Ongoru = {
   },
   tekrarAlan(){
     const t = document.getElementById('og-tekrar').value;
+    const yontemEl = document.getElementById('og-yontem');
+    const sonGun = t==='aylik' && yontemEl && yontemEl.value==='son';
     const goster = (id,ok)=>{ const e=document.getElementById(id); if(e) e.style.display = ok?'':'none'; };
     goster('og-alan-tarih', t==='tek');
     goster('og-alan-hafta', t==='haftalik');
-    goster('og-alan-gun', t==='aylik'||t==='yillik');
+    goster('og-alan-yontem', t==='aylik');
+    goster('og-alan-gun', (t==='aylik' && !sonGun) || t==='yillik');
     goster('og-alan-ay', t==='yillik');
   },
   kaydet(id){
@@ -3177,6 +3219,7 @@ const Ongoru = {
       tekrar: tekrar,
       nettarih: nettarih || null,
       haftaGunu: Number(document.getElementById('og-hafta').value)||0,
+      ayinSonu: (document.getElementById('og-yontem')||{}).value==='son',
       gun: Number(document.getElementById('og-gun').value)||1,
       ay: Number(document.getElementById('og-ay').value)||1,
       baslangic: document.getElementById('og-bas').value || Yardimci.bugun(),
@@ -3215,11 +3258,12 @@ const Ongoru = {
       let y=p.y, m=p.m;
       while(true){
         const son=Yardimci.ayinSonGunu(y,m);
-        const t=Yardimci.iso(y,m,Math.min(o.gun||1, son));
+        const gun = o.ayinSonu ? son : Math.min(o.gun||1, son); // ayın son günü otomatik
+        const t=Yardimci.iso(y,m,gun);
         if(t>kbit) break;
         if(t>=kbas) sonuc.push(t);
         m++; if(m>12){m=1;y++;}
-        if((y-p.y)>5) break;
+        if((y-p.y)>6) break;
       }
     }else if(o.tekrar==='yillik'){
       let y=Yardimci.parcala(kbas).y;
@@ -3270,10 +3314,11 @@ const NakitAkis = {
   },
   aralik(){
     const ayar = Depo.veri.nakitAyar;
-    const bugun = Yardimci.bugun();
-    if(ayar.aralik==='ozel' && ayar.ozelBas && ayar.ozelBit) return [ayar.ozelBas, ayar.ozelBit];
-    const g = this.aralikGun[ayar.aralik]||30;
-    return [bugun, Yardimci.gunEkle(bugun, g)];
+    const bas = ayar.ozelBas || Yardimci.bugun();
+    let bit = ayar.ozelBit;
+    if(!bit){ const g=this.aralikGun[ayar.aralik]||30; bit = Yardimci.gunEkle(bas, g); }
+    if(bit < bas) bit = bas;
+    return [bas, bit];
   },
   // Ana hesaplama: [bas,bit] arası günlük seri
   projeksiyon(bas, bit, gorunum, bankaIds, kartDahil){
@@ -3328,46 +3373,61 @@ const NakitAkis = {
   sayfa(el){
     const ayar = Depo.veri.nakitAyar;
     const bankalar = Depo.veri.altHesaplar.filter(h=>h.anaKod==='102');
+    const [bas,bit] = this.aralik();
     el.innerHTML = `
-      <div class="nakit-ozet" id="nakit-ozet"></div>
-      <div id="nakit-uyari"></div>
       <div class="kart">
         <div class="nakit-arac no-print">
-          <label>Aralık:</label>
-          <select id="nk-aralik" onchange="NakitAkis.aralikDegis()">
+          <label>Başlangıç:</label><input type="date" id="nk-bas" value="${bas}">
+          <label>Görünüm Süresi:</label>
+          <select id="nk-sure">
             <option value="1ay" ${ayar.aralik==='1ay'?'selected':''}>1 Ay</option>
             <option value="3ay" ${ayar.aralik==='3ay'?'selected':''}>3 Ay</option>
             <option value="6ay" ${ayar.aralik==='6ay'?'selected':''}>6 Ay</option>
             <option value="1yil" ${ayar.aralik==='1yil'?'selected':''}>1 Yıl</option>
-            <option value="ozel" ${ayar.aralik==='ozel'?'selected':''}>Özel Tarih</option>
+            <option value="ozel" ${ayar.aralik==='ozel'?'selected':''}>Özel</option>
           </select>
-          <span id="nk-ozel-alan" style="display:${ayar.aralik==='ozel'?'inline-flex':'none'};gap:6px">
-            <input type="date" id="nk-ozelbas" value="${ayar.ozelBas||Yardimci.bugun()}">
-            <input type="date" id="nk-ozelbit" value="${ayar.ozelBit||''}"></span>
-          <label>Görünüm:</label>
-          <select id="nk-gorunum" onchange="NakitAkis.gorunumDegis()">
-            <option value="tahmin" ${ayar.gorunum==='tahmin'?'selected':''}>Tahmin Dahil</option>
-            <option value="gerceklesen" ${ayar.gorunum==='gerceklesen'?'selected':''}>Gerçekleşenler</option>
-            <option value="tahmini" ${ayar.gorunum==='tahmini'?'selected':''}>Sadece Tahmini</option>
-          </select>
+          <label>Bitiş:</label><input type="date" id="nk-bit" value="${bit}">
           <label>Banka:</label>
-          <select id="nk-banka" multiple size="3" style="min-width:150px" onchange="NakitAkis.bankaDegis()">
+          <select id="nk-banka" multiple size="3" style="min-width:150px">
             ${bankalar.map(h=>`<option value="${h.id}" ${(ayar.bankaFiltre||[]).includes(h.id)?'selected':''}>${Yardimci.kacisHTML(Hesap.hesapAdi(h))}</option>`).join('')}
           </select>
-          <label style="display:inline-flex;align-items:center;gap:5px"><input type="checkbox" id="nk-kart" ${ayar.kartDahil!==false?'checked':''} onchange="NakitAkis.kartDegis()"> Kart Taksitleri</label>
-          <button class="btn btn-koyu btn-kucuk" onclick="Ongoru.formModal()">＋ Öngörü Ekle</button>
-          <button class="btn btn-yesil btn-kucuk" onclick="NakitAkis.csvOzet()">📊 CSV Özet</button>
-          <button class="btn btn-yesil btn-kucuk" onclick="NakitAkis.csvDetay()">📊 CSV Detay</button>
+          <label>Görünüm:</label>
+          <select id="nk-gorunum">
+            <option value="tahmin" ${ayar.gorunum==='tahmin'?'selected':''}>Tahmin Dahil</option>
+            <option value="gerceklesen" ${ayar.gorunum==='gerceklesen'?'selected':''}>Gerçekleşen</option>
+            <option value="tahmini" ${ayar.gorunum==='tahmini'?'selected':''}>Sadece Tahmini</option>
+          </select>
+          <button class="btn btn-kirmizi btn-kucuk" onclick="NakitAkis.yenile()">🔄 Yenile</button>
+          <button class="btn btn-yesil btn-kucuk" onclick="NakitAkis.csvDetay()">📊 CSV Aktar</button>
+          <button class="btn btn-koyu btn-kucuk" onclick="NakitAkis.yazdir()">🖨 Yazdır</button>
         </div>
         <div class="nakit-tablo-sar" id="nakit-tablo"></div>
-        <div class="nakit-grafik-kutu no-print">
-          <canvas id="nk-grafik-kalan" width="600" height="220"></canvas>
-          <canvas id="nk-grafik-gc" width="600" height="220"></canvas>
-        </div>
       </div>`;
+    // Görünüm Süresi değişince bitişi otomatik güncelle
+    document.getElementById('nk-sure').addEventListener('change', ()=>this.sureDegis());
     if(bankalar.length===0){
-      document.getElementById('nakit-tablo').innerHTML = `<div class="bos-mesaj">Henüz banka hesabı yok. Hesaplar sayfasından 102 Bankalar altında hesap açın.</div>`;
+      document.getElementById('nakit-tablo').innerHTML = `<div class="bos-mesaj">Henüz banka hesabı yok. Hesaplar sayfasından 102 Bankalar altında banka hesabı açın.</div>`;
+      return;
     }
+    this.ciz();
+  },
+
+  sureDegis(){
+    const sure = document.getElementById('nk-sure').value;
+    if(sure!=='ozel'){
+      const bas = document.getElementById('nk-bas').value || Yardimci.bugun();
+      document.getElementById('nk-bit').value = Yardimci.gunEkle(bas, this.aralikGun[sure]||30);
+    }
+    this.yenile();
+  },
+  yenile(){
+    const ayar = Depo.veri.nakitAyar;
+    ayar.aralik = document.getElementById('nk-sure').value;
+    ayar.ozelBas = document.getElementById('nk-bas').value || Yardimci.bugun();
+    ayar.ozelBit = document.getElementById('nk-bit').value || '';
+    ayar.gorunum = document.getElementById('nk-gorunum').value;
+    const sel = document.getElementById('nk-banka'); ayar.bankaFiltre=[...sel.selectedOptions].map(o=>o.value);
+    Depo.kaydet();
     this.ciz();
   },
 
@@ -3375,14 +3435,10 @@ const NakitAkis = {
     const ayar = Depo.veri.nakitAyar;
     const [bas,bit] = this.aralik();
     const bankaIds = this.filtreliBankalar();
-    const kartDahil = ayar.kartDahil!==false;
-    if(bankaIds.length===0){ this.ozetKartlar(null); return; }
-    const {seri} = this.projeksiyon(bas, bit, ayar.gorunum, bankaIds, kartDahil);
+    if(bankaIds.length===0) return;
+    const {seri} = this.projeksiyon(bas, bit, ayar.gorunum, bankaIds, ayar.kartDahil!==false);
     this._seri = seri;
     this.tabloCiz(seri);
-    this.ozetKartlar(seri);
-    this.grafikKalan(seri);
-    this.grafikGC(seri);
   },
 
   tabloCiz(seri){
@@ -3428,83 +3484,14 @@ const NakitAkis = {
   },
   popKapat(){ const b=document.getElementById('nakit-pop'); if(b) b.classList.remove('acik'); },
 
-  ozetKartlar(seri){
-    const el = document.getElementById('nakit-ozet'); const uy = document.getElementById('nakit-uyari');
-    if(!el) return;
-    const bankaIds = this.filtreliBankalar();
-    const bugun = Yardimci.bugun();
-    let bugunBakiye=0; bankaIds.forEach(id=>{ bugunBakiye += Donem.tarihliBakiye(id, bugun); });
-    // 1 yıllık projeksiyon (özet için, tahmin dahil)
-    const {seri:yil} = this.projeksiyon(bugun, Yardimci.gunEkle(bugun,365), 'tahmin', bankaIds, Depo.veri.nakitAyar.kartDahil!==false);
-    const bakiyeGun=(n)=>{ const t=Yardimci.gunEkle(bugun,n); const s=yil.find(x=>x.tarih===t); return s?s.kalan:(yil.length?yil[yil.length-1].kalan:bugunBakiye); };
-    let toplamGelir=0, toplamOdeme=0, enDusuk=Infinity, enDusukT='', ilkAcik=null;
-    yil.forEach(s=>{ toplamGelir+=s.giris; toplamOdeme+=s.cikis; if(s.kalan<enDusuk){enDusuk=s.kalan;enDusukT=s.tarih;} if(ilkAcik===null && s.kalan<0) ilkAcik=s; });
-    const kart=(ik,et,dg,renk)=>`<div class="ozet-kart"><div class="ust"><div class="ozet-ikon ${renk}">${ik}</div><div class="etiket">${et}</div></div><div class="deger">${dg}</div></div>`;
-    el.innerHTML =
-      kart('🏦','i-mavi','Bugünkü Banka Bakiyesi',Yardimci.paraFormat(bugunBakiye))+
-      kart('📅','i-mavi','30 Gün Sonra',Yardimci.paraFormat(bakiyeGun(30)))+
-      kart('📅','i-mavi','90 Gün Sonra',Yardimci.paraFormat(bakiyeGun(90)))+
-      kart('📅','i-mavi','1 Yıl Sonra',Yardimci.paraFormat(bakiyeGun(365)))+
-      kart('📥','i-yesil','Toplam Beklenen Gelir',Yardimci.paraFormat(toplamGelir))+
-      kart('📤','i-kirmizi','Toplam Beklenen Ödeme',Yardimci.paraFormat(toplamOdeme))+
-      kart('📉','i-turuncu','En Düşük Tahmini Bakiye',Yardimci.paraFormat(enDusuk===Infinity?bugunBakiye:enDusuk))+
-      kart('⚠️','i-kirmizi','İlk Nakit Açığı',ilkAcik?Yardimci.tarihFormat(ilkAcik.tarih):'Yok');
-    if(uy){
-      if(ilkAcik){
-        const gunSayisi = yil.filter(s=>s.kalan<0).length;
-        uy.innerHTML = `<div class="uyari-serit">⚠ ${Yardimci.tarihFormat(ilkAcik.tarih)} tarihinde tahmini banka bakiyesi ${Yardimci.paraFormat(ilkAcik.kalan)} olacaktır. Negatif bakiye tahmini olarak ${gunSayisi} gün sürebilir. En düşük bakiye: ${Yardimci.paraFormat(enDusuk)} (${Yardimci.tarihFormat(enDusukT)}).</div>`;
-      }else uy.innerHTML='';
-    }
+  yazdir(){
+    if(!this._seri || this._seri.length===0){ Bildirim.goster('uyari','Veri Yok','Yazdırılacak veri yok.'); return; }
+    const seri=this._seri;
+    const bas=['Nakit Akışı', ...seri.map(s=>Yardimci.tarihFormat(s.tarih))];
+    const r=(et,f)=>[et, ...seri.map(s=>Yardimci.paraFormat(f(s)))];
+    const satirlar=[r('Banka Devir',s=>s.devir), r('Banka Giriş',s=>s.giris), r('Banka Çıkış',s=>s.cikis), r('Banka Kalan',s=>s.kalan)];
+    Disari.yazdir('Nakit Akışı Raporu', Disari.tabloHTML(bas, satirlar));
   },
-
-  // --- Basit Canvas grafikler ---
-  grafikKalan(seri){
-    const c=document.getElementById('nk-grafik-kalan'); if(!c) return;
-    const ctx=c.getContext('2d'); const W=c.width, H=c.height; ctx.clearRect(0,0,W,H);
-    const koyu = document.body.classList.contains('tema-koyu');
-    const metin = koyu?'#e8ebf0':'#1f2530';
-    ctx.fillStyle=metin; ctx.font='12px Segoe UI'; ctx.fillText('Günlük Banka Kalan', 10, 18);
-    if(seri.length<2) return;
-    const vals=seri.map(s=>s.kalan); let mn=Math.min(0,...vals), mx=Math.max(...vals); if(mx===mn) mx=mn+1;
-    const padL=54, padR=12, padT=28, padB=20; const gw=W-padL-padR, gh=H-padT-padB;
-    const x=i=> padL + gw*i/(seri.length-1);
-    const y=v=> padT + gh*(1-(v-mn)/(mx-mn));
-    // sıfır çizgisi
-    ctx.strokeStyle=koyu?'#3a4552':'#e2e6ec'; ctx.beginPath(); ctx.moveTo(padL,y(0)); ctx.lineTo(W-padR,y(0)); ctx.stroke();
-    ctx.fillStyle=koyu?'#9aa4b2':'#5b6472'; ctx.font='10px Segoe UI';
-    ctx.fillText(Yardimci.sayiFormat(mx), 4, y(mx)+4); ctx.fillText(Yardimci.sayiFormat(mn), 4, y(mn)+4);
-    // alan
-    ctx.beginPath(); ctx.moveTo(x(0),y(vals[0]));
-    for(let i=1;i<seri.length;i++) ctx.lineTo(x(i),y(vals[i]));
-    ctx.strokeStyle='#d32027'; ctx.lineWidth=2; ctx.stroke();
-    // negatif noktalar
-    seri.forEach((s,i)=>{ if(s.kalan<0){ ctx.fillStyle='#d32027'; ctx.beginPath(); ctx.arc(x(i),y(s.kalan),2.5,0,7); ctx.fill(); } });
-  },
-  grafikGC(seri){
-    const c=document.getElementById('nk-grafik-gc'); if(!c) return;
-    const ctx=c.getContext('2d'); const W=c.width,H=c.height; ctx.clearRect(0,0,W,H);
-    const koyu=document.body.classList.contains('tema-koyu'); const metin=koyu?'#e8ebf0':'#1f2530';
-    ctx.fillStyle=metin; ctx.font='12px Segoe UI'; ctx.fillText('Günlük Giriş / Çıkış', 10, 18);
-    if(seri.length===0) return;
-    const mx=Math.max(1,...seri.map(s=>Math.max(s.giris,s.cikis)));
-    const padL=10,padR=10,padT=28,padB=14; const gw=W-padL-padR, gh=H-padT-padB;
-    const n=seri.length; const bw=Math.max(1, gw/n/2 - 0.5);
-    seri.forEach((s,i)=>{
-      const cx=padL + gw*i/n;
-      const gh1=gh*s.giris/mx, gh2=gh*s.cikis/mx;
-      ctx.fillStyle='#1f9d55'; ctx.fillRect(cx, padT+gh-gh1, bw, gh1);
-      ctx.fillStyle='#d32027'; ctx.fillRect(cx+bw+0.5, padT+gh-gh2, bw, gh2);
-    });
-  },
-
-  // --- Toolbar olayları ---
-  aralikDegis(){ const v=document.getElementById('nk-aralik').value; Depo.veri.nakitAyar.aralik=v;
-    document.getElementById('nk-ozel-alan').style.display = v==='ozel'?'inline-flex':'none';
-    if(v==='ozel'){ Depo.veri.nakitAyar.ozelBas=document.getElementById('nk-ozelbas').value; Depo.veri.nakitAyar.ozelBit=document.getElementById('nk-ozelbit').value; }
-    Depo.kaydet(); this.ciz(); },
-  gorunumDegis(){ Depo.veri.nakitAyar.gorunum=document.getElementById('nk-gorunum').value; Depo.kaydet(); this.ciz(); },
-  bankaDegis(){ const sel=document.getElementById('nk-banka'); Depo.veri.nakitAyar.bankaFiltre=[...sel.selectedOptions].map(o=>o.value); Depo.kaydet(); this.ciz(); },
-  kartDegis(){ Depo.veri.nakitAyar.kartDahil=document.getElementById('nk-kart').checked; Depo.kaydet(); this.ciz(); },
 
   // --- CSV ---
   csvOzet(){
@@ -3524,6 +3511,252 @@ const NakitAkis = {
     if(satir.length===0){ Bildirim.goster('uyari','Detay Yok','Aktarılacak hareket yok.'); return; }
     Disari.csv(bas, satir, 'nakit-akisi-detay');
   }
+};
+
+/* ==================================================================
+   Bölüm 14g: Vergi Hesaplamaları (1.6: Aylık KDV)
+   ================================================================== */
+const Vergi = {
+  UYARI:'Gösterilen vergi tutarları tahmini finansal planlama içindir. Kesin ödeme tutarı için mali müşavir veya muhasebe kayıtları esas alınmalıdır. Bu ekran resmî beyanname yerine geçmez.',
+
+  // KDV'ye dahil faturalar (iptal ve "dahil değil" hariç)
+  gecerliFaturalar(){
+    return Depo.veri.islemler.filter(x=>(x.tur==='satis'||x.tur==='alis') && !x.iptal && x.kdvDahilHesap!==false);
+  },
+  // Ay listesi (fatura tarihlerinden), YYYY-MM
+  donemler(){
+    const set = new Set();
+    this.gecerliFaturalar().forEach(f=>{ if(f.tarih) set.add(f.tarih.slice(0,7)); });
+    return [...set].sort();
+  },
+  donemAd(d){
+    const aylar=['Ocak','Şubat','Mart','Nisan','Mayıs','Haziran','Temmuz','Ağustos','Eylül','Ekim','Kasım','Aralık'];
+    const p=d.split('-'); return aylar[(+p[1])-1]+' '+p[0];
+  },
+  kayit(donem){
+    let k = Depo.veri.kdvDonemleri.find(x=>x.donem===donem);
+    if(!k){ k={donem, devredenOverride:null, muhasebeciTutar:null, odemeTarihi:null, duzeltmeler:[], durum:'tahmini'}; }
+    return k;
+  },
+  kayitYaz(k){
+    const i = Depo.veri.kdvDonemleri.findIndex(x=>x.donem===k.donem);
+    if(i>=0) Depo.veri.kdvDonemleri[i]=k; else Depo.veri.kdvDonemleri.push(k);
+  },
+  varsayilanOdemeTarihi(donem){
+    const p = donem.split('-'); let y=+p[0], m=+p[1];
+    const gun = Number(Depo.veri.vergiAyar.kdvOdemeGunu)||28;
+    m++; if(m>12){m=1;y++;}
+    const son = Yardimci.ayinSonGunu(y,m);
+    return Yardimci.iso(y,m,Math.min(gun,son));
+  },
+  // Tüm dönemleri devreden zinciriyle hesapla
+  hesapla(){
+    const faturalar = this.gecerliFaturalar();
+    const hes = {}, ind = {};
+    faturalar.forEach(f=>{
+      const d = f.tarih.slice(0,7); const kdv = Number(f.kdvTutar)||0;
+      if(f.tur==='satis') hes[d]=(hes[d]||0)+kdv; else ind[d]=(ind[d]||0)+kdv;
+    });
+    const donemler = this.donemler();
+    let onceki = 0;
+    const sonuc = [];
+    donemler.forEach(d=>{
+      const k = this.kayit(d);
+      const hesaplanan = Math.round((hes[d]||0)*100)/100;
+      const indirilecek = Math.round((ind[d]||0)*100)/100;
+      const fark = Math.round((hesaplanan - indirilecek - onceki)*100)/100;
+      let odenecek, devreden;
+      if(fark>0){ odenecek=fark; devreden=0; } else { odenecek=0; devreden=Math.abs(fark); }
+      // manuel devreden override -> sonraki döneme taşınacak değeri değiştirir
+      if(k.devredenOverride!=null) devreden = Number(k.devredenOverride);
+      const bag = Depo.veri.vergiNakitBaglari.find(b=>b.tur==='kdv' && b.donem===d);
+      const nakitTutar = k.muhasebeciTutar!=null ? Number(k.muhasebeciTutar) : odenecek;
+      const odemeTarihi = k.odemeTarihi || this.varsayilanOdemeTarihi(d);
+      let durum = 'Tahmini';
+      if(bag && bag.hareketId) durum='Ödendi';
+      else if(bag) durum='Nakit Akışına Aktarıldı';
+      if(!bag && odemeTarihi < Yardimci.bugun() && odenecek>0) durum='Gecikti';
+      if(k.muhasebeciTutar!=null) durum = (bag&&bag.hareketId)?'Ödendi':'Muhasebeci Onaylı';
+      sonuc.push({donem:d, hesaplanan, indirilecek, onceki, fark, odenecek, devreden, odemeTarihi, nakitTutar, bag, durum, kayit:k});
+      onceki = devreden;
+    });
+    return sonuc;
+  },
+
+  sayfa(el){
+    const sonuc = this.hesapla();
+    let tablo;
+    if(sonuc.length===0){ tablo = `<div class="bos-mesaj">Henüz faturaya bağlı KDV kaydı yok. İşlem Girişleri'nden alış/satış faturası girin.</div>`; }
+    else{
+      tablo = `<div class="tablo-sar"><table class="veri"><thead><tr>
+        <th>Dönem</th><th class="sag-hiza">Hesaplanan KDV</th><th class="sag-hiza">İndirilecek KDV</th><th class="sag-hiza">Önceki Devreden</th>
+        <th class="sag-hiza">Fark</th><th class="sag-hiza">Ödenecek</th><th class="sag-hiza">Sonraki Devreden</th><th>Planlanan Ödeme</th><th>Durum</th><th class="no-print">İşlemler</th>
+      </tr></thead><tbody>${sonuc.map(r=>{
+        const durumRenk = r.durum==='Ödendi'?'odendi':(r.durum==='Gecikti'?'odenmedi':'kismi');
+        const muh = r.kayit.muhasebeciTutar!=null ? `<div class="pop-aciklama">Muhasebeci: ${Yardimci.paraFormat(r.kayit.muhasebeciTutar)}</div>`:'';
+        return `<tr>
+          <td><b>${this.donemAd(r.donem)}</b></td>
+          <td class="sag-hiza">${Yardimci.paraFormat(r.hesaplanan)}</td>
+          <td class="sag-hiza">${Yardimci.paraFormat(r.indirilecek)}</td>
+          <td class="sag-hiza">${Yardimci.paraFormat(r.onceki)}</td>
+          <td class="sag-hiza">${Yardimci.paraFormat(r.fark)}</td>
+          <td class="sag-hiza"><b>${Yardimci.paraFormat(r.odenecek)}</b>${muh}</td>
+          <td class="sag-hiza">${Yardimci.paraFormat(r.devreden)}</td>
+          <td>${Yardimci.tarihFormat(r.odemeTarihi)}</td>
+          <td><span class="rozet ${durumRenk}">${r.durum}</span></td>
+          <td class="no-print satir-ic">
+            ${r.bag
+              ? `<button class="btn btn-cizgi btn-kucuk" onclick="Vergi.nakittenKaldir('${r.donem}')">Nakitten Kaldır</button>`
+              : `<button class="btn btn-kirmizi btn-kucuk" onclick="Vergi.nakiteAktar('${r.donem}')">Nakit Akışına Aktar</button>`}
+            <button class="btn btn-cizgi btn-kucuk" onclick="Vergi.duzeltModal('${r.donem}')">Düzelt</button>
+            <button class="btn btn-cizgi btn-kucuk" onclick="Vergi.eslestirModal('${r.donem}')">🔗 Eşleştir</button>
+          </td></tr>`;
+      }).join('')}</tbody></table></div>`;
+    }
+    el.innerHTML = `
+      <div class="uyari-serit" style="background:rgba(217,164,6,.12);border-color:var(--sari);color:var(--metin)">
+        ⚠ ${this.UYARI}</div>
+      <div class="kart">
+        <h2 class="bolum-baslik">Aylık KDV Hesaplama (Tahmini)</h2>
+        <p class="pop-aciklama" style="margin-bottom:14px;line-height:1.6">
+          Her ay için satış faturalarının <b>Hesaplanan KDV</b>'si ile alış faturalarının <b>İndirilecek KDV</b>'si karşılaştırılır.
+          Ödenecek KDV varsa "Nakit Akışına Aktar" ile tahmini ödeme olarak nakit akışına eklenir (planlanan ödeme: ertesi ayın ${Depo.veri.vergiAyar.kdvOdemeGunu||28}'i, Ayarlar'dan değiştirilebilir).
+          Devreden KDV otomatik sonraki aya taşınır.
+        </p>
+        <div class="buton-grup no-print" style="margin-bottom:14px">
+          <button class="btn btn-koyu btn-kucuk" onclick="Vergi.mahsupModal()">🧮 KDV Muhasebe Mahsup Fişi</button>
+        </div>
+        ${tablo}
+      </div>`;
+  },
+
+  // Nakit akışına aktar (öngörülen ödeme oluştur)
+  vergilerGrubu(){
+    let g = Depo.veri.gruplar.find(x=>x.tur==='gider' && x.ad==='Vergiler');
+    if(!g){ g={id:Yardimci.yeniId(), tur:'gider', ad:'Vergiler'}; Depo.veri.gruplar.push(g); }
+    return g.id;
+  },
+  nakiteAktar(donem){
+    const sonuc = this.hesapla().find(r=>r.donem===donem); if(!sonuc) return;
+    if(sonuc.nakitTutar<=0){ Bildirim.goster('uyari','Ödenecek KDV Yok','Bu dönemde ödenecek KDV bulunmuyor.'); return; }
+    if(Depo.veri.vergiNakitBaglari.some(b=>b.tur==='kdv'&&b.donem===donem)){ Bildirim.goster('uyari','Zaten Var','Bu dönem için nakit akışı kaydı zaten var.'); return; }
+    const kural = { id:Yardimci.yeniId(), tur:'odeme', aciklama:this.donemAd(donem)+' KDV Ödemesi', grupId:this.vergilerGrubu(),
+      tutar:sonuc.nakitTutar, bankaHesapId:null, tekrar:'tek', nettarih:sonuc.odemeTarihi, aktif:true, baslangic:sonuc.odemeTarihi, kaynak:'kdv:'+donem };
+    Depo.veri.ongoruler.push(kural);
+    Depo.veri.vergiNakitBaglari.push({id:Yardimci.yeniId(), tur:'kdv', donem, ongoruId:kural.id, hareketId:null, tutar:sonuc.nakitTutar, tarih:sonuc.odemeTarihi});
+    const k=this.kayit(donem); k.durum='aktarildi'; this.kayitYaz(k);
+    Depo.kaydet();
+    Bildirim.goster('basari','Aktarıldı', this.donemAd(donem)+' KDV ödemesi nakit akışına eklendi.');
+    App.sayfaGit('vergi');
+  },
+  nakittenKaldir(donem){
+    const bag = Depo.veri.vergiNakitBaglari.find(b=>b.tur==='kdv'&&b.donem===donem); if(!bag) return;
+    Depo.veri.ongoruler = Depo.veri.ongoruler.filter(o=>o.id!==bag.ongoruId);
+    Depo.veri.ongoruGercek = Depo.veri.ongoruGercek.filter(o=>o.kuralId!==bag.ongoruId);
+    Depo.veri.vergiNakitBaglari = Depo.veri.vergiNakitBaglari.filter(b=>b!==bag);
+    Depo.kaydet();
+    Bildirim.goster('basari','Kaldırıldı','Kayıt nakit akışından kaldırıldı.');
+    App.sayfaGit('vergi');
+  },
+  duzeltModal(donem){
+    const k = this.kayit(donem);
+    const sonuc = this.hesapla().find(r=>r.donem===donem);
+    Modal.ac(this.donemAd(donem)+' — KDV Düzeltme', `
+      <div class="form-grid">
+        <div class="form-alan"><label>Muhasebecinin Bildirdiği Ödenecek KDV</label>
+          <input type="number" min="0" step="0.01" id="v-muh" value="${k.muhasebeciTutar!=null?k.muhasebeciTutar:''}" placeholder="Boş = otomatik ${Yardimci.sayiFormat(sonuc?sonuc.odenecek:0)}"></div>
+        <div class="form-alan"><label>Sonraki Döneme Devreden KDV (elle)</label>
+          <input type="number" min="0" step="0.01" id="v-devreden" value="${k.devredenOverride!=null?k.devredenOverride:''}" placeholder="Boş = otomatik ${Yardimci.sayiFormat(sonuc?sonuc.devreden:0)}"></div>
+        <div class="form-alan"><label>Planlanan Ödeme Tarihi</label>
+          <input type="date" id="v-tarih" value="${k.odemeTarihi||(sonuc?sonuc.odemeTarihi:'')}"></div>
+        <div class="form-alan tam"><label>Düzeltme Açıklaması</label><input id="v-aciklama" placeholder="Örn: muhasebeci beyanı"></div>
+      </div>`,
+      `<button class="btn btn-gri" onclick="Modal.kapat()">Vazgeç</button><button class="btn btn-kirmizi" onclick="Vergi.duzeltKaydet('${donem}')">💾 Kaydet</button>`, true);
+  },
+  duzeltKaydet(donem){
+    const k = this.kayit(donem);
+    const muh = document.getElementById('v-muh').value;
+    const dev = document.getElementById('v-devreden').value;
+    const tarih = document.getElementById('v-tarih').value;
+    const acik = document.getElementById('v-aciklama').value.trim();
+    const eskiMuh = k.muhasebeciTutar, eskiDev = k.devredenOverride;
+    k.muhasebeciTutar = muh!=='' ? Yardimci.paraCoz(muh) : null;
+    k.devredenOverride = dev!=='' ? Yardimci.paraCoz(dev) : null;
+    k.odemeTarihi = tarih || null;
+    if(!k.duzeltmeler) k.duzeltmeler=[];
+    if(muh!==''||dev!=='') k.duzeltmeler.push({tarih:Yardimci.bugun(), aciklama:acik, eskiMuh, yeniMuh:k.muhasebeciTutar, eskiDev, yeniDev:k.devredenOverride});
+    this.kayitYaz(k);
+    // bağlı nakit kaydı varsa tutar/tarih güncelle
+    const bag = Depo.veri.vergiNakitBaglari.find(b=>b.tur==='kdv'&&b.donem===donem);
+    if(bag){ const sonuc=this.hesapla().find(r=>r.donem===donem); const kural=Depo.veri.ongoruler.find(o=>o.id===bag.ongoruId);
+      if(kural){ kural.tutar=sonuc.nakitTutar; kural.nettarih=sonuc.odemeTarihi; bag.tutar=sonuc.nakitTutar; } }
+    Depo.kaydet(); Modal.kapat();
+    Bildirim.goster('basari','Kaydedildi','KDV düzeltmesi kaydedildi.');
+    App.sayfaGit('vergi');
+  },
+  eslestirModal(donem){
+    const cikislar = Depo.veri.hareketler.filter(h=>{ const a=Hesap.altBul(h.hesapId); return a&&a.anaKod==='102'&&h.alacak>0; })
+      .sort((a,b)=>b.tarih.localeCompare(a.tarih)).slice(0,60);
+    const liste = cikislar.length ? cikislar.map(h=>{ const a=Hesap.altBul(h.hesapId); const is=Depo.veri.islemler.find(x=>x.id===h.islemId)||{};
+      return `<tr style="cursor:pointer" onclick="Vergi.eslestirSec('${donem}','${h.id}')"><td>${Yardimci.tarihFormat(h.tarih)}</td><td>${Yardimci.kacisHTML(Hesap.hesapAdi(a))}</td><td>${Yardimci.kacisHTML(is.islemAd||h.aciklama||'')}</td><td class="sag-hiza">${Yardimci.paraFormat(h.alacak)}</td></tr>`;
+    }).join('') : `<tr><td colspan="4" class="bos-mesaj">Eşleştirilecek banka çıkışı yok.</td></tr>`;
+    Modal.ac(this.donemAd(donem)+' — Gerçek Ödeme ile Eşleştir',
+      `<p class="pop-aciklama" style="margin-bottom:10px">Bu KDV dönemine ait gerçek banka çıkışını seçin:</p>
+       <div class="tablo-sar"><table class="veri"><thead><tr><th>Tarih</th><th>Banka</th><th>Açıklama</th><th class="sag-hiza">Tutar</th></tr></thead><tbody>${liste}</tbody></table></div>`,
+      `<button class="btn btn-gri" onclick="Modal.kapat()">Vazgeç</button>`, true);
+  },
+  eslestirSec(donem, hareketId){
+    let bag = Depo.veri.vergiNakitBaglari.find(b=>b.tur==='kdv'&&b.donem===donem);
+    if(!bag){ // aktarılmadan da eşleştirilebilsin
+      bag={id:Yardimci.yeniId(), tur:'kdv', donem, ongoruId:null, hareketId:hareketId, tarih:Yardimci.bugun()};
+      Depo.veri.vergiNakitBaglari.push(bag);
+    } else bag.hareketId=hareketId;
+    // bağlı öngörüyü matched yap (çift sayım olmasın)
+    if(bag.ongoruId){ const h=Depo.veri.hareketler.find(x=>x.id===hareketId);
+      const kural=Depo.veri.ongoruler.find(o=>o.id===bag.ongoruId);
+      if(kural) Depo.veri.ongoruGercek.push({id:Yardimci.yeniId(), kuralId:kural.id, tarih:kural.nettarih, durum:'gerceklesti', bankaHareketId:hareketId, gerceklesenTarih:h?h.tarih:null}); }
+    const k=this.kayit(donem); k.durum='odendi'; this.kayitYaz(k);
+    Depo.kaydet(); Modal.kapat();
+    Bildirim.goster('basari','Eşleştirildi','KDV ödemesi banka hareketiyle eşleştirildi.');
+    App.sayfaGit('vergi');
+  },
+
+  // KDV muhasebe mahsup fişi (GL: 391-191 -> 360/190) — Dönem Sonu'ndan taşındı
+  mahsupModal(){
+    Modal.ac('KDV Muhasebe Mahsup Fişi',
+      `<p class="pop-aciklama" style="margin-bottom:12px;line-height:1.6">Belirtilen tarihe kadarki <b>Hesaplanan KDV (391)</b> ve <b>İndirilecek KDV (191)</b> kapatılıp farkı <b>Ödenecek KDV (360)</b> / <b>Devreden KDV (190)</b> hesabına yazan muhasebe fişi oluşturur. (Bu, nakit akışından bağımsız bir muhasebe kaydıdır.)</p>
+       <div class="form-grid">
+        <div class="form-alan"><label>Tarih <span class="zorunlu">*</span></label><input type="date" id="kdv-tarih" value="${Yardimci.bugun()}"></div>
+        <div class="form-alan"><label>Dönem Adı</label><input id="kdv-donem" placeholder="Örn: Temmuz 2026"></div>
+       </div><div id="kdv-sonuc" style="margin-top:14px"></div>`,
+      `<button class="btn btn-gri" onclick="Modal.kapat()">Kapat</button>
+       <button class="btn btn-koyu" onclick="Donem.kdvHesaplaGoster()">Hesapla</button>
+       <button class="btn btn-kirmizi" onclick="Donem.kdvMahsupOlustur()">💾 Mahsup Fişi Oluştur</button>`, true);
+  },
+
+  // --- Ayarlar: KDV oran yönetimi + ödeme günü ---
+  ayarKart(el){
+    if(!el) return;
+    const oranlar = Depo.veri.vergiAyar.kdvOranlari||[];
+    el.innerHTML = `<h2 class="bolum-baslik">Vergi / KDV Ayarları</h2>
+      <div class="form-grid">
+        <div class="form-alan"><label>KDV Oranları (%)</label>
+          <div style="display:flex;gap:8px"><input type="number" min="0" max="100" id="v-yenioran" placeholder="Örn: 8"><button class="btn btn-koyu btn-kucuk" onclick="Vergi.oranEkle()">Ekle</button></div>
+          <div style="margin-top:10px">${oranlar.map(o=>`<span class="rozet kismi" style="margin:3px;display:inline-flex;align-items:center;gap:6px">%${o} <span style="cursor:pointer;color:var(--kirmizi)" onclick="Vergi.oranSil(${o})">✕</span></span>`).join('')||'<span class="pop-aciklama">Oran yok</span>'}</div>
+          <div class="pop-aciklama" style="margin-top:6px">Faturada "Özel Oran" için farklı bir değer de yazılabilir.</div></div>
+        <div class="form-alan"><label>KDV Varsayılan Ödeme Günü</label>
+          <input type="number" min="1" max="31" id="v-odemegunu" value="${Depo.veri.vergiAyar.kdvOdemeGunu||28}" onchange="Vergi.odemeGunuKaydet()">
+          <div class="pop-aciklama" style="margin-top:6px">KDV, ilgili dönemi takip eden ayın bu gününde planlanır (tarih düzenlenebilir).</div></div>
+      </div>`;
+  },
+  oranEkle(){
+    const v = Number(document.getElementById('v-yenioran').value);
+    if(isNaN(v)||v<0||v>100){ Bildirim.goster('hata','Geçersiz','0-100 arası bir oran girin.'); return; }
+    if(!Depo.veri.vergiAyar.kdvOranlari.includes(v)){ Depo.veri.vergiAyar.kdvOranlari.push(v); Depo.veri.vergiAyar.kdvOranlari.sort((a,b)=>a-b); Depo.kaydet(); }
+    const el=document.getElementById('vergi-ayar-kart'); if(el) this.ayarKart(el);
+  },
+  oranSil(o){ Depo.veri.vergiAyar.kdvOranlari = Depo.veri.vergiAyar.kdvOranlari.filter(x=>x!==o); Depo.kaydet(); const el=document.getElementById('vergi-ayar-kart'); if(el) this.ayarKart(el); },
+  odemeGunuKaydet(){ const v=Number(document.getElementById('v-odemegunu').value)||28; Depo.veri.vergiAyar.kdvOdemeGunu=Math.min(31,Math.max(1,v)); Depo.kaydet(); Bildirim.goster('basari','Kaydedildi','KDV ödeme günü güncellendi.'); }
 };
 
 /* ==================================================================
