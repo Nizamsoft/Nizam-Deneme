@@ -460,7 +460,7 @@ table.nakit th.bugun-sutun{background:var(--kirmizi)}
         </ul>
       </li>
     </ul>
-    <div class="menu-alt">Nizam Soft © 2026<br>Sürüm 1.6.6 • 19.07.2026</div>
+    <div class="menu-alt">Nizam Soft © 2026<br>Sürüm 1.6.7 • 19.07.2026</div>
   </nav>
 
   <!-- ANA İÇERİK -->
@@ -1415,10 +1415,10 @@ const Form = {
   },
 
   giderSecenek(secili){
-    // Gelir/Gider hesabı: 600 (gelir), 770 (gider), 331 (ortak) alt hesaplarından seçilir
+    // Karşı hesap: 600 (gelir), 770 (gider), 331 (ortak), 360 (vergi ödemesi) alt hesaplarından seçilir
     let opts = '';
     Depo.veri.altHesaplar
-      .filter(h=>h.anaKod==='600' || h.anaKod==='770' || h.anaKod==='331')
+      .filter(h=>h.anaKod==='600' || h.anaKod==='770' || h.anaKod==='331' || h.anaKod==='360')
       .sort((a,b)=>a.kod.localeCompare(b.kod,'tr'))
       .forEach(h=>{
         opts += `<option value="${h.id}" ${h.id===secili?'selected':''}>${h.kod} - ${Yardimci.kacisHTML(Hesap.hesapAdi(h))}</option>`;
@@ -1962,10 +1962,10 @@ const Form = {
     if(islem.tur==='alis'){
       // Satıcıya toplam borç artar -> Alacak (satıcı hesabına, KDV dahil)
       hareketler.push(this.hareket(islem, islem.hesapId, 0, islem.tutar, islem.aciklama||islem.faturaNo));
-      // İndirilecek KDV (191) -> Borç (devletten alacağımız KDV)
+      // KDV -> 360 Ödenecek Vergi ve Fonlar Borç (indirilecek KDV, ödenecek vergiyi azaltır)
       const kdv = Number(islem.kdvTutar)||0;
-      const id191 = Hesap.sistemId('191');
-      if(kdv>0 && id191) hareketler.push(this.hareket(islem, id191, kdv, 0, 'İndirilecek KDV - '+(islem.faturaNo||'')));
+      const id360 = Hesap.sistemId('360');
+      if(kdv>0 && id360) hareketler.push(this.hareket(islem, id360, kdv, 0, 'İndirilecek KDV - '+(islem.faturaNo||'')));
       // Demirbaş alımı ise matrah 255 Demirbaşlar -> Borç (varlık); fatura dengeli olur
       if(islem.demirbasHesapId && Hesap.altBul(islem.demirbasHesapId)){
         hareketler.push(this.hareket(islem, islem.demirbasHesapId, Number(islem.matrah)||0, 0, 'Demirbaş - '+(islem.faturaNo||'')));
@@ -1973,10 +1973,10 @@ const Form = {
     }else if(islem.tur==='satis'){
       // Alıcının toplam borcu artar -> Borç (alıcı hesabına, KDV dahil)
       hareketler.push(this.hareket(islem, islem.hesapId, islem.tutar, 0, islem.aciklama||islem.faturaNo));
-      // Hesaplanan KDV (391) -> Alacak (devlete borcumuz olan KDV)
+      // KDV -> 360 Ödenecek Vergi ve Fonlar Alacak (hesaplanan KDV, devlete borç)
       const kdv = Number(islem.kdvTutar)||0;
-      const id391 = Hesap.sistemId('391');
-      if(kdv>0 && id391) hareketler.push(this.hareket(islem, id391, 0, kdv, 'Hesaplanan KDV - '+(islem.faturaNo||'')));
+      const id360 = Hesap.sistemId('360');
+      if(kdv>0 && id360) hareketler.push(this.hareket(islem, id360, 0, kdv, 'Hesaplanan KDV - '+(islem.faturaNo||'')));
     }else if(islem.tur==='banka'){
       // Para girişi -> Borç, Para çıkışı -> Alacak (banka hesabına)
       const giris = islem.islemTuru==='giris';
@@ -3751,18 +3751,81 @@ const Vergi = {
     el.innerHTML = `
       <div class="uyari-serit" style="background:rgba(217,164,6,.12);border-color:var(--sari);color:var(--metin)">
         ⚠ ${this.UYARI}</div>
-      <div class="kart">
+      <div class="kart" style="margin-bottom:20px">
         <h2 class="bolum-baslik">Aylık KDV Hesaplama (Tahmini)</h2>
         <p class="pop-aciklama" style="margin-bottom:14px;line-height:1.6">
-          Her ay için satış faturalarının <b>Hesaplanan KDV</b>'si ile alış faturalarının <b>İndirilecek KDV</b>'si karşılaştırılır.
+          Faturalardaki KDV artık doğrudan <b>360 Ödenecek Vergi ve Fonlar</b> hesabına işlenir (satış → Alacak, alış → Borç); bu tablo tahmini planlama içindir.
           Ödenecek KDV varsa "Nakit Akışına Aktar" ile tahmini ödeme olarak nakit akışına eklenir (planlanan ödeme: ertesi ayın ${Depo.veri.vergiAyar.kdvOdemeGunu||28}'i, Ayarlar'dan değiştirilebilir).
-          Devreden KDV otomatik sonraki aya taşınır.
         </p>
-        <div class="buton-grup no-print" style="margin-bottom:14px">
-          <button class="btn btn-koyu btn-kucuk" onclick="Vergi.mahsupModal()">🧮 KDV Muhasebe Mahsup Fişi</button>
-        </div>
         ${tablo}
+      </div>
+      <div class="kart">
+        <h2 class="bolum-baslik">Manuel Vergi Kaydı / Tahakkuku</h2>
+        <p class="pop-aciklama" style="margin-bottom:12px;line-height:1.6">
+          Muhasebeden gelen gerçek vergi tahakkukunu (kurumlar/gelir/damga vb.) buradan elle işleyin. Tahakkuk 360 hesabına borç oluşturur (ödenecek vergi artar).
+        </p>
+        <div class="form-grid">
+          <div class="form-alan"><label>Tarih <span class="zorunlu">*</span></label><input type="date" id="mv-tarih" value="${Yardimci.bugun()}"></div>
+          <div class="form-alan"><label>Açıklama <span class="zorunlu">*</span></label><input id="mv-aciklama" placeholder="Örn: Temmuz Kurumlar Geçici Vergi tahakkuku"></div>
+          <div class="form-alan"><label>Tutar <span class="zorunlu">*</span></label><input type="number" min="0" step="0.01" id="mv-tutar" placeholder="0,00"></div>
+          <div class="form-alan"><label>İşlem Yönü</label>
+            <select id="mv-yon"><option value="tahakkuk">Tahakkuk (borç oluştur / artır)</option><option value="duzeltme">Düzeltme (borç azalt)</option></select></div>
+          <div class="form-alan"><label>Karşı Gider Hesabı (770)</label><select id="mv-gider">${this.giderHesapSecenek()}</select></div>
+        </div>
+        <div class="buton-grup no-print" style="margin-top:14px">
+          <button class="btn btn-kirmizi" onclick="Vergi.manuelKaydet()">💾 Manuel Vergi Kaydı Oluştur</button>
+        </div>
+        <div id="mv-liste" style="margin-top:16px"></div>
       </div>`;
+    this.manuelListe();
+  },
+
+  // 770 gider hesabı seçimi (manuel vergi tahakkuku karşı hesabı)
+  giderHesapSecenek(){
+    const opts = Depo.veri.altHesaplar.filter(h=>h.anaKod==='770')
+      .sort((a,b)=>a.kod.localeCompare(b.kod,'tr'))
+      .map(h=>`<option value="${h.id}">${h.kod} - ${Yardimci.kacisHTML(Hesap.hesapAdi(h))}</option>`).join('');
+    return `<option value="">— Yok (yalnız 360) —</option>` + opts;
+  },
+  manuelKaydet(){
+    const tarih=document.getElementById('mv-tarih').value;
+    const aciklama=document.getElementById('mv-aciklama').value.trim();
+    const tutar=Yardimci.paraCoz(document.getElementById('mv-tutar').value);
+    const yon=document.getElementById('mv-yon').value;
+    const giderId=document.getElementById('mv-gider').value||null;
+    if(!tarih||!aciklama||tutar<=0){ Bildirim.goster('hata','Eksik','Tarih, açıklama ve tutar zorunludur.'); return; }
+    const id360=Hesap.sistemId('360');
+    const islem={id:Yardimci.yeniId(), no:Depo.yeniIslemNo(), tur:'vergitahakkuk', tarih, islemAd:aciklama, tutar, yon, giderHesapId:giderId, aciklama};
+    const har=[];
+    if(yon==='tahakkuk'){
+      har.push({id:Yardimci.yeniId(), islemId:islem.id, islemNo:islem.no, hesapId:id360, tarih, aciklama, borc:0, alacak:tutar}); // 360 alacak (borç artar)
+      if(giderId) har.push({id:Yardimci.yeniId(), islemId:islem.id, islemNo:islem.no, hesapId:giderId, tarih, aciklama, borc:tutar, alacak:0}); // gider borç
+    }else{
+      har.push({id:Yardimci.yeniId(), islemId:islem.id, islemNo:islem.no, hesapId:id360, tarih, aciklama, borc:tutar, alacak:0}); // 360 borç (azalır)
+      if(giderId) har.push({id:Yardimci.yeniId(), islemId:islem.id, islemNo:islem.no, hesapId:giderId, tarih, aciklama, borc:0, alacak:tutar});
+    }
+    Depo.veri.islemler.push(islem);
+    Depo.veri.hareketler.push(...har);
+    Depo.kaydet();
+    Bildirim.goster('basari','Kaydedildi','Manuel vergi kaydı ('+islem.no+') oluşturuldu.');
+    App.sayfaGit('vergi');
+  },
+  manuelListe(){
+    const el=document.getElementById('mv-liste'); if(!el) return;
+    const list=Depo.veri.islemler.filter(x=>x.tur==='vergitahakkuk').sort((a,b)=>(b.no||'').localeCompare(a.no||''));
+    if(list.length===0){ el.innerHTML=`<div class="pop-aciklama">Henüz manuel vergi kaydı yok.</div>`; return; }
+    el.innerHTML=`<div class="tablo-sar"><table class="veri"><thead><tr><th>Fiş No</th><th>Tarih</th><th>Açıklama</th><th>Yön</th><th class="sag-hiza">Tutar</th><th class="no-print">İşlem</th></tr></thead><tbody>
+      ${list.map(f=>`<tr><td><span class="kod-rozet">${f.no}</span></td><td>${Yardimci.tarihFormat(f.tarih)}</td><td>${Yardimci.kacisHTML(f.aciklama||f.islemAd||'')}</td>
+        <td>${f.yon==='tahakkuk'?'Tahakkuk':'Düzeltme'}</td><td class="sag-hiza">${Yardimci.paraFormat(f.tutar)}</td>
+        <td class="no-print"><button class="btn btn-cizgi btn-kucuk" onclick="Vergi.manuelSil('${f.id}')">🗑 Sil</button></td></tr>`).join('')}
+    </tbody></table></div>`;
+  },
+  manuelSil(id){
+    Modal.onay('Kayıt Sil','Bu manuel vergi kaydını silmek istiyor musunuz?', ()=>{
+      Depo.veri.islemler=Depo.veri.islemler.filter(x=>x.id!==id);
+      Depo.veri.hareketler=Depo.veri.hareketler.filter(h=>h.islemId!==id);
+      Depo.kaydet(); Bildirim.goster('basari','Silindi','Kayıt silindi.'); App.sayfaGit('vergi');
+    }, 'Evet, Sil', true);
   },
 
   // Nakit akışına aktar (öngörülen ödeme oluştur)
@@ -3976,6 +4039,8 @@ const KarZarar = {
     // mizan satırları
     let govde=''; let tDevir=0,tBorc=0,tAlacak=0,tGuncel=0;
     Depo.veri.anaHesaplar.forEach(ana=>{
+      // Bilanço: gelir tablosu hesapları (gelir/gider/dönem sonucu) gösterilmez
+      if(ana.tur==='gelir' || ana.tur==='gider' || ana.kod==='690') return;
       const altlar = Hesap.altHesaplarByAna(ana.kod);
       const ids = altlar.map(h=>h.id);
       const r = this.satirHesapla(ids, bas, bit);
@@ -4004,9 +4069,11 @@ const KarZarar = {
         if(altlar.length===0) govde += `<tr><td class="girinti" colspan="5" style="color:var(--metin-soluk);font-style:italic">Alt hesap yok</td></tr>`;
       }
     });
-    const dengeli = Math.abs(tBorc-tAlacak)<1;
     const gg = this.gelirGider(bas,bit);
     const brut = gg.gelir-gg.gider, netKar = brut-gg.kdvYuku;
+    // Bilanço tutarlılığı: Σ Güncel Bakiye (Aktif − Pasif) = Dönem Brüt Kâr/Zararı olmalı
+    const bilancoFark = Math.round((tGuncel - brut)*100)/100;
+    const dengeli = Math.abs(bilancoFark) < 1;
 
     el.innerHTML = `
       <div class="nakit-arac no-print">
@@ -4032,8 +4099,8 @@ const KarZarar = {
             <td class="sag-hiza">${this.bakiyeHTML(tGuncel)}</td></tr></tfoot>
         </table></div>
         ${dengeli
-          ? `<div class="kz-net" style="margin-top:12px;color:var(--yesil)">✓ Denge sağlandı: Toplam Borç = Toplam Alacak (${Yardimci.paraFormat(tBorc)})</div>`
-          : `<div class="uyari-serit" style="margin-top:12px;background:rgba(217,164,6,.12);border-color:var(--sari);color:var(--metin)">⚠ Toplam Borç (${Yardimci.paraFormat(tBorc)}) ile Toplam Alacak (${Yardimci.paraFormat(tAlacak)}) eşit değil — fark ${Yardimci.paraFormat(tBorc-tAlacak)}. Bu, karşı hesabı seçilmemiş (tek bacaklı) bir hareket olduğunu gösterir; ilgili işlemi açıp karşı hesabını atayın.</div>`}
+          ? `<div class="kz-net" style="margin-top:12px;color:var(--yesil)">✓ Bilanço tutuyor: Net Bakiye (Varlık − Borç) = Dönem Brüt Kâr/Zararı (${Yardimci.paraFormat(tGuncel)}) — aşağıdaki Kâr/Zarar kutusuyla aynı.</div>`
+          : `<div class="uyari-serit" style="margin-top:12px;background:rgba(217,164,6,.12);border-color:var(--sari);color:var(--metin)">⚠ Bilanço net sonucu (${Yardimci.paraFormat(tGuncel)}) ile hesaplanan brüt kâr/zarar (${Yardimci.paraFormat(brut)}) eşit değil — fark ${Yardimci.paraFormat(bilancoFark)}. Bu, karşı hesabı seçilmemiş (tek bacaklı) bir hareket olduğunu gösterir; ilgili işlemi açıp karşı hesabını atayın.</div>`}
         <div class="kz-sonuc" style="margin-top:16px">
           <div class="kz-satir-sonuc"><span>Gelirler (satış + direkt gelir)</span><span class="kz-kar">+${Yardimci.paraFormat(gg.gelir)}</span></div>
           <div class="kz-satir-sonuc"><span>Giderler (alış + harcamalar)</span><span class="kz-zarar">−${Yardimci.paraFormat(gg.gider)}</span></div>
@@ -4077,6 +4144,7 @@ const KarZarar = {
   mizanSatirlar(bas,bit){
     const out=[];
     Depo.veri.anaHesaplar.forEach(ana=>{
+      if(ana.tur==='gelir' || ana.tur==='gider' || ana.kod==='690') return;
       const ids=Hesap.altHesaplarByAna(ana.kod).map(h=>h.id);
       const r=this.satirHesapla(ids,bas,bit);
       if(Math.abs(r.devir)<0.005&&Math.abs(r.borc)<0.005&&Math.abs(r.alacak)<0.005&&Math.abs(r.guncel)<0.005) return;
