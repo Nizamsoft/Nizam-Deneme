@@ -460,7 +460,7 @@ table.nakit th.bugun-sutun{background:var(--kirmizi)}
         </ul>
       </li>
     </ul>
-    <div class="menu-alt">Nizam Soft © 2026<br>Sürüm 1.6.2 • 19.07.2026</div>
+    <div class="menu-alt">Nizam Soft © 2026<br>Sürüm 1.6.3 • 19.07.2026</div>
   </nav>
 
   <!-- ANA İÇERİK -->
@@ -1760,6 +1760,12 @@ const Form = {
     const odemeTipi = document.getElementById('kk-odemetipi').value;
     let adet = odemeTipi==='tek' ? 1 : Math.max(1, Number(document.getElementById('kk-taksit').value)||1);
     const sahisId = document.getElementById('kk-sahis').value || null;
+    const giderId = document.getElementById('kk-gider').value || null;
+    // Karşı hesap zorunlu: dengeli kayıt için Satıcı/Şahıs veya Gider Hesabı seçilmeli
+    if(!sahisId && !giderId){
+      Bildirim.goster('hata','Karşı Hesap Gerekli','Bu harcamanın kime/neye ait olduğunu seçin: Satıcı/Şahıs (ör. ödeme yaptığınız cari) veya Gider Hesabı. Aksi halde kayıt dengelenemez.');
+      return;
+    }
     const sahisH = sahisId ? Hesap.altBul(sahisId) : null;
     const ilkTaksit = this.taksitIlkTarih();
 
@@ -1882,6 +1888,12 @@ const Form = {
 
     // Şahıs/Firma: hesap seçimi -> id sakla, ekranlarda gösterim için etiket üret
     const sahisId = document.getElementById(on+'-sahis').value || null;
+    const giderId = document.getElementById(on+'-gider').value || null;
+    // Karşı hesap zorunlu: dengeli kayıt için Şahıs/Firma veya Gelir/Gider Hesabı seçilmeli
+    if(!sahisId && !giderId){
+      Bildirim.goster('hata','Karşı Hesap Gerekli','Bu paranın kaynağını/gideceği yeri seçin: Şahıs/Firma (ör. ortak parası için Ortaklara Borçlar, tahsilat için müşteri) veya Gelir/Gider Hesabı. Aksi halde kayıt dengelenemez.');
+      return;
+    }
     const sahisH = sahisId ? Hesap.altBul(sahisId) : null;
 
     const islem = {
@@ -3899,12 +3911,23 @@ const KarZarar = {
       if(alt.anaKod==='600'){ const v=(Number(hr.alacak)||0)-(Number(hr.borc)||0); if(icinde(hr.tarih)&&Math.abs(v)>0.001){ gelir+=v; gd.push({ad:is.islemAd||hr.aciklama||'Gelir', hesap:Hesap.hesapAdi(alt), tarih:hr.tarih, tutar:v}); } }
       if(alt.anaKod==='770'){ const v=(Number(hr.borc)||0)-(Number(hr.alacak)||0); if(icinde(hr.tarih)&&Math.abs(v)>0.001){ gider+=v; cd.push({ad:is.islemAd||hr.aciklama||'Gider', hesap:Hesap.hesapAdi(alt), tarih:hr.tarih, tutar:v}); } }
     });
+    // Sınıflandırılmamış (karşı hesabı olmayan tek bacaklı banka/kart hareketleri)
+    let sinif=0; const sd=[];
+    Depo.veri.islemler.forEach(is=>{
+      if((is.tur==='banka'||is.tur==='kart') && !is.sahisHesapId && !is.giderHesapId && icinde(is.tarih)){
+        const t = Number(is.tutar)||0;
+        const etki = is.tur==='banka' ? (is.islemTuru==='giris'? t : -t) : -t; // net durum etkisi
+        sinif += etki;
+        const h = Hesap.altBul(is.hesapId);
+        sd.push({ad:is.islemAd||'Sınıflandırılmamış', hesap:h?Hesap.hesapAdi(h):'', tarih:is.tarih, tutar:etki, islemId:is.id, itur:is.tur});
+      }
+    });
     gd.sort((a,b)=>a.tarih.localeCompare(b.tarih)); cd.sort((a,b)=>a.tarih.localeCompare(b.tarih));
     // bu dönem KDV yükü (Vergi modülünün devreden zincirli sonucundan)
     let kdvYuku = 0;
     const vr = Vergi.hesapla().find(r=>r.donem===ay);
     if(vr) kdvYuku = vr.nakitTutar;
-    return {gelir, gider, gd, cd, kdvHes, kdvInd, kdvYuku};
+    return {gelir, gider, gd, cd, kdvHes, kdvInd, kdvYuku, sinif, sd};
   },
 
   sayfa(el){
@@ -3916,10 +3939,10 @@ const KarZarar = {
     const kv = this.taraf(this.VARLIK, kalanTarih, false), kb = this.taraf(this.BORC, kalanTarih, true);
     const devirNet = dv.toplam - db.toplam, kalanNet = kv.toplam - kb.toplam;
     const gg = this.gelirGider(ay);
-    this._detay = {gd:gg.gd, cd:gg.cd, ay};
+    this._detay = {gd:gg.gd, cd:gg.cd, sd:gg.sd, ay};
     const brut = gg.gelir - gg.gider;
     const netKar = brut - gg.kdvYuku;
-    const fark = Math.round((kalanNet - (devirNet + brut))*100)/100; // ~0 olmalı
+    const fark = Math.round((kalanNet - (devirNet + brut + gg.sinif))*100)/100; // ~0 olmalı
 
     const kutu = (baslik, taraf, cls) => `
       <div class="kz-kutu ${cls}"><h4>${baslik}</h4>
@@ -3954,9 +3977,12 @@ const KarZarar = {
         <div class="kz-gg kz-gider-bar" onmouseenter="KarZarar.pop(event,'gider')" onmouseleave="KarZarar.popKapat()" onclick="KarZarar.pop(event,'gider')">
           <span>➖ GİDERLER <span class="kz-ipucu">(üzerine gelin — ${gg.cd.length} kalem)</span></span><b>−${Yardimci.paraFormat(gg.gider)}</b></div>
         ${bakiyeBlok('Kalan Bakiyeler (Ay Sonu)', kv, kb, kalanNet)}
+        ${gg.sinif!==0 ? `<div class="uyari-serit" style="background:rgba(217,164,6,.12);border-color:var(--sari);color:var(--metin)" onmouseenter="KarZarar.pop(event,'sinif')" onmouseleave="KarZarar.popKapat()" onclick="KarZarar.pop(event,'sinif')">
+          ⚠ Bu ay <b>karşı hesabı seçilmemiş ${gg.sd.length} hareket</b> var (net ${Yardimci.paraFormat(gg.sinif)}). Tablo bunları "Sınıflandırılmamış" olarak dengeliyor. Üzerine gelin, ilgili işlemi açıp doğru hesabı (ör. 331 Ortaklara Borçlar) atayın.</div>`:''}
         <div class="kz-sonuc">
           <div class="kz-brut"><span>BRÜT KÂR (Gelir − Gider)</span><span class="${brut>=0?'kz-kar':'kz-zarar'}">${brut>=0?'+':''}${Yardimci.paraFormat(brut)}</span></div>
-          <div class="kz-dogrula">Devir Net (${Yardimci.paraFormat(devirNet)}) + Brüt Kâr (${Yardimci.paraFormat(brut)}) = Kalan Net (${Yardimci.paraFormat(kalanNet)}) ${Math.abs(fark)<1?'✓ tutuyor':'(fark: '+Yardimci.paraFormat(fark)+')'}</div>
+          ${gg.sinif!==0 ? `<div class="kz-satir-sonuc"><span>⚠ Sınıflandırılmamış Hareketler</span><span>${gg.sinif>=0?'+':''}${Yardimci.paraFormat(gg.sinif)}</span></div>`:''}
+          <div class="kz-dogrula">Devir Net (${Yardimci.paraFormat(devirNet)}) + Brüt Kâr (${Yardimci.paraFormat(brut)})${gg.sinif!==0?' + Sınıflandırılmamış ('+Yardimci.paraFormat(gg.sinif)+')':''} = Kalan Net (${Yardimci.paraFormat(kalanNet)}) ${Math.abs(fark)<1?'✓ tutuyor':'(fark: '+Yardimci.paraFormat(fark)+')'}</div>
           <div class="kz-satir-sonuc"><span>Bu Dönem Ödenecek KDV Yükü</span><span class="kz-zarar">−${Yardimci.paraFormat(gg.kdvYuku)}</span></div>
           <div class="kz-netkar"><span>NET KÂR (KDV sonrası, cebe kalan)</span><span class="${netKar>=0?'kz-kar':'kz-zarar'}">${netKar>=0?'+':''}${Yardimci.paraFormat(netKar)}</span></div>
         </div>
@@ -3967,13 +3993,14 @@ const KarZarar = {
   },
 
   pop(ev, tur){
-    const detay = tur==='gelir' ? this._detay.gd : this._detay.cd;
+    const detay = tur==='gelir' ? this._detay.gd : (tur==='gider' ? this._detay.cd : this._detay.sd);
+    const baslik = tur==='gelir'?'Gelirler':(tur==='gider'?'Giderler':'Sınıflandırılmamış Hareketler');
     let box = document.getElementById('nakit-pop');
     if(!box){ box=document.createElement('div'); box.id='nakit-pop'; box.className='nakit-pop'; document.body.appendChild(box); }
-    if(!detay || detay.length===0){ box.innerHTML=`<h4>${tur==='gelir'?'Gelirler':'Giderler'}</h4><div class="pop-aciklama">Bu ay kayıt yok.</div>`; }
+    if(!detay || detay.length===0){ box.innerHTML=`<h4>${baslik}</h4><div class="pop-aciklama">Bu ay kayıt yok.</div>`; }
     else{
       const toplam = detay.reduce((a,x)=>a+x.tutar,0);
-      box.innerHTML = `<h4>${this.ayAdi(this._detay.ay)} — ${tur==='gelir'?'Gelirler':'Giderler'}</h4>`+
+      box.innerHTML = `<h4>${this.ayAdi(this._detay.ay)} — ${baslik}</h4>`+
         detay.map(d=>`<div class="pop-satir"><div><div>${Yardimci.kacisHTML(d.ad)}</div>
           <div class="pop-aciklama">${Yardimci.tarihFormat(d.tarih)}${d.hesap?' • '+Yardimci.kacisHTML(d.hesap):''}</div></div>
           <div style="font-weight:600;white-space:nowrap">${Yardimci.paraFormat(d.tutar)}</div></div>`).join('')+
