@@ -460,7 +460,7 @@ table.nakit th.bugun-sutun{background:var(--kirmizi)}
         </ul>
       </li>
     </ul>
-    <div class="menu-alt">Nizam Soft © 2026<br>Sürüm 1.6.9 • 19.07.2026</div>
+    <div class="menu-alt">Nizam Soft © 2026<br>Sürüm 1.7.0 • 19.07.2026</div>
   </nav>
 
   <!-- ANA İÇERİK -->
@@ -4019,6 +4019,15 @@ const KarZarar = {
     Vergi.hesapla().forEach(r=>{ if(r.donem>=b7 && r.donem<=t7) kdvYuku+=r.nakitTutar; });
     return {gelir, gider, kdvHes, kdvInd, kdvYuku};
   },
+  // Dönem Kâr/Zararı kapanış satırı: gelir(600)/gider(770) hesaplarının mizanda
+  // görünmeyen karşı bacağı. Gider→Borç, gelir→Alacak. Bu satır mizanın Borç ve
+  // Alacak sütunlarını eşitler (çift taraf dengesi) — yoksa Borç≠Alacak olur.
+  kapanisRow(bas,bit){
+    const gg=this.gelirGider(bas,bit);
+    const borc=Math.round(gg.gider*100)/100, alacak=Math.round(gg.gelir*100)/100;
+    if(Math.abs(borc)<0.005 && Math.abs(alacak)<0.005) return null;
+    return {borc, alacak, guncel: Math.round((borc-alacak)*100)/100};
+  },
 
   ayAdi(){ return ''; },
   guncelle(){
@@ -4076,7 +4085,22 @@ const KarZarar = {
     const brut = gg.gelir-gg.gider, netKar = brut-gg.kdvYuku;
     // Bilanço tutarlılığı: Σ Güncel Bakiye (Aktif − Pasif) = Dönem Brüt Kâr/Zararı olmalı
     const bilancoFark = Math.round((tGuncel - brut)*100)/100;
-    const dengeli = Math.abs(bilancoFark) < 1;
+    // Kâr/Zarar kapanış satırı: gelir/gider hesaplarının mizanda görünmeyen karşı
+    // bacağını (gider→Borç, gelir→Alacak) tek satırda gösterir; Borç=Alacak sağlanır.
+    const kap = this.kapanisRow(bas,bit);
+    let kapanisSatir='';
+    if(kap){
+      tBorc+=kap.borc; tAlacak+=kap.alacak; tGuncel+=kap.guncel;
+      kapanisSatir = `<tr class="ana-hesap-satir" style="border-top:2px solid var(--kirmizi)">
+        <td><span style="display:inline-block;width:14px">&nbsp;</span> <span class="kod-rozet">690</span> Dönem Kâr/Zararı <span style="color:var(--metin-soluk);font-weight:400">(gelir/gider karşılığı)</span></td>
+        <td class="sag-hiza">${this.bakiyeHTML(0)}</td>
+        <td class="sag-hiza">${kap.borc?Yardimci.paraFormat(kap.borc):'-'}</td>
+        <td class="sag-hiza">${kap.alacak?Yardimci.paraFormat(kap.alacak):'-'}</td>
+        <td class="sag-hiza"><b>${this.bakiyeHTML(kap.guncel)}</b></td>
+      </tr>`;
+    }
+    const borcAlacakFark = Math.round((tBorc - tAlacak)*100)/100;
+    const dengeli = Math.abs(borcAlacakFark) < 1;
 
     el.innerHTML = `
       <div class="nakit-arac no-print">
@@ -4094,7 +4118,7 @@ const KarZarar = {
         <p class="pop-aciklama" style="margin-bottom:12px">Her satırda: <b>Güncel Bakiye = Devir + Borç − Alacak</b>. Ana hesaba tıklayınca alt hesaplar açılır. Borç/Alacak hücresinin üzerine gelince o dönemin hareketleri listelenir. (+) borç bakiyesi, (−) alacak bakiyesidir.</p>
         <div class="tablo-sar"><table class="veri">
           <thead><tr><th>Hesap</th><th class="sag-hiza">Devir</th><th class="sag-hiza">Borç</th><th class="sag-hiza">Alacak</th><th class="sag-hiza">Güncel Bakiye</th></tr></thead>
-          <tbody>${govde||'<tr><td colspan="5" class="bos-mesaj">Bu aralıkta hareket yok.</td></tr>'}</tbody>
+          <tbody>${govde ? (govde+kapanisSatir) : '<tr><td colspan="5" class="bos-mesaj">Bu aralıkta hareket yok.</td></tr>'}</tbody>
           <tfoot><tr class="ana-hesap-satir"><td>GENEL TOPLAM</td>
             <td class="sag-hiza">${this.bakiyeHTML(tDevir)}</td>
             <td class="sag-hiza">${Yardimci.paraFormat(tBorc)}</td>
@@ -4102,8 +4126,11 @@ const KarZarar = {
             <td class="sag-hiza">${this.bakiyeHTML(tGuncel)}</td></tr></tfoot>
         </table></div>
         ${dengeli
-          ? `<div class="kz-net" style="margin-top:12px;color:var(--yesil)">✓ Bilanço tutuyor: Net Bakiye (Varlık − Borç) = Dönem Brüt Kâr/Zararı (${Yardimci.paraFormat(tGuncel)}) — aşağıdaki Kâr/Zarar kutusuyla aynı.</div>`
-          : `<div class="uyari-serit" style="margin-top:12px;background:rgba(217,164,6,.12);border-color:var(--sari);color:var(--metin)">⚠ Bilanço net sonucu (${Yardimci.paraFormat(tGuncel)}) ile hesaplanan brüt kâr/zarar (${Yardimci.paraFormat(brut)}) eşit değil — fark ${Yardimci.paraFormat(bilancoFark)}. Bu, karşı hesabı seçilmemiş (tek bacaklı) bir hareket olduğunu gösterir; ilgili işlemi açıp karşı hesabını atayın.</div>`}
+          ? `<div class="kz-net" style="margin-top:12px;color:var(--yesil)">✓ Mizan dengeli: Borç toplamı = Alacak toplamı (${Yardimci.paraFormat(tBorc)}). Gelir/gider hesaplarının karşılığı <b>690 Dönem Kâr/Zararı</b> satırında gösterildi.</div>`
+          : `<div class="uyari-serit" style="margin-top:12px;background:rgba(217,164,6,.12);border-color:var(--sari);color:var(--metin)">⚠ Borç (${Yardimci.paraFormat(tBorc)}) ile Alacak (${Yardimci.paraFormat(tAlacak)}) eşit değil — fark ${Yardimci.paraFormat(borcAlacakFark)}. Karşı hesabı seçilmemiş (tek bacaklı) bir hareket var; ilgili işlemi açıp karşı hesabını atayın.</div>`}
+        ${Math.abs(tGuncel)>=1
+          ? `<div class="uyari-serit" style="margin-top:8px;background:rgba(47,109,143,.10);border-color:#2f6d8f;color:var(--metin)">ℹ Güncel bakiye toplamı sıfır değil (${Yardimci.paraFormat(tGuncel)}). Bu genelde açılış (devir) bakiyelerinizin kendi içinde eşitlenmemesinden olur — açılışta bir öz kaynak/sermaye bakiyesi girilmemiş olabilir. Borç–Alacak eşitliğini etkilemez.</div>`
+          : ''}
         <div class="kz-sonuc" style="margin-top:16px">
           <div class="kz-satir-sonuc"><span>Gelirler (satış + direkt gelir)</span><span class="kz-kar">+${Yardimci.paraFormat(gg.gelir)}</span></div>
           <div class="kz-satir-sonuc"><span>Giderler (alış + harcamalar)</span><span class="kz-zarar">−${Yardimci.paraFormat(gg.gider)}</span></div>
@@ -4156,6 +4183,8 @@ const KarZarar = {
         if(Math.abs(ar.devir)<0.005&&Math.abs(ar.borc)<0.005&&Math.abs(ar.alacak)<0.005&&Math.abs(ar.guncel)<0.005) return;
         out.push(['   '+h.kod+' '+Hesap.hesapAdi(h), ar.devir, ar.borc, ar.alacak, ar.guncel]); });
     });
+    const kap=this.kapanisRow(bas,bit);
+    if(kap) out.push(['690 Dönem Kâr/Zararı (gelir/gider karşılığı)', 0, kap.borc, kap.alacak, kap.guncel]);
     return out;
   },
   yazdir(){
