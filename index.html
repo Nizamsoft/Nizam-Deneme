@@ -460,7 +460,7 @@ table.nakit th.bugun-sutun{background:var(--kirmizi)}
         </ul>
       </li>
     </ul>
-    <div class="menu-alt">Nizam Soft © 2026<br>Sürüm 1.6.4 • 19.07.2026</div>
+    <div class="menu-alt">Nizam Soft © 2026<br>Sürüm 1.6.5 • 19.07.2026</div>
   </nav>
 
   <!-- ANA İÇERİK -->
@@ -598,6 +598,7 @@ const Depo = {
       anaHesaplar:[
         {kod:'102', ad:'Bankalar', tur:'banka'},
         {kod:'120', ad:'Alıcılar', tur:'alici'},
+        {kod:'255', ad:'Demirbaşlar', tur:'demirbas'},
         {kod:'309', ad:'Kredi Kartları', tur:'kart'},
         {kod:'320', ad:'Satıcılar', tur:'satici'},
         {kod:'331', ad:'Ortaklara Borçlar', tur:'ortak'},
@@ -624,7 +625,7 @@ const Depo = {
       vergiAyar:{ kdvOranlari:[0,1,10,20], kdvOdemeGunu:28 }, // taxSettings
       kdvDonemleri:[], // vatPeriods (override kayıtları) {donem,devredenOverride,muhasebeciTutar,odemeTarihi,duzeltmeler:[],durum}
       vergiNakitBaglari:[], // taxCashFlowLinks {id,tur,donem,ongoruId,hareketId,tutar,tarih}
-      sayaclar:{ islemNo:0, altKod:{'102':0,'120':0,'309':0,'320':0,'331':0,'600':0,'770':0,'191':0,'391':0,'190':0,'360':0,'690':0,'590':0,'591':0} }
+      sayaclar:{ islemNo:0, altKod:{'102':0,'120':0,'255':0,'309':0,'320':0,'331':0,'600':0,'770':0,'191':0,'391':0,'190':0,'360':0,'690':0,'590':0,'591':0} }
     };
   },
 
@@ -848,9 +849,9 @@ const Hesap = {
   acilisBakiye(hesap){
     if(!hesap) return 0;
     const a = Number(hesap.acilis)||0;
-    // Borç nitelikli (açılış borç, pozitif bakiye): banka, alıcı, gider (770)
+    // Borç nitelikli (açılış borç, pozitif bakiye): banka, alıcı, demirbaş (255), gider (770)
     // Alacak nitelikli (açılış alacak, negatif bakiye): satıcı, kart, ortak (331), gelir (600)
-    if(hesap.tur==='banka' || hesap.tur==='alici' || hesap.tur==='gider') return a;
+    if(hesap.tur==='banka' || hesap.tur==='alici' || hesap.tur==='demirbas' || hesap.tur==='gider') return a;
     if(hesap.tur==='satici' || hesap.tur==='kart' || hesap.tur==='ortak' || hesap.tur==='gelir') return -a;
     return a;
   },
@@ -871,7 +872,7 @@ const Hesap = {
     let tBorc=0, tAlacak=0;
     const ac = Number(hesap && hesap.acilis)||0;
     if(hesap){
-      if(hesap.tur==='banka' || hesap.tur==='alici' || hesap.tur==='gider') tBorc += ac;
+      if(hesap.tur==='banka' || hesap.tur==='alici' || hesap.tur==='demirbas' || hesap.tur==='gider') tBorc += ac;
       else tAlacak += ac;
     }
     Depo.veri.hareketler.filter(h=>h.hesapId===hesapId).forEach(h=>{
@@ -1414,10 +1415,10 @@ const Form = {
   },
 
   giderSecenek(secili){
-    // Gelir/Gider hesabı: 600 (gelir), 770 (gider) ve 331 (ortak) alt hesaplarından seçilir
+    // Karşı hesap: 600 (gelir), 770 (gider), 331 (ortak), 255 (demirbaş) alt hesaplarından seçilir
     let opts = '';
     Depo.veri.altHesaplar
-      .filter(h=>h.anaKod==='600' || h.anaKod==='770' || h.anaKod==='331')
+      .filter(h=>h.anaKod==='600' || h.anaKod==='770' || h.anaKod==='331' || h.anaKod==='255')
       .sort((a,b)=>a.kod.localeCompare(b.kod,'tr'))
       .forEach(h=>{
         opts += `<option value="${h.id}" ${h.id===secili?'selected':''}>${h.kod} - ${Yardimci.kacisHTML(Hesap.hesapAdi(h))}</option>`;
@@ -1556,7 +1557,7 @@ const Form = {
           <div class="form-alan"><label>Şahıs veya Firma</label><select id="bk-sahis">${this.sahisSecenek()}</select></div>
           <div class="form-alan"><label>İşlem Türü <span class="zorunlu">*</span></label>
             <select id="bk-tur"><option value="giris">Para Girişi</option><option value="cikis">Para Çıkışı</option></select></div>
-          <div class="form-alan"><label>Gelir/Gider Hesabı</label><select id="bk-gider">${this.giderSecenek()}</select></div>
+          <div class="form-alan"><label>Gelir/Gider/Demirbaş Hesabı</label><select id="bk-gider">${this.giderSecenek()}</select></div>
           <div class="form-alan"><label>Tutar <span class="zorunlu">*</span></label><input type="number" id="bk-tutar" min="0" step="0.01" placeholder="0,00"></div>
           <div class="form-alan tam"><label>Açıklama</label><input id="bk-aciklama"></div>
           <div class="form-alan tam"><label>Banka Açıklaması</label><input id="bk-bankaac" placeholder="Banka dekontundaki açıklama"></div>
@@ -1578,7 +1579,7 @@ const Form = {
           <div class="form-alan"><label>Kredi Kartı Hesabı <span class="zorunlu">*</span></label><select id="kk-hesap" onchange="Form.kartSecildi()">${this.hesapSecenek('309')}</select></div>
           <div class="form-alan"><label>İşlem Adı <span class="zorunlu">*</span></label><input id="kk-islemad" placeholder="Örn: Bilgisayar Alımı"></div>
           <div class="form-alan"><label>Satıcı veya Şahıs</label><select id="kk-sahis">${this.sahisSecenek()}</select></div>
-          <div class="form-alan"><label>Gider Hesabı</label><select id="kk-gider">${this.giderSecenek()}</select></div>
+          <div class="form-alan"><label>Gider / Demirbaş Hesabı</label><select id="kk-gider">${this.giderSecenek()}</select></div>
           <div class="form-alan"><label>Toplam Tutar <span class="zorunlu">*</span></label><input type="number" id="kk-tutar" min="0" step="0.01" placeholder="0,00" oninput="Form.taksitOnizle()"></div>
           <div class="form-alan"><label>Ödeme Tipi <span class="zorunlu">*</span></label>
             <select id="kk-odemetipi" onchange="Form.kartOdemeTipi()"><option value="tek">Tek Çekim</option><option value="taksit">Taksitli</option></select></div>
@@ -2243,6 +2244,11 @@ const AltHesap = {
     if(tur==='gelir') return [
       {id:'ad', ad:'Gelir Adı', zorunlu:true, ana:true},
       {id:'acilis', ad:'Açılış Bakiyesi', para:true},
+      {id:'aciklama', ad:'Açıklama', tam:true}
+    ];
+    if(tur==='demirbas') return [
+      {id:'ad', ad:'Demirbaş Adı', zorunlu:true, ana:true},
+      {id:'acilis', ad:'Alış Değeri (Açılış)', para:true},
       {id:'aciklama', ad:'Açıklama', tam:true}
     ];
     return [];
