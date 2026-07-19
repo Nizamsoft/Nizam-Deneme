@@ -460,7 +460,7 @@ table.nakit th.bugun-sutun{background:var(--kirmizi)}
         </ul>
       </li>
     </ul>
-    <div class="menu-alt">Nizam Soft © 2026<br>Sürüm 1.6.3 • 19.07.2026</div>
+    <div class="menu-alt">Nizam Soft © 2026<br>Sürüm 1.6.4 • 19.07.2026</div>
   </nav>
 
   <!-- ANA İÇERİK -->
@@ -3851,196 +3851,209 @@ const Vergi = {
 };
 
 /* ==================================================================
-   Bölüm 14h: Kâr / Zarar Tablosu (aylık, gerçek kâr/zarar)
+   Bölüm 14h: Kâr / Zarar (Mizan görünümü — tarih aralıklı)
    ================================================================== */
 const KarZarar = {
-  _ay: null,
-  VARLIK:[{kod:'102',ad:'Bankalar'},{kod:'120',ad:'Müşteri Alacakları'},{kod:'191',ad:'İndirilecek KDV'},{kod:'190',ad:'Devreden KDV'}],
-  BORC:[{kod:'320',ad:'Satıcılar'},{kod:'309',ad:'Kredi Kartları'},{kod:'331',ad:'Ortaklara Borçlar'},{kod:'360',ad:'Ödenecek Vergi/KDV'},{kod:'391',ad:'Hesaplanan KDV'}],
+  _bas:null, _bit:null, _acik:{},
 
-  ay(){ if(!this._ay) this._ay = Yardimci.bugun().slice(0,7); return this._ay; },
-  ayKaydir(n){
-    const p = this.ay().split('-'); let y=+p[0], m=+p[1]-1+n;
-    y += Math.floor(m/12); m=((m%12)+12)%12;
-    this._ay = `${y}-${String(m+1).padStart(2,'0')}`;
-    App.sayfaGit('karzarar');
+  aralik(){
+    if(!this._bas){
+      const b=Yardimci.bugun(); const p=b.split('-');
+      this._bas = `${p[0]}-${p[1]}-01`;
+      this._bit = Yardimci.iso(+p[0], +p[1], Yardimci.ayinSonGunu(+p[0], +p[1]));
+    }
+    return [this._bas, this._bit];
   },
-  ayAdi(ay){ const a=['Ocak','Şubat','Mart','Nisan','Mayıs','Haziran','Temmuz','Ağustos','Eylül','Ekim','Kasım','Aralık']; const p=ay.split('-'); return a[(+p[1])-1]+' '+p[0]; },
-
-  // Bir ana hesabın belirli tarihe kadarki net bakiyesi (alt hesapların toplamı)
-  anaBakiye(anaKod, tarih){
-    return Depo.veri.altHesaplar.filter(h=>h.anaKod===anaKod)
-      .reduce((t,h)=>t+Donem.tarihliBakiye(h.id, tarih), 0);
-  },
-  // Bilanço tarafı toplamı (varlık: borç-yönlü pozitif; borç: alacak-yönlü pozitif)
-  taraf(liste, tarih, borcTarafi){
-    let toplam=0; const satirlar=[];
-    liste.forEach(x=>{
-      let v = this.anaBakiye(x.kod, tarih);
-      v = borcTarafi ? -v : v; // borç hesapları alacak bakiyeli -> pozitif göster
-      satirlar.push({ad:x.ad, kod:x.kod, tutar:v});
-      toplam += v;
+  bakiye(ids, tarih){ return ids.reduce((t,id)=>t+Donem.tarihliBakiye(id, tarih), 0); },
+  hareketToplam(ids, bas, bit){
+    let borc=0, alacak=0;
+    Depo.veri.hareketler.forEach(h=>{
+      if(ids.includes(h.hesapId) && h.tarih>=bas && h.tarih<=bit){ borc+=Number(h.borc)||0; alacak+=Number(h.alacak)||0; }
     });
-    return {toplam, satirlar};
+    return {borc, alacak};
+  },
+  satirHesapla(ids, bas, bit){
+    const devir = this.bakiye(ids, Yardimci.gunEkle(bas,-1));
+    const {borc, alacak} = this.hareketToplam(ids, bas, bit);
+    return {devir, borc, alacak, guncel: devir+borc-alacak};
+  },
+  // İşaretli bakiye gösterimi (borç + / alacak −), negatif kırmızı
+  bakiyeHTML(v){
+    const s = Yardimci.paraFormat(v);
+    if(v<-0.005) return `<span style="color:var(--kirmizi)">${s}</span>`;
+    if(v>0.005) return `<span style="color:var(--yesil)">${s}</span>`;
+    return `<span style="color:var(--metin-soluk)">${s}</span>`;
   },
 
-  // Ayın gelir/gider detayları (çift sayım olmadan)
-  gelirGider(ay){
-    const ay01 = ay+'-01';
-    const p = ay.split('-'); const son = Yardimci.ayinSonGunu(+p[0], +p[1]);
-    const aySon = Yardimci.iso(+p[0], +p[1], son);
-    const icinde = t => t && t>=ay01 && t<=aySon;
+  // Kâr/Zarar (5A: fatura matrahı + 600/770 hareketleri; kapanış/mahsup hariç)
+  gelirGider(bas, bit){
+    const icinde = t => t && t>=bas && t<=bit;
     let gelir=0, gider=0, kdvHes=0, kdvInd=0;
-    const gd=[], cd=[];
-    // Faturalar
     Depo.veri.islemler.forEach(is=>{
       if((is.tur==='satis'||is.tur==='alis') && !is.iptal && is.kdvDahilHesap!==false && icinde(is.tarih)){
-        const h = Hesap.altBul(is.hesapId); const ad = h?Hesap.hesapAdi(h):'';
-        const matrah = Number(is.matrah)||0;
-        if(is.tur==='satis'){ gelir+=matrah; kdvHes+=Number(is.kdvTutar)||0;
-          gd.push({ad:'Satış Faturası '+(is.faturaNo||''), hesap:ad, tarih:is.tarih, tutar:matrah}); }
-        else { gider+=matrah; kdvInd+=Number(is.kdvTutar)||0;
-          cd.push({ad:'Alış Faturası '+(is.faturaNo||''), hesap:ad, tarih:is.tarih, tutar:matrah}); }
+        const m=Number(is.matrah)||0;
+        if(is.tur==='satis'){ gelir+=m; kdvHes+=Number(is.kdvTutar)||0; } else { gider+=m; kdvInd+=Number(is.kdvTutar)||0; }
       }
     });
-    // 600 gelir / 770 gider hesabı hareketleri (kapanış/mahsup fişleri hariç)
     Depo.veri.hareketler.forEach(hr=>{
-      const alt = Hesap.altBul(hr.hesapId); if(!alt) return;
-      const is = Depo.veri.islemler.find(x=>x.id===hr.islemId)||{};
+      const alt=Hesap.altBul(hr.hesapId); if(!alt) return;
+      const is=Depo.veri.islemler.find(x=>x.id===hr.islemId)||{};
       if(is.tur==='kapanis'||is.tur==='kdvmahsup') return;
-      if(alt.anaKod==='600'){ const v=(Number(hr.alacak)||0)-(Number(hr.borc)||0); if(icinde(hr.tarih)&&Math.abs(v)>0.001){ gelir+=v; gd.push({ad:is.islemAd||hr.aciklama||'Gelir', hesap:Hesap.hesapAdi(alt), tarih:hr.tarih, tutar:v}); } }
-      if(alt.anaKod==='770'){ const v=(Number(hr.borc)||0)-(Number(hr.alacak)||0); if(icinde(hr.tarih)&&Math.abs(v)>0.001){ gider+=v; cd.push({ad:is.islemAd||hr.aciklama||'Gider', hesap:Hesap.hesapAdi(alt), tarih:hr.tarih, tutar:v}); } }
+      if(!icinde(hr.tarih)) return;
+      if(alt.anaKod==='600') gelir += (Number(hr.alacak)||0)-(Number(hr.borc)||0);
+      if(alt.anaKod==='770') gider += (Number(hr.borc)||0)-(Number(hr.alacak)||0);
     });
-    // Sınıflandırılmamış (karşı hesabı olmayan tek bacaklı banka/kart hareketleri)
-    let sinif=0; const sd=[];
-    Depo.veri.islemler.forEach(is=>{
-      if((is.tur==='banka'||is.tur==='kart') && !is.sahisHesapId && !is.giderHesapId && icinde(is.tarih)){
-        const t = Number(is.tutar)||0;
-        const etki = is.tur==='banka' ? (is.islemTuru==='giris'? t : -t) : -t; // net durum etkisi
-        sinif += etki;
-        const h = Hesap.altBul(is.hesapId);
-        sd.push({ad:is.islemAd||'Sınıflandırılmamış', hesap:h?Hesap.hesapAdi(h):'', tarih:is.tarih, tutar:etki, islemId:is.id, itur:is.tur});
-      }
-    });
-    gd.sort((a,b)=>a.tarih.localeCompare(b.tarih)); cd.sort((a,b)=>a.tarih.localeCompare(b.tarih));
-    // bu dönem KDV yükü (Vergi modülünün devreden zincirli sonucundan)
-    let kdvYuku = 0;
-    const vr = Vergi.hesapla().find(r=>r.donem===ay);
-    if(vr) kdvYuku = vr.nakitTutar;
-    return {gelir, gider, gd, cd, kdvHes, kdvInd, kdvYuku, sinif, sd};
+    let kdvYuku=0;
+    const b7=bas.slice(0,7), t7=bit.slice(0,7);
+    Vergi.hesapla().forEach(r=>{ if(r.donem>=b7 && r.donem<=t7) kdvYuku+=r.nakitTutar; });
+    return {gelir, gider, kdvHes, kdvInd, kdvYuku};
   },
+
+  ayAdi(){ return ''; },
+  guncelle(){
+    this._bas = document.getElementById('kz-bas').value || this._bas;
+    this._bit = document.getElementById('kz-bit').value || this._bit;
+    if(this._bit < this._bas) this._bit = this._bas;
+    App.sayfaGit('karzarar');
+  },
+  hazir(n){ // hızlı aralık: bu ay / geçen ay / bu yıl
+    const b=Yardimci.bugun(); const p=b.split('-'); const y=+p[0], m=+p[1];
+    if(n==='buay'){ this._bas=`${y}-${String(m).padStart(2,'0')}-01`; this._bit=Yardimci.iso(y,m,Yardimci.ayinSonGunu(y,m)); }
+    else if(n==='gecenay'){ let gm=m-1,gy=y; if(gm<1){gm=12;gy--;} this._bas=`${gy}-${String(gm).padStart(2,'0')}-01`; this._bit=Yardimci.iso(gy,gm,Yardimci.ayinSonGunu(gy,gm)); }
+    else if(n==='buyil'){ this._bas=`${y}-01-01`; this._bit=`${y}-12-31`; }
+    App.sayfaGit('karzarar');
+  },
+  anaAcKapa(kod){ this._acik[kod]=!this._acik[kod]; App.sayfaGit('karzarar'); },
 
   sayfa(el){
-    const ay = this.ay();
-    const p = ay.split('-'); const son = Yardimci.ayinSonGunu(+p[0], +p[1]);
-    const devirTarih = Yardimci.gunEkle(ay+'-01', -1);
-    const kalanTarih = Yardimci.iso(+p[0], +p[1], son);
-    const dv = this.taraf(this.VARLIK, devirTarih, false), db = this.taraf(this.BORC, devirTarih, true);
-    const kv = this.taraf(this.VARLIK, kalanTarih, false), kb = this.taraf(this.BORC, kalanTarih, true);
-    const devirNet = dv.toplam - db.toplam, kalanNet = kv.toplam - kb.toplam;
-    const gg = this.gelirGider(ay);
-    this._detay = {gd:gg.gd, cd:gg.cd, sd:gg.sd, ay};
-    const brut = gg.gelir - gg.gider;
-    const netKar = brut - gg.kdvYuku;
-    const fark = Math.round((kalanNet - (devirNet + brut + gg.sinif))*100)/100; // ~0 olmalı
-
-    const kutu = (baslik, taraf, cls) => `
-      <div class="kz-kutu ${cls}"><h4>${baslik}</h4>
-        ${taraf.satirlar.map(s=>`<div class="kz-satir"><span>${s.ad}</span><span class="s-tut">${Yardimci.paraFormat(s.tutar)}</span></div>`).join('')}
-        <div class="kz-toplam"><span>Toplam</span><span>${Yardimci.paraFormat(taraf.toplam)}</span></div>
-      </div>`;
-    const bakiyeBlok = (baslik, v, b, net) => `
-      <div class="kz-blok"><div class="kz-blok-baslik">${baslik}</div>
-        <div class="kz-bakiye">${kutu('🟢 VARLIKLAR', v, 'kz-varlik')}${kutu('🔴 BORÇLAR', b, 'kz-borc')}</div>
-        <div class="kz-net">Net Durum (Varlık − Borç): <b>${Yardimci.paraFormat(net)}</b></div>
-      </div>`;
-
-    const ozetCumle = brut>=0
-      ? `<div class="kz-ozet-cumle kz-gelir-bar">Bu ay <b>${Yardimci.paraFormat(brut)}</b> brüt kâr ettiniz${gg.kdvYuku>0?`, KDV sonrası cebinizde tahmini <b>${Yardimci.paraFormat(netKar)}</b> kalır.`:'.'}</div>`
-      : `<div class="kz-ozet-cumle kz-gider-bar">Bu ay <b>${Yardimci.paraFormat(-brut)}</b> zarar ettiniz.</div>`;
+    const [bas,bit] = this.aralik();
+    this._son = {bas,bit};
+    // mizan satırları
+    let govde=''; let tDevir=0,tBorc=0,tAlacak=0,tGuncel=0;
+    Depo.veri.anaHesaplar.forEach(ana=>{
+      const altlar = Hesap.altHesaplarByAna(ana.kod);
+      const ids = altlar.map(h=>h.id);
+      const r = this.satirHesapla(ids, bas, bit);
+      if(Math.abs(r.devir)<0.005 && Math.abs(r.borc)<0.005 && Math.abs(r.alacak)<0.005 && Math.abs(r.guncel)<0.005) return; // boş hesabı gizle
+      tDevir+=r.devir; tBorc+=r.borc; tAlacak+=r.alacak; tGuncel+=r.guncel;
+      const acik = !!this._acik[ana.kod];
+      const ok = altlar.length ? (acik?'▼':'▶') : '&nbsp;';
+      govde += `<tr class="ana-hesap-satir" style="cursor:pointer" onclick="KarZarar.anaAcKapa('${ana.kod}')">
+        <td><span style="display:inline-block;width:14px;color:var(--kirmizi);font-size:11px">${ok}</span> <span class="kod-rozet">${ana.kod}</span> ${ana.ad}</td>
+        <td class="sag-hiza">${this.bakiyeHTML(r.devir)}</td>
+        <td class="sag-hiza borc nakit-hucre" onmouseenter="KarZarar.hpop(event,'ana:${ana.kod}','borc')" onmouseleave="KarZarar.popKapat()" onclick="event.stopPropagation();KarZarar.hpop(event,'ana:${ana.kod}','borc')">${r.borc?Yardimci.paraFormat(r.borc):'-'}</td>
+        <td class="sag-hiza alacak nakit-hucre" onmouseenter="KarZarar.hpop(event,'ana:${ana.kod}','alacak')" onmouseleave="KarZarar.popKapat()" onclick="event.stopPropagation();KarZarar.hpop(event,'ana:${ana.kod}','alacak')">${r.alacak?Yardimci.paraFormat(r.alacak):'-'}</td>
+        <td class="sag-hiza"><b>${this.bakiyeHTML(r.guncel)}</b></td>
+      </tr>`;
+      if(acik){
+        altlar.forEach(h=>{
+          const ar = this.satirHesapla([h.id], bas, bit);
+          govde += `<tr>
+            <td class="girinti"><span class="kod-rozet">${h.kod}</span> ${Yardimci.kacisHTML(Hesap.hesapAdi(h))}</td>
+            <td class="sag-hiza">${this.bakiyeHTML(ar.devir)}</td>
+            <td class="sag-hiza borc nakit-hucre" onmouseenter="KarZarar.hpop(event,'alt:${h.id}','borc')" onmouseleave="KarZarar.popKapat()" onclick="KarZarar.hpop(event,'alt:${h.id}','borc')">${ar.borc?Yardimci.paraFormat(ar.borc):'-'}</td>
+            <td class="sag-hiza alacak nakit-hucre" onmouseenter="KarZarar.hpop(event,'alt:${h.id}','alacak')" onmouseleave="KarZarar.popKapat()" onclick="KarZarar.hpop(event,'alt:${h.id}','alacak')">${ar.alacak?Yardimci.paraFormat(ar.alacak):'-'}</td>
+            <td class="sag-hiza">${this.bakiyeHTML(ar.guncel)}</td>
+          </tr>`;
+        });
+        if(altlar.length===0) govde += `<tr><td class="girinti" colspan="5" style="color:var(--metin-soluk);font-style:italic">Alt hesap yok</td></tr>`;
+      }
+    });
+    const dengeli = Math.abs(tBorc-tAlacak)<1;
+    const gg = this.gelirGider(bas,bit);
+    const brut = gg.gelir-gg.gider, netKar = brut-gg.kdvYuku;
 
     el.innerHTML = `
-      <div class="kz-ay-secici no-print">
-        <button onclick="KarZarar.ayKaydir(-1)">‹</button>
-        <div class="kz-ay">${this.ayAdi(ay)}</div>
-        <button onclick="KarZarar.ayKaydir(1)">›</button>
+      <div class="nakit-arac no-print">
+        <label>Başlangıç:</label><input type="date" id="kz-bas" value="${bas}">
+        <label>Bitiş:</label><input type="date" id="kz-bit" value="${bit}">
+        <button class="btn btn-kirmizi btn-kucuk" onclick="KarZarar.guncelle()">🔄 Getir</button>
+        <button class="btn btn-cizgi btn-kucuk" onclick="KarZarar.hazir('buay')">Bu Ay</button>
+        <button class="btn btn-cizgi btn-kucuk" onclick="KarZarar.hazir('gecenay')">Geçen Ay</button>
+        <button class="btn btn-cizgi btn-kucuk" onclick="KarZarar.hazir('buyil')">Bu Yıl</button>
+        <button class="btn btn-koyu btn-kucuk" onclick="KarZarar.yazdir()">🖨 Yazdır</button>
+        <button class="btn btn-yesil btn-kucuk" onclick="KarZarar.csv()">📊 CSV</button>
       </div>
       <div class="kart">
-        <div class="buton-grup no-print" style="justify-content:flex-end;margin-bottom:12px">
-          <button class="btn btn-koyu btn-kucuk" onclick="KarZarar.yazdir()">🖨 Yazdır</button>
-          <button class="btn btn-yesil btn-kucuk" onclick="KarZarar.csv()">📊 CSV</button>
-        </div>
-        ${ozetCumle}
-        ${bakiyeBlok('Devir Bakiyeler (Ay Başı)', dv, db, devirNet)}
-        <div class="kz-gg kz-gelir-bar" onmouseenter="KarZarar.pop(event,'gelir')" onmouseleave="KarZarar.popKapat()" onclick="KarZarar.pop(event,'gelir')">
-          <span>➕ GELİRLER <span class="kz-ipucu">(üzerine gelin — ${gg.gd.length} kalem)</span></span><b>+${Yardimci.paraFormat(gg.gelir)}</b></div>
-        <div class="kz-gg kz-gider-bar" onmouseenter="KarZarar.pop(event,'gider')" onmouseleave="KarZarar.popKapat()" onclick="KarZarar.pop(event,'gider')">
-          <span>➖ GİDERLER <span class="kz-ipucu">(üzerine gelin — ${gg.cd.length} kalem)</span></span><b>−${Yardimci.paraFormat(gg.gider)}</b></div>
-        ${bakiyeBlok('Kalan Bakiyeler (Ay Sonu)', kv, kb, kalanNet)}
-        ${gg.sinif!==0 ? `<div class="uyari-serit" style="background:rgba(217,164,6,.12);border-color:var(--sari);color:var(--metin)" onmouseenter="KarZarar.pop(event,'sinif')" onmouseleave="KarZarar.popKapat()" onclick="KarZarar.pop(event,'sinif')">
-          ⚠ Bu ay <b>karşı hesabı seçilmemiş ${gg.sd.length} hareket</b> var (net ${Yardimci.paraFormat(gg.sinif)}). Tablo bunları "Sınıflandırılmamış" olarak dengeliyor. Üzerine gelin, ilgili işlemi açıp doğru hesabı (ör. 331 Ortaklara Borçlar) atayın.</div>`:''}
-        <div class="kz-sonuc">
-          <div class="kz-brut"><span>BRÜT KÂR (Gelir − Gider)</span><span class="${brut>=0?'kz-kar':'kz-zarar'}">${brut>=0?'+':''}${Yardimci.paraFormat(brut)}</span></div>
-          ${gg.sinif!==0 ? `<div class="kz-satir-sonuc"><span>⚠ Sınıflandırılmamış Hareketler</span><span>${gg.sinif>=0?'+':''}${Yardimci.paraFormat(gg.sinif)}</span></div>`:''}
-          <div class="kz-dogrula">Devir Net (${Yardimci.paraFormat(devirNet)}) + Brüt Kâr (${Yardimci.paraFormat(brut)})${gg.sinif!==0?' + Sınıflandırılmamış ('+Yardimci.paraFormat(gg.sinif)+')':''} = Kalan Net (${Yardimci.paraFormat(kalanNet)}) ${Math.abs(fark)<1?'✓ tutuyor':'(fark: '+Yardimci.paraFormat(fark)+')'}</div>
+        <h2 class="bolum-baslik">Mizan — ${Yardimci.tarihFormat(bas)} – ${Yardimci.tarihFormat(bit)}</h2>
+        <p class="pop-aciklama" style="margin-bottom:12px">Her satırda: <b>Güncel Bakiye = Devir + Borç − Alacak</b>. Ana hesaba tıklayınca alt hesaplar açılır. Borç/Alacak hücresinin üzerine gelince o dönemin hareketleri listelenir. (+) borç bakiyesi, (−) alacak bakiyesidir.</p>
+        <div class="tablo-sar"><table class="veri">
+          <thead><tr><th>Hesap</th><th class="sag-hiza">Devir</th><th class="sag-hiza">Borç</th><th class="sag-hiza">Alacak</th><th class="sag-hiza">Güncel Bakiye</th></tr></thead>
+          <tbody>${govde||'<tr><td colspan="5" class="bos-mesaj">Bu aralıkta hareket yok.</td></tr>'}</tbody>
+          <tfoot><tr class="ana-hesap-satir"><td>GENEL TOPLAM</td>
+            <td class="sag-hiza">${this.bakiyeHTML(tDevir)}</td>
+            <td class="sag-hiza">${Yardimci.paraFormat(tBorc)}</td>
+            <td class="sag-hiza">${Yardimci.paraFormat(tAlacak)}</td>
+            <td class="sag-hiza">${this.bakiyeHTML(tGuncel)}</td></tr></tfoot>
+        </table></div>
+        ${dengeli
+          ? `<div class="kz-net" style="margin-top:12px;color:var(--yesil)">✓ Denge sağlandı: Toplam Borç = Toplam Alacak (${Yardimci.paraFormat(tBorc)})</div>`
+          : `<div class="uyari-serit" style="margin-top:12px;background:rgba(217,164,6,.12);border-color:var(--sari);color:var(--metin)">⚠ Toplam Borç (${Yardimci.paraFormat(tBorc)}) ile Toplam Alacak (${Yardimci.paraFormat(tAlacak)}) eşit değil — fark ${Yardimci.paraFormat(tBorc-tAlacak)}. Bu, karşı hesabı seçilmemiş (tek bacaklı) bir hareket olduğunu gösterir; ilgili işlemi açıp karşı hesabını atayın.</div>`}
+        <div class="kz-sonuc" style="margin-top:16px">
+          <div class="kz-satir-sonuc"><span>Gelirler (satış + direkt gelir)</span><span class="kz-kar">+${Yardimci.paraFormat(gg.gelir)}</span></div>
+          <div class="kz-satir-sonuc"><span>Giderler (alış + harcamalar)</span><span class="kz-zarar">−${Yardimci.paraFormat(gg.gider)}</span></div>
+          <div class="kz-brut" style="margin-top:8px"><span>BRÜT ${brut>=0?'KÂR':'ZARAR'}</span><span class="${brut>=0?'kz-kar':'kz-zarar'}">${brut>=0?'+':''}${Yardimci.paraFormat(brut)}</span></div>
           <div class="kz-satir-sonuc"><span>Bu Dönem Ödenecek KDV Yükü</span><span class="kz-zarar">−${Yardimci.paraFormat(gg.kdvYuku)}</span></div>
-          <div class="kz-netkar"><span>NET KÂR (KDV sonrası, cebe kalan)</span><span class="${netKar>=0?'kz-kar':'kz-zarar'}">${netKar>=0?'+':''}${Yardimci.paraFormat(netKar)}</span></div>
+          <div class="kz-netkar"><span>NET ${netKar>=0?'KÂR':'ZARAR'} (KDV sonrası)</span><span class="${netKar>=0?'kz-kar':'kz-zarar'}">${netKar>=0?'+':''}${Yardimci.paraFormat(netKar)}</span></div>
         </div>
-        <p class="pop-aciklama" style="margin-top:14px;line-height:1.6">
-          💡 <b>Brüt Kâr</b> işletmenizin gerçek kârıdır (KDV senin geliriniz değil, devlet adına toplanır). <b>Net Kâr</b> ise bu dönemin KDV'sini de ödedikten sonra tahmini olarak cebinizde kalandır.
-        </p>
+        <p class="pop-aciklama" style="margin-top:12px;line-height:1.6">💡 <b>Brüt Kâr</b> gerçek kârınızdır. <b>Net Kâr</b> bu dönemin KDV'sini de ödedikten sonra tahmini kalandır. KDV senin gelirin değildir, devlet adına toplanır.</p>
       </div>`;
   },
 
-  pop(ev, tur){
-    const detay = tur==='gelir' ? this._detay.gd : (tur==='gider' ? this._detay.cd : this._detay.sd);
-    const baslik = tur==='gelir'?'Gelirler':(tur==='gider'?'Giderler':'Sınıflandırılmamış Hareketler');
-    let box = document.getElementById('nakit-pop');
+  hpop(ev, key, tur){
+    const [bas,bit] = [this._son.bas, this._son.bit];
+    let ids;
+    if(key.startsWith('ana:')){ const k=key.slice(4); ids=Hesap.altHesaplarByAna(k).map(h=>h.id); }
+    else ids=[key.slice(4)];
+    const list = Depo.veri.hareketler.filter(h=>ids.includes(h.hesapId) && h.tarih>=bas && h.tarih<=bit && ((tur==='borc'?Number(h.borc):Number(h.alacak))>0))
+      .sort((a,b)=>a.tarih.localeCompare(b.tarih));
+    let box=document.getElementById('nakit-pop');
     if(!box){ box=document.createElement('div'); box.id='nakit-pop'; box.className='nakit-pop'; document.body.appendChild(box); }
-    if(!detay || detay.length===0){ box.innerHTML=`<h4>${baslik}</h4><div class="pop-aciklama">Bu ay kayıt yok.</div>`; }
+    if(list.length===0){ box.innerHTML=`<h4>${tur==='borc'?'Borç':'Alacak'} Hareketleri</h4><div class="pop-aciklama">Bu dönemde yok.</div>`; }
     else{
-      const toplam = detay.reduce((a,x)=>a+x.tutar,0);
-      box.innerHTML = `<h4>${this.ayAdi(this._detay.ay)} — ${baslik}</h4>`+
-        detay.map(d=>`<div class="pop-satir"><div><div>${Yardimci.kacisHTML(d.ad)}</div>
-          <div class="pop-aciklama">${Yardimci.tarihFormat(d.tarih)}${d.hesap?' • '+Yardimci.kacisHTML(d.hesap):''}</div></div>
-          <div style="font-weight:600;white-space:nowrap">${Yardimci.paraFormat(d.tutar)}</div></div>`).join('')+
+      const toplam=list.reduce((a,h)=>a+(tur==='borc'?Number(h.borc):Number(h.alacak)),0);
+      box.innerHTML = `<h4>${tur==='borc'?'Borç':'Alacak'} Hareketleri (${list.length})</h4>`+
+        list.slice(0,40).map(h=>{ const is=Depo.veri.islemler.find(x=>x.id===h.islemId)||{}; const alt=Hesap.altBul(h.hesapId);
+          return `<div class="pop-satir"><div><div>${Yardimci.kacisHTML(is.islemAd||is.faturaNo||h.aciklama||'Hareket')}</div>
+            <div class="pop-aciklama">${Yardimci.tarihFormat(h.tarih)}${alt?' • '+Yardimci.kacisHTML(Hesap.hesapAdi(alt)):''}</div></div>
+            <div style="font-weight:600;white-space:nowrap">${Yardimci.paraFormat(tur==='borc'?h.borc:h.alacak)}</div></div>`;}).join('')+
+        (list.length>40?`<div class="pop-aciklama" style="margin-top:6px">… ve ${list.length-40} kayıt daha</div>`:'')+
         `<div class="pop-toplam"><span>Toplam</span><span>${Yardimci.paraFormat(toplam)}</span></div>`;
     }
     box.classList.add('acik');
-    const r = ev.currentTarget.getBoundingClientRect();
-    box.style.visibility='hidden';
-    const bw=box.offsetWidth, bh=box.offsetHeight;
-    let x=r.left, y=r.bottom+6;
-    if(x+bw>window.innerWidth-10) x=window.innerWidth-bw-10; if(x<10)x=10;
-    if(y+bh>window.innerHeight-10) y=r.top-bh-6;
+    const r=ev.currentTarget.getBoundingClientRect(); box.style.visibility='hidden';
+    const bw=box.offsetWidth,bh=box.offsetHeight; let x=r.left,y=r.bottom+6;
+    if(x+bw>window.innerWidth-10)x=window.innerWidth-bw-10; if(x<10)x=10;
+    if(y+bh>window.innerHeight-10)y=r.top-bh-6;
     box.style.left=x+'px'; box.style.top=Math.max(10,y)+'px'; box.style.visibility='visible';
   },
   popKapat(){ const b=document.getElementById('nakit-pop'); if(b) b.classList.remove('acik'); },
 
+  mizanSatirlar(bas,bit){
+    const out=[];
+    Depo.veri.anaHesaplar.forEach(ana=>{
+      const ids=Hesap.altHesaplarByAna(ana.kod).map(h=>h.id);
+      const r=this.satirHesapla(ids,bas,bit);
+      if(Math.abs(r.devir)<0.005&&Math.abs(r.borc)<0.005&&Math.abs(r.alacak)<0.005&&Math.abs(r.guncel)<0.005) return;
+      out.push([ana.kod+' '+ana.ad, r.devir, r.borc, r.alacak, r.guncel]);
+      Hesap.altHesaplarByAna(ana.kod).forEach(h=>{ const ar=this.satirHesapla([h.id],bas,bit);
+        if(Math.abs(ar.devir)<0.005&&Math.abs(ar.borc)<0.005&&Math.abs(ar.alacak)<0.005&&Math.abs(ar.guncel)<0.005) return;
+        out.push(['   '+h.kod+' '+Hesap.hesapAdi(h), ar.devir, ar.borc, ar.alacak, ar.guncel]); });
+    });
+    return out;
+  },
   yazdir(){
-    const ay=this.ay(); const gg=this.gelirGider(ay);
-    const p = ay.split('-'); const son=Yardimci.ayinSonGunu(+p[0],+p[1]);
-    const dv=this.taraf(this.VARLIK,Yardimci.gunEkle(ay+'-01',-1),false), db=this.taraf(this.BORC,Yardimci.gunEkle(ay+'-01',-1),true);
-    const kv=this.taraf(this.VARLIK,Yardimci.iso(+p[0],+p[1],son),false), kb=this.taraf(this.BORC,Yardimci.iso(+p[0],+p[1],son),true);
-    const brut=gg.gelir-gg.gider;
-    let h = `<h2 style="text-align:center">${this.ayAdi(ay)} Kâr / Zarar Tablosu</h2>`;
-    h += Disari.tabloHTML(['','Tutar'], [
-      ['GELİRLER', Yardimci.paraFormat(gg.gelir)], ['GİDERLER', Yardimci.paraFormat(gg.gider)],
-      ['BRÜT KÂR', Yardimci.paraFormat(brut)], ['Ödenecek KDV', Yardimci.paraFormat(gg.kdvYuku)],
-      ['NET KÂR', Yardimci.paraFormat(brut-gg.kdvYuku)],
-      ['Devir Net Durum', Yardimci.paraFormat(dv.toplam-db.toplam)], ['Kalan Net Durum', Yardimci.paraFormat(kv.toplam-kb.toplam)]
-    ]);
-    Disari.yazdir(this.ayAdi(ay)+' Kâr/Zarar', h);
+    const [bas,bit]=this.aralik();
+    const sat=this.mizanSatirlar(bas,bit).map(r=>[r[0],Yardimci.paraFormat(r[1]),Yardimci.paraFormat(r[2]),Yardimci.paraFormat(r[3]),Yardimci.paraFormat(r[4])]);
+    const gg=this.gelirGider(bas,bit); const brut=gg.gelir-gg.gider;
+    let h=Disari.tabloHTML(['Hesap','Devir','Borç','Alacak','Güncel Bakiye'], sat);
+    h+=`<div style="margin-top:14px;font-size:13px"><b>Gelirler:</b> ${Yardimci.paraFormat(gg.gelir)} &nbsp; <b>Giderler:</b> ${Yardimci.paraFormat(gg.gider)} &nbsp; <b>Brüt ${brut>=0?'Kâr':'Zarar'}:</b> ${Yardimci.paraFormat(brut)} &nbsp; <b>Net:</b> ${Yardimci.paraFormat(brut-gg.kdvYuku)}</div>`;
+    Disari.yazdir('Mizan '+Yardimci.tarihFormat(bas)+' - '+Yardimci.tarihFormat(bit), h);
   },
   csv(){
-    const ay=this.ay(); const gg=this.gelirGider(ay);
-    const satir=[];
-    gg.gd.forEach(d=>satir.push([Yardimci.tarihFormat(d.tarih),'Gelir',d.ad,d.hesap,Yardimci.sayiFormat(d.tutar)]));
-    gg.cd.forEach(d=>satir.push([Yardimci.tarihFormat(d.tarih),'Gider',d.ad,d.hesap,Yardimci.sayiFormat(d.tutar)]));
-    satir.push([]); satir.push(['','','','Brüt Kâr',Yardimci.sayiFormat(gg.gelir-gg.gider)]);
-    satir.push(['','','','Ödenecek KDV',Yardimci.sayiFormat(gg.kdvYuku)]);
-    satir.push(['','','','Net Kâr',Yardimci.sayiFormat(gg.gelir-gg.gider-gg.kdvYuku)]);
-    Disari.csv(['Tarih','Tür','Açıklama','Hesap','Tutar'], satir, 'kar-zarar-'+ay);
+    const [bas,bit]=this.aralik();
+    const sat=this.mizanSatirlar(bas,bit).map(r=>[r[0].trim(),Yardimci.sayiFormat(r[1]),Yardimci.sayiFormat(r[2]),Yardimci.sayiFormat(r[3]),Yardimci.sayiFormat(r[4])]);
+    Disari.csv(['Hesap','Devir','Borç','Alacak','Güncel Bakiye'], sat, 'mizan-'+bas+'_'+bit);
   }
 };
 
