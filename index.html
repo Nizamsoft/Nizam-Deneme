@@ -460,7 +460,7 @@ table.nakit th.bugun-sutun{background:var(--kirmizi)}
         </ul>
       </li>
     </ul>
-    <div class="menu-alt">Nizam Soft © 2026<br>Sürüm 1.6.7 • 19.07.2026</div>
+    <div class="menu-alt">Nizam Soft © 2026<br>Sürüm 1.6.8 • 19.07.2026</div>
   </nav>
 
   <!-- ANA İÇERİK -->
@@ -1962,10 +1962,10 @@ const Form = {
     if(islem.tur==='alis'){
       // Satıcıya toplam borç artar -> Alacak (satıcı hesabına, KDV dahil)
       hareketler.push(this.hareket(islem, islem.hesapId, 0, islem.tutar, islem.aciklama||islem.faturaNo));
-      // KDV -> 360 Ödenecek Vergi ve Fonlar Borç (indirilecek KDV, ödenecek vergiyi azaltır)
+      // İndirilecek KDV -> 191 Borç (360 yalnızca manuel vergi kayıtları için ayrıldı)
       const kdv = Number(islem.kdvTutar)||0;
-      const id360 = Hesap.sistemId('360');
-      if(kdv>0 && id360) hareketler.push(this.hareket(islem, id360, kdv, 0, 'İndirilecek KDV - '+(islem.faturaNo||'')));
+      const id191 = Hesap.sistemId('191');
+      if(kdv>0 && id191) hareketler.push(this.hareket(islem, id191, kdv, 0, 'İndirilecek KDV - '+(islem.faturaNo||'')));
       // Demirbaş alımı ise matrah 255 Demirbaşlar -> Borç (varlık); fatura dengeli olur
       if(islem.demirbasHesapId && Hesap.altBul(islem.demirbasHesapId)){
         hareketler.push(this.hareket(islem, islem.demirbasHesapId, Number(islem.matrah)||0, 0, 'Demirbaş - '+(islem.faturaNo||'')));
@@ -1973,10 +1973,10 @@ const Form = {
     }else if(islem.tur==='satis'){
       // Alıcının toplam borcu artar -> Borç (alıcı hesabına, KDV dahil)
       hareketler.push(this.hareket(islem, islem.hesapId, islem.tutar, 0, islem.aciklama||islem.faturaNo));
-      // KDV -> 360 Ödenecek Vergi ve Fonlar Alacak (hesaplanan KDV, devlete borç)
+      // Hesaplanan KDV -> 391 Alacak (360 yalnızca manuel vergi kayıtları için ayrıldı)
       const kdv = Number(islem.kdvTutar)||0;
-      const id360 = Hesap.sistemId('360');
-      if(kdv>0 && id360) hareketler.push(this.hareket(islem, id360, 0, kdv, 'Hesaplanan KDV - '+(islem.faturaNo||'')));
+      const id391 = Hesap.sistemId('391');
+      if(kdv>0 && id391) hareketler.push(this.hareket(islem, id391, 0, kdv, 'Hesaplanan KDV - '+(islem.faturaNo||'')));
     }else if(islem.tur==='banka'){
       // Para girişi -> Borç, Para çıkışı -> Alacak (banka hesabına)
       const giris = islem.islemTuru==='giris';
@@ -3754,8 +3754,9 @@ const Vergi = {
       <div class="kart" style="margin-bottom:20px">
         <h2 class="bolum-baslik">Aylık KDV Hesaplama (Tahmini)</h2>
         <p class="pop-aciklama" style="margin-bottom:14px;line-height:1.6">
-          Faturalardaki KDV artık doğrudan <b>360 Ödenecek Vergi ve Fonlar</b> hesabına işlenir (satış → Alacak, alış → Borç); bu tablo tahmini planlama içindir.
+          Satış faturalarının <b>Hesaplanan KDV</b>'si (391) ile alış faturalarının <b>İndirilecek KDV</b>'si (191) karşılaştırılarak aylık tahmini ödenecek KDV hesaplanır.
           Ödenecek KDV varsa "Nakit Akışına Aktar" ile tahmini ödeme olarak nakit akışına eklenir (planlanan ödeme: ertesi ayın ${Depo.veri.vergiAyar.kdvOdemeGunu||28}'i, Ayarlar'dan değiştirilebilir).
+          <b>360 Ödenecek Vergi ve Fonlar</b> yalnızca aşağıdan girdiğiniz manuel/gerçek vergi kayıtlarını gösterir.
         </p>
         ${tablo}
       </div>
