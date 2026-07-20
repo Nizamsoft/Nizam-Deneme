@@ -544,6 +544,7 @@ table.nakit th.bugun-sutun{background:var(--kirmizi)}
           <li class="menu-oge alt" data-sayfa="raporlar"><span class="etiket">Genel Raporlar</span></li>
           <li class="menu-oge alt" data-sayfa="karzarar"><span class="etiket">Kâr / Zarar Tablosu</span></li>
           <li class="menu-oge alt" data-sayfa="nakit"><span class="etiket">Nakit Akışı</span></li>
+          <li class="menu-oge alt" data-sayfa="rapor-excel"><span class="etiket">Muhasebeci Raporu (Excel)</span></li>
         </ul>
       </li>
       <li class="menu-grup" data-grup="ayarlargrup">
@@ -557,7 +558,7 @@ table.nakit th.bugun-sutun{background:var(--kirmizi)}
         </ul>
       </li>
     </ul>
-    <div class="menu-alt">Nizam Soft © 2026<br>Sürüm 1.9.8 • 20.07.2026</div>
+    <div class="menu-alt">Nizam Soft © 2026<br>Sürüm 1.9.9 • 20.07.2026</div>
   </nav>
 
   <!-- ANA İÇERİK -->
@@ -1067,6 +1068,245 @@ const Disari = {
 };
 
 /* ==================================================================
+   Bölüm 6a: XLSX Yazıcı (kütüphanesiz, çok sayfalı)
+   ================================================================== */
+const Xlsx = {
+  _crcTab:null,
+  crc32(bytes){
+    if(!this._crcTab){ const t=new Uint32Array(256); for(let n=0;n<256;n++){ let c=n; for(let k=0;k<8;k++) c=(c&1)?(0xEDB88320^(c>>>1)):(c>>>1); t[n]=c>>>0; } this._crcTab=t; }
+    let c=0xFFFFFFFF; const t=this._crcTab;
+    for(let i=0;i<bytes.length;i++) c=(t[(c^bytes[i])&0xFF]^(c>>>8))>>>0;
+    return (c^0xFFFFFFFF)>>>0;
+  },
+  _xmlKac(s){ s=String(s==null?'':s).replace(/[\x00-\x08\x0B\x0C\x0E-\x1F]/g,''); return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); },
+  _kol(n){ let s=''; n++; while(n>0){ const m=(n-1)%26; s=String.fromCharCode(65+m)+s; n=Math.floor((n-1)/26); } return s; },
+  _hucre(ref, cell){
+    let v, t, s;
+    if(cell!==null && typeof cell==='object'){ v=cell.v; t=cell.t; s=cell.s; } else { v=cell; }
+    const sa = s!=null?` s="${s}"`:'';
+    if(v==null || v===''){ return s!=null?`<c r="${ref}"${sa}/>`:''; }
+    if(t==='n' || (t==null && typeof v==='number' && isFinite(v))) return `<c r="${ref}"${sa}><v>${v}</v></c>`;
+    return `<c r="${ref}"${sa} t="inlineStr"><is><t xml:space="preserve">${this._xmlKac(v)}</t></is></c>`;
+  },
+  _sheetXml(sheet){
+    let rows='';
+    (sheet.satirlar||[]).forEach((row,ri)=>{
+      const r=ri+1; let cells='';
+      (row||[]).forEach((cell,ci)=>{ const c=this._hucre(this._kol(ci)+r, cell); if(c) cells+=c; });
+      rows+=`<row r="${r}">${cells}</row>`;
+    });
+    let cols='';
+    if(sheet.genislik) cols='<cols>'+sheet.genislik.map((w,i)=>`<col min="${i+1}" max="${i+1}" width="${w}" customWidth="1"/>`).join('')+'</cols>';
+    return `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>\n<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">${cols}<sheetData>${rows}</sheetData></worksheet>`;
+  },
+  _stylesXml(){
+    return `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<styleSheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">
+<numFmts count="1"><numFmt numFmtId="164" formatCode="#,##0.00"/></numFmts>
+<fonts count="4"><font><sz val="11"/><name val="Calibri"/></font><font><b/><sz val="11"/><color rgb="FFFFFFFF"/><name val="Calibri"/></font><font><b/><sz val="11"/><name val="Calibri"/></font><font><b/><sz val="15"/><name val="Calibri"/></font></fonts>
+<fills count="3"><fill><patternFill patternType="none"/></fill><fill><patternFill patternType="gray125"/></fill><fill><patternFill patternType="solid"><fgColor rgb="FF1F2530"/><bgColor indexed="64"/></patternFill></fill></fills>
+<borders count="1"><border><left/><right/><top/><bottom/><diagonal/></border></borders>
+<cellStyleXfs count="1"><xf numFmtId="0" fontId="0" fillId="0" borderId="0"/></cellStyleXfs>
+<cellXfs count="6"><xf numFmtId="0" fontId="0" fillId="0" borderId="0" xfId="0"/><xf numFmtId="0" fontId="1" fillId="2" borderId="0" xfId="0" applyFont="1" applyFill="1"/><xf numFmtId="164" fontId="0" fillId="0" borderId="0" xfId="0" applyNumberFormat="1"/><xf numFmtId="164" fontId="2" fillId="0" borderId="0" xfId="0" applyNumberFormat="1" applyFont="1"/><xf numFmtId="0" fontId="3" fillId="0" borderId="0" xfId="0" applyFont="1"/><xf numFmtId="0" fontId="2" fillId="0" borderId="0" xfId="0" applyFont="1"/></cellXfs>
+<cellStyles count="1"><cellStyle name="Normal" xfId="0" builtinId="0"/></cellStyles>
+</styleSheet>`;
+  },
+  _sheetAd(ad){ return this._xmlKac(String(ad||'Sayfa').replace(/[\[\]\:\*\?\/\\]/g,' ').slice(0,31)); },
+  _zip(files){
+    const chunks=[]; let offset=0; const central=[];
+    const push=a=>{ chunks.push(a); offset+=a.length; };
+    const u16=n=>new Uint8Array([n&0xFF,(n>>>8)&0xFF]);
+    const u32=n=>new Uint8Array([n&0xFF,(n>>>8)&0xFF,(n>>>16)&0xFF,(n>>>24)&0xFF]);
+    const enc=new TextEncoder();
+    files.forEach(f=>{
+      const nameB=enc.encode(f.ad), data=f.data, crc=this.crc32(data), localOff=offset;
+      [u32(0x04034b50),u16(20),u16(0),u16(0),u16(0),u16(0),u32(crc),u32(data.length),u32(data.length),u16(nameB.length),u16(0)].forEach(push);
+      push(nameB); push(data);
+      const ce=[u32(0x02014b50),u16(20),u16(20),u16(0),u16(0),u16(0),u16(0),u32(crc),u32(data.length),u32(data.length),u16(nameB.length),u16(0),u16(0),u16(0),u16(0),u32(0),u32(localOff)];
+      central.push({ce, nameB});
+    });
+    const cdStart=offset;
+    central.forEach(c=>{ c.ce.forEach(push); push(c.nameB); });
+    const cdSize=offset-cdStart;
+    [u32(0x06054b50),u16(0),u16(0),u16(files.length),u16(files.length),u32(cdSize),u32(cdStart),u16(0)].forEach(push);
+    let total=0; chunks.forEach(c=>total+=c.length);
+    const out=new Uint8Array(total); let p=0; chunks.forEach(c=>{ out.set(c,p); p+=c.length; });
+    return out;
+  },
+  olustur(sheets){
+    const enc=new TextEncoder(), n=sheets.length;
+    const ct=`<?xml version="1.0" encoding="UTF-8" standalone="yes"?>\n<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="xml" ContentType="application/xml"/><Override PartName="/xl/workbook.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/><Override PartName="/xl/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.styles+xml"/>${sheets.map((s,i)=>`<Override PartName="/xl/worksheets/sheet${i+1}.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/>`).join('')}</Types>`;
+    const rels=`<?xml version="1.0" encoding="UTF-8" standalone="yes"?>\n<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="xl/workbook.xml"/></Relationships>`;
+    const wb=`<?xml version="1.0" encoding="UTF-8" standalone="yes"?>\n<workbook xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"><sheets>${sheets.map((s,i)=>`<sheet name="${this._sheetAd(s.ad)}" sheetId="${i+1}" r:id="rId${i+1}"/>`).join('')}</sheets></workbook>`;
+    const wbRels=`<?xml version="1.0" encoding="UTF-8" standalone="yes"?>\n<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">${sheets.map((s,i)=>`<Relationship Id="rId${i+1}" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet${i+1}.xml"/>`).join('')}<Relationship Id="rId${n+1}" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles" Target="styles.xml"/></Relationships>`;
+    const files=[
+      {ad:'[Content_Types].xml', data:enc.encode(ct)},
+      {ad:'_rels/.rels', data:enc.encode(rels)},
+      {ad:'xl/workbook.xml', data:enc.encode(wb)},
+      {ad:'xl/_rels/workbook.xml.rels', data:enc.encode(wbRels)},
+      {ad:'xl/styles.xml', data:enc.encode(this._stylesXml())}
+    ];
+    sheets.forEach((s,i)=>files.push({ad:`xl/worksheets/sheet${i+1}.xml`, data:enc.encode(this._sheetXml(s))}));
+    return new Blob([this._zip(files)], {type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'});
+  },
+  indir(sheets, dosyaAd){
+    const blob=this.olustur(sheets);
+    const url=URL.createObjectURL(blob);
+    const a=document.createElement('a'); a.href=url; a.download=String(dosyaAd).replace(/\.xlsx$/,'')+'.xlsx'; a.click();
+    URL.revokeObjectURL(url);
+  }
+};
+
+/* ==================================================================
+   Bölüm 6b: Muhasebeci Raporu (çok sayfalı Excel)
+   ================================================================== */
+const MuhasebeRapor = {
+  _bas:null, _bit:null,
+  aralik(){ if(!this._bas){ const p=Yardimci.bugun().split('-'); this._bas=`${p[0]}-${p[1]}-01`; this._bit=Yardimci.iso(+p[0],+p[1],Yardimci.ayinSonGunu(+p[0],+p[1])); } return [this._bas,this._bit]; },
+  hazir(n){ const p=Yardimci.bugun().split('-'); const y=+p[0], m=+p[1];
+    if(n==='buay'){ this._bas=`${y}-${String(m).padStart(2,'0')}-01`; this._bit=Yardimci.iso(y,m,Yardimci.ayinSonGunu(y,m)); }
+    else if(n==='gecenay'){ let gm=m-1,gy=y; if(gm<1){gm=12;gy--;} this._bas=`${gy}-${String(gm).padStart(2,'0')}-01`; this._bit=Yardimci.iso(gy,gm,Yardimci.ayinSonGunu(gy,gm)); }
+    else if(n==='buyil'){ this._bas=`${y}-01-01`; this._bit=`${y}-12-31`; }
+    App.sayfaGit('rapor-excel');
+  },
+  veri(bas,bit){
+    const ic = x => x.tarih && x.tarih>=bas && x.tarih<=bit && !x.iptal; // iptal hariç
+    const sr = (a)=>a.sort((x,y)=>(x.tarih||'').localeCompare(y.tarih||'')||(x.no||'').localeCompare(y.no||''));
+    return {
+      alis: sr(Depo.veri.islemler.filter(x=>x.tur==='alis' && ic(x))),
+      satis: sr(Depo.veri.islemler.filter(x=>x.tur==='satis' && ic(x))),
+      banka: sr(Depo.veri.islemler.filter(x=>x.tur==='banka' && ic(x))),
+      kart: sr(Depo.veri.islemler.filter(x=>x.tur==='kart' && ic(x)))
+    };
+  },
+  _cariAd(id){ const h=id?Hesap.altBul(id):null; return h?(h.kod+' '+Hesap.hesapAdi(h)):''; },
+  _faturaNo(id){ if(!id) return ''; const f=Depo.veri.islemler.find(x=>x.id===id); return f?(f.faturaNo||f.no):''; },
+  _karsi(is){ return is.sahisHesapId?this._cariAd(is.sahisHesapId):(is.giderHesapId?this._cariAd(is.giderHesapId):''); },
+  _tf(t){ return Yardimci.tarihFormat(t); },
+  _M(n){ return {v:Math.round((Number(n)||0)*100)/100, t:'n', s:2}; },
+  _H(arr){ return arr.map(t=>({v:t, s:1})); },
+
+  uyarilar(d){
+    const out=[];
+    const turAd={alis:'Alış Faturası',satis:'Satış Faturası',banka:'Banka Hareketi',kart:'Kredi Kartı'};
+    const ekle=(is,mesaj)=>out.push([is.no, turAd[is.tur]||is.tur, mesaj]);
+    // fatura no boş (fatura)
+    [...d.alis,...d.satis].forEach(is=>{ if(!(is.faturaNo||'').trim()) ekle(is,'Fatura No boş'); });
+    // tutar sıfır/negatif (hepsi)
+    [...d.alis,...d.satis,...d.banka,...d.kart].forEach(is=>{ if(!(Number(is.tutar)>0)) ekle(is,'Tutar sıfır veya negatif'); });
+    // karşı hesap yok (banka/kart)
+    [...d.banka,...d.kart].forEach(is=>{ if(!is.sahisHesapId && !is.giderHesapId && !is.kapatilanFaturaId) ekle(is,'Karşı hesap seçilmemiş (dengesiz)'); });
+    // mükerrer fatura no
+    const mukerrer=(arr,ad)=>{ const say={}; arr.forEach(is=>{ const k=(is.faturaNo||'').trim().toLocaleLowerCase('tr'); if(k) say[k]=(say[k]||0)+1; });
+      arr.forEach(is=>{ const k=(is.faturaNo||'').trim().toLocaleLowerCase('tr'); if(k && say[k]>1) ekle(is,'Mükerrer fatura no: '+is.faturaNo); }); };
+    mukerrer(d.alis); mukerrer(d.satis);
+    return out;
+  },
+
+  // Sayfa üreticiler
+  ozetSayfa(bas,bit,d,uSay){
+    const T=arr=>arr.reduce((s,x)=>s+(Number(x.tutar)||0),0);
+    const bg=d.banka.filter(x=>x.islemTuru==='giris'), bc=d.banka.filter(x=>x.islemTuru!=='giris');
+    const N=n=>({v:n,t:'n'});
+    const toplamKayit=d.alis.length+d.satis.length+d.banka.length+d.kart.length;
+    return {ad:'Özet', genislik:[28,12,18], satirlar:[
+      [{v:'MUHASEBE KAYIT RAPORU', s:4}],
+      [{v:'Firma', s:5}, Depo.veri.firma.ad||'—'],
+      [{v:'Tarih Aralığı', s:5}, `${this._tf(bas)} – ${this._tf(bit)}`],
+      [{v:'Oluşturma Tarihi', s:5}, this._tf(Yardimci.bugun())],
+      [],
+      this._H(['Kayıt Türü','Adet','Toplam Tutar']),
+      ['Alış Faturaları', N(d.alis.length), this._M(T(d.alis))],
+      ['Satış Faturaları', N(d.satis.length), this._M(T(d.satis))],
+      ['Banka Para Girişi', N(bg.length), this._M(T(bg))],
+      ['Banka Para Çıkışı', N(bc.length), this._M(T(bc))],
+      ['Kredi Kartı Harcaması', N(d.kart.length), this._M(T(d.kart))],
+      [],
+      [{v:'Toplam Kayıt', s:5}, {v:toplamKayit, t:'n', s:5}],
+      [{v:'Uyarı Sayısı', s:5}, {v:uSay, t:'n', s:5}],
+      [],
+      [{v:'Not: İptal edilmiş kayıtlar bu rapora dahil değildir.'}]
+    ]};
+  },
+  alisSayfa(arr){
+    const sat=arr.map(is=>[is.no, this._tf(is.tarih), is.faturaNo||'', this._cariAd(is.hesapId), this._M(is.tutar), Fatura.durumAd(is), this._M(Fatura.kalan(is)), is.aciklama||'', is.dosyaMeta?'Var':'']);
+    return {ad:'Alış Faturaları', genislik:[14,12,16,26,14,14,14,30,8], satirlar:[this._H(['İşlem No','Tarih','Fatura No','Satıcı','Tutar','Ödeme Durumu','Kalan','Açıklama','Dosya']), ...sat]};
+  },
+  satisSayfa(arr){
+    const sat=arr.map(is=>[is.no, this._tf(is.tarih), is.faturaNo||'', this._cariAd(is.hesapId), this._M(is.tutar), Fatura.durumAd(is), this._M(Fatura.kalan(is)), is.aciklama||'', is.dosyaMeta?'Var':'']);
+    return {ad:'Satış Faturaları', genislik:[14,12,16,26,14,14,14,30,8], satirlar:[this._H(['İşlem No','Tarih','Fatura No','Alıcı','Tutar','Tahsilat Durumu','Kalan','Açıklama','Dosya']), ...sat]};
+  },
+  bankaSayfa(arr){
+    const sat=arr.map(is=>[is.no, this._tf(is.tarih), this._cariAd(is.hesapId), is.islemAd||'', is.islemTuru==='giris'?'Para Girişi':'Para Çıkışı', this._karsi(is), this._faturaNo(is.kapatilanFaturaId), this._M(is.tutar), is.aciklama||'']);
+    return {ad:'Banka Hareketleri', genislik:[14,12,24,24,12,26,16,14,28], satirlar:[this._H(['İşlem No','Tarih','Banka Hesabı','İşlem Adı','Yön','Karşı Hesap','Kapatılan Fatura','Tutar','Açıklama']), ...sat]};
+  },
+  kartSayfa(arr){
+    const sat=arr.map(is=>[is.no, this._tf(is.tarih), this._cariAd(is.hesapId), is.islemAd||'', this._cariAd(is.sahisHesapId), this._cariAd(is.giderHesapId), this._faturaNo(is.kapatilanFaturaId), is.odemeTipi==='taksit'?'Taksitli':'Tek Çekim', {v:is.taksitSayisi||1, t:'n'}, this._M(is.tutar), is.aciklama||'']);
+    return {ad:'Kredi Kartı Hareketleri', genislik:[14,12,24,24,24,24,16,12,8,14,28], satirlar:[this._H(['İşlem No','Tarih','Kart','İşlem Adı','Satıcı/Şahıs','Gider Hesabı','Kapatılan Fatura','Ödeme Tipi','Taksit','Tutar','Açıklama']), ...sat]};
+  },
+  kontrolSayfa(uyarilar){
+    const sat = uyarilar.length ? uyarilar : [['', '', 'Bu aralıkta uyarı bulunamadı. ✓']];
+    return {ad:'Kontrol ve Uyarılar', genislik:[14,20,44], satirlar:[this._H(['İşlem No','Kayıt Türü','Uyarı']), ...sat]};
+  },
+
+  sayfa(el){
+    const [bas,bit]=this.aralik();
+    el.innerHTML = `
+      <div class="kart">
+        <h2 class="bolum-baslik">Muhasebeci Raporu (Excel)</h2>
+        <p class="pop-aciklama" style="margin-bottom:14px;line-height:1.6">Seçtiğin tarih aralığındaki tüm kayıtları (alış/satış faturaları, banka, kredi kartı) çok sayfalı bir <b>Excel (.xlsx)</b> dosyası olarak indirir. Muhasebecin bu dosyayla kendi kayıtlarını karşılaştırıp <b>eksik/hatalı kayıt</b> olup olmadığını görebilir. İptal edilmiş kayıtlar dahil edilmez.</p>
+        <div class="nakit-arac no-print">
+          <label>Başlangıç:</label><input type="date" id="mr-bas" value="${bas}">
+          <label>Bitiş:</label><input type="date" id="mr-bit" value="${bit}">
+          <button class="btn btn-cizgi btn-kucuk" onclick="MuhasebeRapor.hazir('buay')">Bu Ay</button>
+          <button class="btn btn-cizgi btn-kucuk" onclick="MuhasebeRapor.hazir('gecenay')">Geçen Ay</button>
+          <button class="btn btn-cizgi btn-kucuk" onclick="MuhasebeRapor.hazir('buyil')">Bu Yıl</button>
+          <button class="btn btn-kirmizi btn-kucuk" onclick="MuhasebeRapor.onizle()">🔄 Getir</button>
+        </div>
+        <div id="mr-onizle" style="margin-top:16px"></div>
+        <div class="buton-grup no-print" style="margin-top:18px">
+          <button class="btn btn-yesil" onclick="MuhasebeRapor.olustur()">📊 Excel Oluştur ve İndir</button>
+        </div>
+        <div class="uyari-serit" style="margin-top:14px;background:rgba(47,109,143,.10);border-color:#2f6d8f;color:var(--metin)">ℹ Dosya <b>İndirilenler</b> klasörüne iner. Her seferinde klasörü kendin seçmek istersen Chrome ▸ Ayarlar ▸ İndirilenler ▸ <b>“İndirmeden önce her dosyanın nereye kaydedileceğini sor”</b> seçeneğini açman yeterli.</div>
+      </div>`;
+    this.onizle();
+  },
+  _senkTarih(){
+    const b=document.getElementById('mr-bas'), t=document.getElementById('mr-bit');
+    if(b) this._bas=b.value||this._bas;
+    if(t) this._bit=t.value||this._bit;
+    if(this._bit<this._bas) this._bit=this._bas;
+    if(b) b.value=this._bas; if(t) t.value=this._bit;
+  },
+  onizle(){
+    this._senkTarih();
+    const d=this.veri(this._bas,this._bit);
+    const u=this.uyarilar(d);
+    const T=arr=>arr.reduce((s,x)=>s+(Number(x.tutar)||0),0);
+    const bg=d.banka.filter(x=>x.islemTuru==='giris'), bc=d.banka.filter(x=>x.islemTuru!=='giris');
+    const sr=(ad,arr)=>`<tr><td>${ad}</td><td class="sag-hiza">${arr.length}</td><td class="sag-hiza">${Yardimci.paraFormat(T(arr))}</td></tr>`;
+    const box=document.getElementById('mr-onizle'); if(!box) return;
+    box.innerHTML=`<div class="pop-aciklama" style="margin-bottom:8px">Aralık: <b>${this._tf(this._bas)} – ${this._tf(this._bit)}</b> · Excel sayfaları:</div>
+      <div class="tablo-sar"><table class="veri"><thead><tr><th>Sayfa</th><th class="sag-hiza">Adet</th><th class="sag-hiza">Toplam Tutar</th></tr></thead><tbody>
+        ${sr('Alış Faturaları',d.alis)}${sr('Satış Faturaları',d.satis)}${sr('Banka Para Girişi',bg)}${sr('Banka Para Çıkışı',bc)}${sr('Kredi Kartı Harcaması',d.kart)}
+        <tr class="ana-hesap-satir"><td>Kontrol ve Uyarılar</td><td class="sag-hiza">${u.length}</td><td class="sag-hiza">${u.length?'⚠ incele':'✓ temiz'}</td></tr>
+      </tbody></table></div>`;
+  },
+  olustur(){
+    this._senkTarih();
+    const bas=this._bas, bit=this._bit;
+    const d=this.veri(bas,bit);
+    const u=this.uyarilar(d);
+    const sheets=[ this.ozetSayfa(bas,bit,d,u.length), this.alisSayfa(d.alis), this.satisSayfa(d.satis), this.bankaSayfa(d.banka), this.kartSayfa(d.kart), this.kontrolSayfa(u) ];
+    const ad=`Muhasebe-Raporu-${bas}_${bit}`;
+    try{
+      Xlsx.indir(sheets, ad);
+      Bildirim.goster('basari','Excel Oluşturuldu', `${ad}.xlsx indirildi (İndirilenler klasörü). ${u.length?u.length+' uyarı var — Kontrol sayfasına bakın.':'Uyarı yok.'}`, 4000);
+    }catch(e){ console.error(e); Bildirim.goster('hata','Oluşturulamadı','Excel oluşturulurken hata: '+e.message); }
+  }
+};
+
+/* ==================================================================
    Bölüm 6: Ana Uygulama - Yönlendirme ve Sayfalar
    ================================================================== */
 const App = {
@@ -1095,7 +1335,7 @@ const App = {
   },
 
   // Alt sayfa -> ait olduğu grup
-  sayfaGrup:{ raporlar:'raporlar', karzarar:'raporlar', nakit:'raporlar', 'ay-firma':'ayarlargrup', 'ay-program':'ayarlargrup', 'ay-gruplar':'ayarlargrup', 'ay-ongoru':'ayarlargrup', yedekleme:'ayarlargrup' },
+  sayfaGrup:{ raporlar:'raporlar', karzarar:'raporlar', nakit:'raporlar', 'rapor-excel':'raporlar', 'ay-firma':'ayarlargrup', 'ay-program':'ayarlargrup', 'ay-gruplar':'ayarlargrup', 'ay-ongoru':'ayarlargrup', yedekleme:'ayarlargrup' },
 
   menuBagla(){
     document.querySelectorAll('.menu-oge').forEach(el=>{
@@ -1128,7 +1368,7 @@ const App = {
     // aktif sayfanın grubunu aç
     const grup = this.sayfaGrup[sayfa];
     document.querySelectorAll('.menu-grup').forEach(g=>{ if(g.dataset.grup===grup) g.classList.add('acik'); });
-    const basliklar = {anasayfa:'Ana Sayfa', islemler:'İşlem Girişleri', hesaplar:'Hesaplar', nakit:'Nakit Akışı', karzarar:'Kâr / Zarar Tablosu', raporlar:'Genel Raporlar', 'ay-firma':'Firma Bilgileri', 'ay-program':'Program Ayarları', 'ay-gruplar':'Gider / Gelir Grupları', 'ay-ongoru':'Öngörülen İşlemler', yedekleme:'Yedekleme'};
+    const basliklar = {anasayfa:'Ana Sayfa', islemler:'İşlem Girişleri', hesaplar:'Hesaplar', nakit:'Nakit Akışı', karzarar:'Kâr / Zarar Tablosu', raporlar:'Genel Raporlar', 'rapor-excel':'Muhasebeci Raporu (Excel)', 'ay-firma':'Firma Bilgileri', 'ay-program':'Program Ayarları', 'ay-gruplar':'Gider / Gelir Grupları', 'ay-ongoru':'Öngörülen İşlemler', yedekleme:'Yedekleme'};
     document.getElementById('sayfa-baslik').textContent = basliklar[sayfa]||'';
     const alan = document.getElementById('sayfa-alan');
     alan.innerHTML = '';
@@ -1142,6 +1382,7 @@ const App = {
       case 'nakit': Sayfa.nakit(sarma); break;
       case 'karzarar': KarZarar.sayfa(sarma); break;
       case 'raporlar': Sayfa.raporlar(sarma); break;
+      case 'rapor-excel': MuhasebeRapor.sayfa(sarma); break;
       case 'ay-firma': Sayfa.ayarBolum(sarma,'firma'); break;
       case 'ay-program': Sayfa.ayarBolum(sarma,'program'); break;
       case 'ay-gruplar': Sayfa.ayarBolum(sarma,'gruplar'); break;
