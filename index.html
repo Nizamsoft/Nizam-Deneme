@@ -251,6 +251,50 @@ table.veri tr.ana-hesap-satir:hover{background:var(--gri-orta)}
 .dosya-bilgi{margin-top:10px;font-size:13px;color:var(--metin-soluk)}
 .dosya-adi{font-weight:600;color:var(--metin)}
 
+/* Form 2.0: bölümlü yerleşim + canlı özet (Seçenek 2) */
+.form2{display:grid;grid-template-columns:1.65fr 1fr;gap:18px;align-items:start}
+.form-ust{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;border-bottom:2px solid var(--gri-orta);margin-bottom:18px;padding-bottom:13px}
+.bolum-etiket{grid-column:1/-1;display:flex;align-items:center;gap:10px;font-size:11.5px;font-weight:800;letter-spacing:.09em;text-transform:uppercase;color:var(--metin-soluk);margin-top:8px}
+.bolum-etiket::after{content:"";flex:1;height:1px;background:var(--kenar)}
+.bolum-etiket:first-child{margin-top:0}
+.gtutar{position:relative}
+.gtutar .pb{position:absolute;left:13px;top:50%;transform:translateY(-50%);color:var(--metin-soluk);font-weight:700;pointer-events:none}
+.gtutar input{padding-left:30px !important;font-size:19px;font-weight:700;font-variant-numeric:tabular-nums}
+.gseg{display:inline-flex;background:var(--gri);border:1px solid var(--kenar);border-radius:10px;padding:3px;gap:3px;width:100%}
+.gseg button{flex:1;border:none;background:none;font:inherit;font-size:13px;font-weight:600;color:var(--metin-soluk);padding:9px 8px;border-radius:8px;cursor:pointer;transition:.15s}
+.gseg button.aktif{background:var(--kart-bg);color:var(--metin);box-shadow:var(--golge)}
+.gseg button.aktif[data-v="odendi"],.gseg button.aktif[data-v="giris"]{color:var(--yesil)}
+.gseg button.aktif[data-v="odenmedi"],.gseg button.aktif[data-v="cikis"]{color:var(--kirmizi)}
+.gsw{display:inline-flex;align-items:center;gap:9px;cursor:pointer;font-size:13.5px;font-weight:600;color:var(--metin);user-select:none}
+.gsw .yol{width:42px;height:24px;border-radius:20px;background:var(--gri-koyu);position:relative;transition:.2s;flex-shrink:0}
+.gsw .top{position:absolute;top:3px;left:3px;width:18px;height:18px;border-radius:50%;background:#fff;transition:.2s;box-shadow:0 1px 3px rgba(0,0,0,.3)}
+.gsw.acik .yol{background:var(--kirmizi)}
+.gsw.acik .top{left:21px}
+.gdetay{grid-column:1/-1}
+.gdetay-bas{display:flex;align-items:center;gap:8px;cursor:pointer;font-weight:600;font-size:13.5px;color:var(--metin-soluk);padding:8px 0}
+.gdetay-bas .ok{transition:.2s;font-size:11px;color:var(--kirmizi)}
+.gdetay-bas.acik .ok{transform:rotate(90deg)}
+.gozet{background:var(--gri);border:1px solid var(--kenar);border-radius:12px;padding:18px;position:sticky;top:14px}
+.gozet h4{font-size:12px;text-transform:uppercase;letter-spacing:.07em;color:var(--metin-soluk);margin-bottom:14px}
+.gozet-satir{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:10px 0;border-bottom:1px dashed var(--kenar)}
+.gozet-satir:last-of-type{border-bottom:none}
+.gozet-satir .ad{font-size:13px;min-width:0}
+.gozet-satir .ad small{display:block;color:var(--metin-soluk);font-size:11.5px}
+.gtag{font-size:11px;font-weight:700;padding:3px 9px;border-radius:20px;white-space:nowrap;font-variant-numeric:tabular-nums}
+.gtag.borc{background:rgba(31,157,85,.14);color:var(--yesil)}
+.gtag.alacak{background:rgba(211,32,39,.14);color:var(--kirmizi)}
+.gozet-toplam{display:flex;align-items:baseline;justify-content:space-between;margin-top:14px;padding-top:14px;border-top:2px solid var(--kenar)}
+.gozet-toplam .l{font-size:13px;color:var(--metin-soluk);font-weight:600}
+.gozet-toplam .v{font-size:21px;font-weight:800;font-variant-numeric:tabular-nums}
+.gozet-chip{margin-top:14px;display:flex;align-items:flex-start;gap:8px;background:var(--kart-bg);border:1px solid var(--kenar);border-radius:10px;padding:10px 12px;font-size:12.5px;color:var(--metin-soluk);line-height:1.45}
+.gozet-chip .nokta{width:8px;height:8px;border-radius:50%;background:var(--kirmizi);margin-top:4px;flex-shrink:0}
+.gozet-bos{color:var(--metin-soluk);font-size:12.5px;font-style:italic;text-align:center;padding:14px 0}
+.durum-rozet{font-size:11px;font-weight:700;padding:3px 9px;border-radius:20px}
+.durum-rozet.odendi{background:rgba(31,157,85,.14);color:var(--yesil)}
+.durum-rozet.kismi{background:rgba(217,164,6,.16);color:var(--sari)}
+.durum-rozet.odenmedi{background:rgba(211,32,39,.14);color:var(--kirmizi)}
+@media(max-width:820px){ .form2{grid-template-columns:1fr} .gozet{position:static} }
+
 /* Modal */
 .modal-katman{
   position:fixed;inset:0;background:rgba(10,14,20,.55);backdrop-filter:blur(3px);
@@ -453,7 +497,7 @@ table.nakit th.bugun-sutun{background:var(--kirmizi)}
         </ul>
       </li>
     </ul>
-    <div class="menu-alt">Nizam Soft © 2026<br>Sürüm 1.8.0 • 20.07.2026</div>
+    <div class="menu-alt">Nizam Soft © 2026<br>Sürüm 1.9.0 • 20.07.2026</div>
   </nav>
 
   <!-- ANA İÇERİK -->
@@ -1349,6 +1393,44 @@ const Sayfa = {
 };
 
 /* ==================================================================
+   Bölüm 8a: Fatura Ödeme Durumu (bankadan/karttan yapılan ödemelerden türetilir)
+   ================================================================== */
+const Fatura = {
+  // Bir faturaya bağlı (kapatilanFaturaId) ödemelerin toplamı
+  odenen(faturaId){
+    return Depo.veri.islemler
+      .filter(x=>(x.tur==='banka'||x.tur==='kart') && x.kapatilanFaturaId===faturaId && !x.iptal)
+      .reduce((s,x)=>s+(Number(x.tutar)||0),0);
+  },
+  kalan(is){ return Math.max(0, Math.round(((Number(is.tutar)||0)-this.odenen(is.id))*100)/100); },
+  durum(is){
+    const t=Number(is.tutar)||0, o=this.odenen(is.id);
+    if(o>=t-0.005) return 'odendi';
+    if(o>0.005) return 'kismi';
+    return 'odenmedi';
+  },
+  durumAd(is){ return {odendi:'Ödendi',kismi:'Kısmi',odenmedi: is.tur==='satis'?'Tahsil edilmedi':'Ödenmedi'}[this.durum(is)]; },
+  // Belirli yöne göre açık faturalar: cikis->alış(320), giris->satış(120)
+  acikFaturalar(yon){
+    const tur = yon==='giris' ? 'satis' : 'alis';
+    return Depo.veri.islemler
+      .filter(is=>is.tur===tur && !is.iptal && this.kalan(is)>0.005)
+      .sort((a,b)=>(a.tarih||'').localeCompare(b.tarih||''));
+  },
+  // "Kapatılacak Fatura" açılır listesi (yön: giris/cikis)
+  secenek(yon, secili){
+    const list=this.acikFaturalar(yon);
+    let opts=`<option value="">— Fatura seçmeden —</option>`;
+    list.forEach(is=>{
+      const cari=Hesap.altBul(is.hesapId);
+      const ad=cari?Hesap.hesapAdi(cari):'?';
+      opts+=`<option value="${is.id}" ${is.id===secili?'selected':''}>${Yardimci.kacisHTML(is.faturaNo||is.no)} · ${Yardimci.kacisHTML(ad)} · Kalan ${Yardimci.paraFormat(this.kalan(is))}</option>`;
+    });
+    return opts;
+  }
+};
+
+/* ==================================================================
    Bölüm 8: İşlem Giriş Formları
    ================================================================== */
 const Form = {
@@ -1400,9 +1482,139 @@ const Form = {
     return `<option value="">— Seçiniz —</option>` + opts;
   },
   alimTuruDegis(){
-    const t = document.getElementById('al-alimturu').value;
+    const el = document.getElementById('al-alimturu');
+    const t = el ? el.value : 'gider';
     const alan = document.getElementById('al-demirbas-alan');
     if(alan) alan.style.display = t==='demirbas' ? '' : 'none';
+  },
+
+  /* ---- Seçenek 2 form bileşenleri ---- */
+  // Segment (gizli input + düğmeler). id'ye göre yan etki tetiklenir.
+  segment(id, opts, secili){
+    const btns = opts.map(o=>`<button type="button" data-v="${o.v}" class="${o.v===secili?'aktif':''}" onclick="Form.segSec(this,'${id}')">${o.ad}</button>`).join('');
+    return `<input type="hidden" id="${id}" value="${secili}"><div class="gseg">${btns}</div>`;
+  },
+  segSec(btn, id){
+    btn.parentElement.querySelectorAll('button').forEach(b=>b.classList.remove('aktif'));
+    btn.classList.add('aktif');
+    const inp = document.getElementById(id); if(inp) inp.value = btn.dataset.v;
+    if(id==='al-alimturu') this.alimTuruDegis();
+    if(id==='bk-tur') this.faturaListeGuncelle('bk');
+    if(id==='kk-odemetipi') this.kartOdemeTipi();
+    const on = id.split('-')[0];
+    this.ozetGuncelle({al:'alis',sa:'satis',bk:'banka',kk:'kart'}[on]);
+  },
+  // Segment değerini programatik ayarla (düzenlemede)
+  segDeger(id, v){
+    const inp = document.getElementById(id); if(!inp) return; inp.value = v;
+    const grup = inp.nextElementSibling;
+    if(grup && grup.classList.contains('gseg')) grup.querySelectorAll('button').forEach(b=>b.classList.toggle('aktif', b.dataset.v===v));
+  },
+  swDeger(id, v){
+    const c = document.getElementById(id); if(!c) return; c.checked = !!v;
+    if(c.parentElement) c.parentElement.classList.toggle('acik', !!v);
+  },
+  // İptal anahtarı (gizli checkbox)
+  gsw(id, tur){
+    return `<div class="gsw" onclick="Form.iptalToggle(this,'${id}','${tur}')"><input type="checkbox" id="${id}" style="display:none"><span class="yol"><span class="top"></span></span>İptal edildi</div>`;
+  },
+  iptalToggle(el, id, tur){
+    const c = document.getElementById(id); if(!c) return;
+    c.checked = !c.checked; el.classList.toggle('acik', c.checked);
+    this.ozetGuncelle(tur);
+  },
+  // Katlanır belge/not bölümü
+  gdetay(on){
+    return `<div class="gdetay">
+      <div class="gdetay-bas" onclick="this.classList.toggle('acik');this.nextElementSibling.style.display=this.classList.contains('acik')?'block':'none'"><span class="ok">▶</span> Belge ve ek not (isteğe bağlı)</div>
+      <div style="display:none">
+        <div class="form-grid" style="grid-template-columns:1fr;gap:14px;margin-top:6px">
+          ${this.dosyaAlan()}
+          <div class="form-alan tam"><label>Ek Not</label><textarea id="${on}-not"></textarea></div>
+        </div>
+      </div></div>`;
+  },
+  faturaListeGuncelle(on){
+    const sel = document.getElementById(on+'-fatura'); if(!sel) return;
+    const secili = sel.value;
+    const yon = on==='bk' ? ((document.getElementById('bk-tur')||{}).value||'cikis') : 'cikis';
+    sel.innerHTML = Fatura.secenek(yon, secili);
+  },
+  faturaSecildi(on){
+    const sel = document.getElementById(on+'-fatura'); if(!sel) return;
+    const tur = on==='bk' ? 'banka' : 'kart';
+    const fid = sel.value;
+    if(fid){
+      const is = Depo.veri.islemler.find(x=>x.id===fid);
+      if(is){
+        const sh = document.getElementById(on+'-sahis'); if(sh) sh.value = is.hesapId;
+        const tt = document.getElementById(on+'-tutar'); if(tt) tt.value = Yardimci.sayiFormat(Fatura.kalan(is));
+        const ad = document.getElementById(on+'-islemad'); if(ad && !ad.value.trim()) ad.value = 'Fatura Ödemesi '+(is.faturaNo||is.no);
+        if(on==='kk' && typeof this.taksitOnizle==='function') this.taksitOnizle();
+      }
+    }
+    this.ozetGuncelle(tur);
+  },
+  // Formdaki tüm alanları özet güncellemeye bağla + ilk çizim
+  ozetBagla(on, tur){
+    const box = document.getElementById(on+'-ozet'); if(!box) return;
+    const kok = box.closest('.form2') || document;
+    kok.querySelectorAll('input,select,textarea').forEach(x=>{
+      x.addEventListener('input', ()=>this.ozetGuncelle(tur));
+      x.addEventListener('change', ()=>this.ozetGuncelle(tur));
+    });
+    this.ozetGuncelle(tur);
+  },
+  // Canlı "Muhasebe Kaydı Önizleme" kartı
+  ozetGuncelle(tur){
+    const on = {alis:'al',satis:'sa',banka:'bk',kart:'kk'}[tur];
+    const box = document.getElementById(on+'-ozet'); if(!box) return;
+    const g = id=>{ const e=document.getElementById(id); return e?e.value:''; };
+    const P = Yardimci.paraFormat;
+    const tutar = Yardimci.paraCoz(g(on+'-tutar'))||0;
+    const cari = id=>{ const h=Hesap.altBul(id); return h?{kod:h.kod, ad:Hesap.hesapAdi(h)}:null; };
+    const satir = (kod,ad,alt,tag,tut)=>`<div class="gozet-satir"><div class="ad"><span class="kod-rozet">${kod}</span> ${Yardimci.kacisHTML(ad)}<small>${alt}</small></div><span class="gtag ${tag}">${tag==='borc'?'Borç':'Alacak'} ${P(tut)}</span></div>`;
+    const bos = t=>`<div class="gozet-bos">${t}</div>`;
+    const toplam = t=>`<div class="gozet-toplam"><span class="l">Toplam</span><span class="v">${P(t)}</span></div>`;
+    const chip = t=>`<div class="gozet-chip"><span class="nokta"></span><span>${t}</span></div>`;
+    let ic = '<h4>Muhasebe Kaydı Önizleme</h4>';
+    if(tur==='alis'){
+      const s=cari(g('al-hesap')), demirbas=g('al-alimturu')==='demirbas', d=demirbas?cari(g('al-demirbas')):null;
+      ic += s?satir(s.kod,s.ad,'Satıcıya borç','alacak',tutar):bos('Satıcı hesabı seçilmedi');
+      ic += demirbas ? (d?satir(d.kod,d.ad,'Duran varlık (demirbaş)','borc',tutar):bos('Demirbaş hesabı seçilmedi'))
+                     : satir('770','Gider','Kâr/Zarar’a gider','borc',tutar);
+      ic += toplam(tutar);
+      ic += chip('Fatura <b>açık</b> kaydedilir. Ödemesini Banka/Kart ekranından bu faturayı seçerek yaparsın.');
+    }else if(tur==='satis'){
+      const a=cari(g('sa-hesap'));
+      ic += a?satir(a.kod,a.ad,'Alıcıdan alacak','borc',tutar):bos('Alıcı hesabı seçilmedi');
+      ic += satir('600','Gelir','Kâr/Zarar’a gelir','alacak',tutar);
+      ic += toplam(tutar);
+      ic += chip('Fatura <b>açık</b> kaydedilir. Tahsilatını Banka ekranından bu faturayı seçerek yaparsın.');
+    }else if(tur==='banka'){
+      const cikis=g('bk-tur')==='cikis', b=cari(g('bk-hesap'));
+      ic += b?satir(b.kod,b.ad,cikis?'Bankadan çıkış':'Bankaya giriş',cikis?'alacak':'borc',tutar):bos('Banka hesabı seçilmedi');
+      const fid=g('bk-fatura'), sahis=cari(g('bk-sahis')), gider=cari(g('bk-gider')), kt=cikis?'borc':'alacak';
+      if(sahis) ic += satir(sahis.kod,sahis.ad,fid?'Fatura kapama (cari)':'Cari hesap',kt,tutar);
+      else if(gider) ic += satir(gider.kod,gider.ad,'Gelir/Gider',kt,tutar);
+      else ic += bos('Karşı hesap (cari/gider) seçilmedi');
+      ic += toplam(tutar);
+      if(fid){ const is=Depo.veri.islemler.find(x=>x.id===fid); if(is){ const k=Fatura.kalan(is), sonra=Math.max(0,Math.round((k-tutar)*100)/100);
+        ic += chip(`Kapatılan fatura <b>${Yardimci.kacisHTML(is.faturaNo||is.no)}</b>: kalan ${P(k)} → sonra ${P(sonra)} ${sonra<0.005?'(<b>Ödendi</b>)':'(Kısmi)'}`); } }
+    }else if(tur==='kart'){
+      const k=cari(g('kk-hesap'));
+      ic += k?satir(k.kod,k.ad,'Kart borcu artar','alacak',tutar):bos('Kredi kartı seçilmedi');
+      const fid=g('kk-fatura'), sahis=cari(g('kk-sahis')), gider=cari(g('kk-gider'));
+      if(sahis) ic += satir(sahis.kod,sahis.ad,fid?'Fatura kapama (cari)':'Cari hesap','borc',tutar);
+      else if(gider) ic += satir(gider.kod,gider.ad,'Gider','borc',tutar);
+      else ic += bos('Karşı hesap (satıcı/gider) seçilmedi');
+      ic += toplam(tutar);
+      const adet=Number((g('kk-taksit'))||1);
+      if(adet>1) ic += chip(`<b>${adet} taksit</b> olarak nakit akışına yansıtılır.`);
+      const fid2=g('kk-fatura'); if(fid2){ const is=Depo.veri.islemler.find(x=>x.id===fid2); if(is){ const kk=Fatura.kalan(is), sonra=Math.max(0,Math.round((kk-tutar)*100)/100);
+        ic += chip(`Kapatılan fatura <b>${Yardimci.kacisHTML(is.faturaNo||is.no)}</b>: kalan ${P(kk)} → sonra ${P(sonra)}`); } }
+    }
+    box.innerHTML = `<div class="gozet">${ic}</div>`;
   },
 
   sahisSecenek(secili){
@@ -1433,31 +1645,29 @@ const Form = {
     const no = 'ISL-' + String((Depo.veri.sayaclar.islemNo||0)+1).padStart(6,'0');
     el.innerHTML = `
       <div class="kart">
-        <div class="form-baslik">Alış Faturası Girişi</div>
-        <div class="form-grid">
-          <div class="form-alan"><label>İşlem No</label><input id="al-no" value="${no}" readonly></div>
-          <div class="form-alan"><label>Tarih <span class="zorunlu">*</span></label><input type="date" id="al-tarih" value="${this.varsayilanTarih()}"></div>
-          <div class="form-alan"><label>Satıcı Hesabı <span class="zorunlu">*</span></label><select id="al-hesap">${this.hesapSecenek('320')}</select></div>
-          <div class="form-alan"><label>Fatura No <span class="zorunlu">*</span></label><input id="al-faturano" placeholder="Örn: A-2026-001"></div>
-          ${this.tutarAlan('al')}
-          <div class="form-alan"><label>Ödeme Durumu</label>
-            <select id="al-durum"><option value="odenmedi">Ödenmedi</option><option value="kismi">Kısmi Ödendi</option><option value="odendi">Ödendi</option></select></div>
-          <div class="form-alan"><label>Alım Türü</label>
-            <select id="al-alimturu" onchange="Form.alimTuruDegis()">
-              <option value="gider">Gider / Normal Alım</option>
-              <option value="demirbas">Demirbaş (Duran Varlık)</option></select></div>
-          <div class="form-alan" id="al-demirbas-alan" style="display:none"><label>Demirbaş Hesabı <span class="zorunlu">*</span></label>
-            <select id="al-demirbas">${this.demirbasSecenek()}</select></div>
-          <div class="form-alan"><label>&nbsp;</label>
-            <label style="display:flex;align-items:center;gap:7px;font-weight:400"><input type="checkbox" id="al-iptal"> İptal edildi</label></div>
-          <div class="form-alan tam"><label>Açıklama</label><input id="al-aciklama" placeholder="Fatura açıklaması"></div>
-          ${this.dosyaAlan()}
-          <div class="form-alan tam"><label>Ek Not</label><textarea id="al-not"></textarea></div>
+        <div class="form-ust"><span class="form-baslik" style="border:none;margin:0;padding:0">Alış Faturası Girişi</span>${this.gsw('al-iptal','alis')}</div>
+        <div class="form2">
+          <div><div class="form-grid" style="grid-template-columns:repeat(auto-fit,minmax(190px,1fr))">
+            <div class="bolum-etiket">Fatura Bilgileri</div>
+            <div class="form-alan"><label>Tarih <span class="zorunlu">*</span></label><input type="date" id="al-tarih" value="${this.varsayilanTarih()}"></div>
+            <div class="form-alan"><label>Satıcı Hesabı <span class="zorunlu">*</span></label><select id="al-hesap">${this.hesapSecenek('320')}</select></div>
+            <div class="form-alan"><label>Fatura No <span class="zorunlu">*</span></label><input id="al-faturano" placeholder="Örn: A-2026-001"></div>
+            <div class="form-alan"><label>İşlem No</label><input id="al-no" value="${no}" readonly></div>
+            <div class="bolum-etiket">Tutar &amp; Alım Türü</div>
+            <div class="form-alan"><label>Tutar (₺) <span class="zorunlu">*</span></label><div class="gtutar"><span class="pb">₺</span><input type="text" inputmode="decimal" id="al-tutar" placeholder="0,00"></div></div>
+            <div class="form-alan"><label>Alım Türü</label>${this.segment('al-alimturu',[{v:'gider',ad:'Gider / Normal'},{v:'demirbas',ad:'Demirbaş'}],'gider')}</div>
+            <div class="form-alan" id="al-demirbas-alan" style="display:none"><label>Demirbaş Hesabı <span class="zorunlu">*</span></label><select id="al-demirbas">${this.demirbasSecenek()}</select></div>
+            <div class="bolum-etiket">Açıklama</div>
+            <div class="form-alan tam"><label>Açıklama</label><input id="al-aciklama" placeholder="Fatura açıklaması"></div>
+            ${this.gdetay('al')}
+          </div></div>
+          <div id="al-ozet"></div>
         </div>
         ${this.butonlar('alis')}
       </div>
       ${this.kayitListesi('alis')}`;
     this.dosyaBagla('alis');
+    this.ozetBagla('al','alis');
   },
 
   /* --- SATIŞ FATURASI --- */
@@ -1465,25 +1675,27 @@ const Form = {
     const no = 'ISL-' + String((Depo.veri.sayaclar.islemNo||0)+1).padStart(6,'0');
     el.innerHTML = `
       <div class="kart">
-        <div class="form-baslik">Satış Faturası Girişi</div>
-        <div class="form-grid">
-          <div class="form-alan"><label>İşlem No</label><input id="sa-no" value="${no}" readonly></div>
-          <div class="form-alan"><label>Tarih <span class="zorunlu">*</span></label><input type="date" id="sa-tarih" value="${this.varsayilanTarih()}"></div>
-          <div class="form-alan"><label>Alıcı Hesabı <span class="zorunlu">*</span></label><select id="sa-hesap">${this.hesapSecenek('120')}</select></div>
-          <div class="form-alan"><label>Fatura No <span class="zorunlu">*</span></label><input id="sa-faturano" placeholder="Örn: S-2026-001"></div>
-          ${this.tutarAlan('sa')}
-          <div class="form-alan"><label>Tahsilat Durumu</label>
-            <select id="sa-durum"><option value="odenmedi">Tahsil Edilmedi</option><option value="kismi">Kısmi Tahsil Edildi</option><option value="odendi">Tahsil Edildi</option></select></div>
-          <div class="form-alan"><label>&nbsp;</label>
-            <label style="display:flex;align-items:center;gap:7px;font-weight:400"><input type="checkbox" id="sa-iptal"> İptal edildi</label></div>
-          <div class="form-alan tam"><label>Açıklama</label><input id="sa-aciklama" placeholder="Fatura açıklaması"></div>
-          ${this.dosyaAlan()}
-          <div class="form-alan tam"><label>Ek Not</label><textarea id="sa-not"></textarea></div>
+        <div class="form-ust"><span class="form-baslik" style="border:none;margin:0;padding:0">Satış Faturası Girişi</span>${this.gsw('sa-iptal','satis')}</div>
+        <div class="form2">
+          <div><div class="form-grid" style="grid-template-columns:repeat(auto-fit,minmax(190px,1fr))">
+            <div class="bolum-etiket">Fatura Bilgileri</div>
+            <div class="form-alan"><label>Tarih <span class="zorunlu">*</span></label><input type="date" id="sa-tarih" value="${this.varsayilanTarih()}"></div>
+            <div class="form-alan"><label>Alıcı Hesabı <span class="zorunlu">*</span></label><select id="sa-hesap">${this.hesapSecenek('120')}</select></div>
+            <div class="form-alan"><label>Fatura No <span class="zorunlu">*</span></label><input id="sa-faturano" placeholder="Örn: S-2026-001"></div>
+            <div class="form-alan"><label>İşlem No</label><input id="sa-no" value="${no}" readonly></div>
+            <div class="bolum-etiket">Tutar</div>
+            <div class="form-alan"><label>Tutar (₺) <span class="zorunlu">*</span></label><div class="gtutar"><span class="pb">₺</span><input type="text" inputmode="decimal" id="sa-tutar" placeholder="0,00"></div></div>
+            <div class="bolum-etiket">Açıklama</div>
+            <div class="form-alan tam"><label>Açıklama</label><input id="sa-aciklama" placeholder="Fatura açıklaması"></div>
+            ${this.gdetay('sa')}
+          </div></div>
+          <div id="sa-ozet"></div>
         </div>
         ${this.butonlar('satis')}
       </div>
       ${this.kayitListesi('satis')}`;
     this.dosyaBagla('satis');
+    this.ozetBagla('sa','satis');
   },
 
   /* --- BANKA HAREKETİ --- */
@@ -1491,23 +1703,30 @@ const Form = {
     const no = 'ISL-' + String((Depo.veri.sayaclar.islemNo||0)+1).padStart(6,'0');
     el.innerHTML = `
       <div class="kart">
-        <div class="form-baslik">Banka Hareketi Girişi</div>
-        <div class="form-grid">
-          <div class="form-alan"><label>İşlem No</label><input id="bk-no" value="${no}" readonly></div>
-          <div class="form-alan"><label>Tarih <span class="zorunlu">*</span></label><input type="date" id="bk-tarih" value="${this.varsayilanTarih()}"></div>
-          <div class="form-alan"><label>Banka Hesabı <span class="zorunlu">*</span></label><select id="bk-hesap">${this.hesapSecenek('102')}</select></div>
-          <div class="form-alan"><label>İşlem Adı <span class="zorunlu">*</span></label><input id="bk-islemad" placeholder="Örn: EFT, Havale, Fatura Ödeme"></div>
-          <div class="form-alan"><label>Şahıs veya Firma</label><select id="bk-sahis">${this.sahisSecenek()}</select></div>
-          <div class="form-alan"><label>İşlem Türü <span class="zorunlu">*</span></label>
-            <select id="bk-tur"><option value="giris">Para Girişi</option><option value="cikis">Para Çıkışı</option></select></div>
-          <div class="form-alan"><label>Gelir/Gider Hesabı</label><select id="bk-gider">${this.giderSecenek()}</select></div>
-          <div class="form-alan"><label>Tutar <span class="zorunlu">*</span></label><input type="number" id="bk-tutar" min="0" step="0.01" placeholder="0,00"></div>
-          <div class="form-alan tam"><label>Açıklama</label><input id="bk-aciklama"></div>
-          <div class="form-alan tam"><label>Banka Açıklaması</label><input id="bk-bankaac" placeholder="Banka dekontundaki açıklama"></div>
+        <div class="form-ust"><span class="form-baslik" style="border:none;margin:0;padding:0">Banka Hareketi Girişi</span></div>
+        <div class="form2">
+          <div><div class="form-grid" style="grid-template-columns:repeat(auto-fit,minmax(190px,1fr))">
+            <div class="bolum-etiket">Hareket Bilgileri</div>
+            <div class="form-alan"><label>Tarih <span class="zorunlu">*</span></label><input type="date" id="bk-tarih" value="${this.varsayilanTarih()}"></div>
+            <div class="form-alan"><label>Banka Hesabı <span class="zorunlu">*</span></label><select id="bk-hesap">${this.hesapSecenek('102')}</select></div>
+            <div class="form-alan"><label>İşlem Adı <span class="zorunlu">*</span></label><input id="bk-islemad" placeholder="Örn: EFT, Havale, Fatura Ödeme"></div>
+            <div class="form-alan"><label>İşlem No</label><input id="bk-no" value="${no}" readonly></div>
+            <div class="form-alan tam"><label>İşlem Türü <span class="zorunlu">*</span></label>${this.segment('bk-tur',[{v:'giris',ad:'Para Girişi'},{v:'cikis',ad:'Para Çıkışı'}],'cikis')}</div>
+            <div class="bolum-etiket">Tutar &amp; Karşı Hesap</div>
+            <div class="form-alan"><label>Tutar (₺) <span class="zorunlu">*</span></label><div class="gtutar"><span class="pb">₺</span><input type="text" inputmode="decimal" id="bk-tutar" placeholder="0,00"></div></div>
+            <div class="form-alan tam"><label>Kapatılacak Fatura</label><select id="bk-fatura" onchange="Form.faturaSecildi('bk')">${Fatura.secenek('cikis')}</select></div>
+            <div class="form-alan"><label>Şahıs veya Firma</label><select id="bk-sahis">${this.sahisSecenek()}</select></div>
+            <div class="form-alan"><label>Gelir/Gider Hesabı</label><select id="bk-gider">${this.giderSecenek()}</select></div>
+            <div class="bolum-etiket">Açıklama</div>
+            <div class="form-alan tam"><label>Açıklama</label><input id="bk-aciklama"></div>
+            <div class="form-alan tam"><label>Banka Açıklaması</label><input id="bk-bankaac" placeholder="Banka dekontundaki açıklama"></div>
+          </div></div>
+          <div id="bk-ozet"></div>
         </div>
         ${this.butonlar('banka')}
       </div>
       ${this.kayitListesi('banka')}`;
+    this.ozetBagla('bk','banka');
   },
 
   /* --- KREDİ KARTI HARCAMASI (taksitli) --- */
@@ -1515,35 +1734,44 @@ const Form = {
     const no = 'ISL-' + String((Depo.veri.sayaclar.islemNo||0)+1).padStart(6,'0');
     el.innerHTML = `
       <div class="kart">
-        <div class="form-baslik">Kredi Kartı Harcaması Girişi</div>
-        <div class="form-grid">
-          <div class="form-alan"><label>İşlem No</label><input id="kk-no" value="${no}" readonly></div>
-          <div class="form-alan"><label>İşlem Tarihi <span class="zorunlu">*</span></label><input type="date" id="kk-tarih" value="${this.varsayilanTarih()}" oninput="Form.taksitOnizle()"></div>
-          <div class="form-alan"><label>Kredi Kartı Hesabı <span class="zorunlu">*</span></label><select id="kk-hesap" onchange="Form.kartSecildi()">${this.hesapSecenek('309')}</select></div>
-          <div class="form-alan"><label>İşlem Adı <span class="zorunlu">*</span></label><input id="kk-islemad" placeholder="Örn: Bilgisayar Alımı"></div>
-          <div class="form-alan"><label>Satıcı veya Şahıs</label><select id="kk-sahis">${this.sahisSecenek()}</select></div>
-          <div class="form-alan"><label>Gider Hesabı</label><select id="kk-gider">${this.giderSecenek()}</select></div>
-          <div class="form-alan"><label>Toplam Tutar <span class="zorunlu">*</span></label><input type="number" id="kk-tutar" min="0" step="0.01" placeholder="0,00" oninput="Form.taksitOnizle()"></div>
-          <div class="form-alan"><label>Ödeme Tipi <span class="zorunlu">*</span></label>
-            <select id="kk-odemetipi" onchange="Form.kartOdemeTipi()"><option value="tek">Tek Çekim</option><option value="taksit">Taksitli</option></select></div>
-          <div class="form-alan"><label>Taksit Sayısı</label>
-            <select id="kk-taksitsec" onchange="Form.taksitSecim()" disabled>
-              <option value="2">2</option><option value="3">3</option><option value="4">4</option>
-              <option value="6">6</option><option value="9">9</option><option value="12">12</option>
-              <option value="custom">Kullanıcı Tanımlı</option></select></div>
-          <div class="form-alan"><label>Taksit Sayısı (Elle)</label><input type="number" id="kk-taksit" min="1" max="120" value="1" readonly oninput="Form.taksitOnizle()"></div>
-          <div class="form-alan"><label>İlk Taksit Tarihi</label><input type="date" id="kk-ilktaksit" oninput="Form.taksitOnizle()"></div>
-          <div class="form-alan"><label>Kart Ödeme Günü</label><input type="number" id="kk-odemegunu" min="1" max="31" placeholder="Ayın günü" oninput="Form.taksitOnizle()"></div>
-          <div class="form-alan tam"><label>Açıklama</label><input id="kk-aciklama"></div>
-          ${this.dosyaAlan()}
-          <div class="form-alan tam"><label>Ek Not</label><textarea id="kk-not"></textarea></div>
+        <div class="form-ust"><span class="form-baslik" style="border:none;margin:0;padding:0">Kredi Kartı Harcaması Girişi</span></div>
+        <div class="form2">
+          <div>
+            <div class="form-grid" style="grid-template-columns:repeat(auto-fit,minmax(185px,1fr))">
+              <div class="bolum-etiket">Harcama Bilgileri</div>
+              <div class="form-alan"><label>İşlem Tarihi <span class="zorunlu">*</span></label><input type="date" id="kk-tarih" value="${this.varsayilanTarih()}" oninput="Form.taksitOnizle()"></div>
+              <div class="form-alan"><label>Kredi Kartı Hesabı <span class="zorunlu">*</span></label><select id="kk-hesap" onchange="Form.kartSecildi()">${this.hesapSecenek('309')}</select></div>
+              <div class="form-alan"><label>İşlem Adı <span class="zorunlu">*</span></label><input id="kk-islemad" placeholder="Örn: Bilgisayar Alımı"></div>
+              <div class="form-alan"><label>İşlem No</label><input id="kk-no" value="${no}" readonly></div>
+              <div class="bolum-etiket">Tutar &amp; Taksit</div>
+              <div class="form-alan"><label>Toplam Tutar (₺) <span class="zorunlu">*</span></label><div class="gtutar"><span class="pb">₺</span><input type="text" inputmode="decimal" id="kk-tutar" placeholder="0,00" oninput="Form.taksitOnizle()"></div></div>
+              <div class="form-alan"><label>Ödeme Tipi <span class="zorunlu">*</span></label>${this.segment('kk-odemetipi',[{v:'tek',ad:'Tek Çekim'},{v:'taksit',ad:'Taksitli'}],'tek')}</div>
+              <div class="form-alan"><label>Taksit Sayısı</label>
+                <select id="kk-taksitsec" onchange="Form.taksitSecim()" disabled>
+                  <option value="2">2</option><option value="3">3</option><option value="4">4</option>
+                  <option value="6">6</option><option value="9">9</option><option value="12">12</option>
+                  <option value="custom">Kullanıcı Tanımlı</option></select></div>
+              <div class="form-alan"><label>Taksit Sayısı (Elle)</label><input type="number" id="kk-taksit" min="1" max="120" value="1" readonly oninput="Form.taksitOnizle()"></div>
+              <div class="form-alan"><label>İlk Taksit Tarihi</label><input type="date" id="kk-ilktaksit" oninput="Form.taksitOnizle()"></div>
+              <div class="form-alan"><label>Kart Ödeme Günü</label><input type="number" id="kk-odemegunu" min="1" max="31" placeholder="Ayın günü" oninput="Form.taksitOnizle()"></div>
+              <div class="bolum-etiket">Karşı Hesap</div>
+              <div class="form-alan tam"><label>Kapatılacak Fatura</label><select id="kk-fatura" onchange="Form.faturaSecildi('kk')">${Fatura.secenek('cikis')}</select></div>
+              <div class="form-alan"><label>Satıcı veya Şahıs</label><select id="kk-sahis">${this.sahisSecenek()}</select></div>
+              <div class="form-alan"><label>Gider Hesabı</label><select id="kk-gider">${this.giderSecenek()}</select></div>
+              <div class="bolum-etiket">Açıklama</div>
+              <div class="form-alan tam"><label>Açıklama</label><input id="kk-aciklama"></div>
+              ${this.gdetay('kk')}
+            </div>
+            <div id="kk-taksit-onizle" style="margin-top:16px"></div>
+          </div>
+          <div id="kk-ozet"></div>
         </div>
-        <div id="kk-taksit-onizle" style="margin-top:16px"></div>
         ${this.butonlar('kart')}
       </div>
       ${this.kayitListesi('kart')}`;
     this.dosyaBagla('kart');
     this.taksitOnizle();
+    this.ozetBagla('kk','kart');
   },
 
   // Kart seçilince ödeme günü ve ilk taksit tarihini otomatik doldur
@@ -1732,6 +1960,7 @@ const Form = {
       sahisHesapId: sahisId,
       sahis: sahisH ? (sahisH.kod+' '+Hesap.hesapAdi(sahisH)) : '',
       giderHesapId: document.getElementById('kk-gider').value || null,
+      kapatilanFaturaId: (document.getElementById('kk-fatura')||{}).value || null,
       tutar: tutar,
       odemeTipi: odemeTipi,
       taksitSayisi: adet,
@@ -1801,7 +2030,6 @@ const Form = {
       kdvTutar: 0,
       demirbasHesapId: demirbasHesapId, // dolu ise: tutar 255'e, gider sayılmaz
       iptal: document.getElementById(on+'-iptal') ? document.getElementById(on+'-iptal').checked : false,
-      durum: document.getElementById(on+'-durum').value,
       ekNot: document.getElementById(on+'-not').value.trim(),
       dosyaId: dosyaId,
       dosyaMeta: dosyaMeta
@@ -1857,6 +2085,7 @@ const Form = {
       sahis: sahisH ? (sahisH.kod + ' ' + Hesap.hesapAdi(sahisH)) : '',
       islemTuru: islemTuru, // giris/cikis
       giderHesapId: document.getElementById(on+'-gider').value || null,
+      kapatilanFaturaId: (document.getElementById(on+'-fatura')||{}).value || null, // ödenen/tahsil edilen fatura
       tutar: tutar,
       aciklama: document.getElementById(on+'-aciklama').value.trim(),
       bankaAciklama: document.getElementById(on+'-bankaac').value.trim()
@@ -1971,36 +2200,42 @@ const Form = {
       document.getElementById(on+'-hesap').value = is.hesapId;
       document.getElementById(on+'-faturano').value = is.faturaNo||'';
       document.getElementById(on+'-tutar').value = Yardimci.sayiFormat(is.tutar);
-      const ip=document.getElementById(on+'-iptal'); if(ip) ip.checked = !!is.iptal;
+      this.swDeger(on+'-iptal', is.iptal);
       if(tur==='alis'){
-        const at=document.getElementById('al-alimturu');
-        if(at){ at.value = is.demirbasHesapId ? 'demirbas' : 'gider'; this.alimTuruDegis();
-          if(is.demirbasHesapId) document.getElementById('al-demirbas').value = is.demirbasHesapId; }
+        this.segDeger('al-alimturu', is.demirbasHesapId ? 'demirbas' : 'gider');
+        this.alimTuruDegis();
+        if(is.demirbasHesapId){ const d=document.getElementById('al-demirbas'); if(d) d.value = is.demirbasHesapId; }
       }
-      document.getElementById(on+'-durum').value = is.durum||'odenmedi';
       document.getElementById(on+'-aciklama').value = is.aciklama||'';
       document.getElementById(on+'-not').value = is.ekNot||'';
       if(is.dosyaMeta){ this.bekleyenDosya=null; this.mevcutDosyaGoster(is); }
+      this.ozetGuncelle(tur);
     }else if(tur==='banka'){
       document.getElementById('bk-no').value = is.no;
       document.getElementById('bk-tarih').value = is.tarih;
       document.getElementById('bk-hesap').value = is.hesapId;
       document.getElementById('bk-islemad').value = is.islemAd||'';
+      this.segDeger('bk-tur', is.islemTuru||'giris');
+      this.faturaListeGuncelle('bk');
+      const bf=document.getElementById('bk-fatura'); if(bf && is.kapatilanFaturaId){ // düzenlenen fatura listede olmayabilir; ekle
+        if(![...bf.options].some(o=>o.value===is.kapatilanFaturaId)){ const f=Depo.veri.islemler.find(x=>x.id===is.kapatilanFaturaId); if(f){ const o=document.createElement('option'); o.value=f.id; o.textContent=(f.faturaNo||f.no)+' (seçili)'; bf.appendChild(o);} }
+        bf.value = is.kapatilanFaturaId; }
       document.getElementById('bk-sahis').value = is.sahisHesapId||'';
-      document.getElementById('bk-tur').value = is.islemTuru||'giris';
       document.getElementById('bk-gider').value = is.giderHesapId||'';
-      document.getElementById('bk-tutar').value = is.tutar;
+      document.getElementById('bk-tutar').value = Yardimci.sayiFormat(is.tutar);
       document.getElementById('bk-aciklama').value = is.aciklama||'';
       document.getElementById('bk-bankaac').value = is.bankaAciklama||'';
+      this.ozetGuncelle('banka');
     }else if(tur==='kart'){
       document.getElementById('kk-no').value = is.no;
       document.getElementById('kk-tarih').value = is.tarih;
       document.getElementById('kk-hesap').value = is.hesapId;
       document.getElementById('kk-islemad').value = is.islemAd||'';
+      const kf=document.getElementById('kk-fatura'); if(kf && is.kapatilanFaturaId){ if(![...kf.options].some(o=>o.value===is.kapatilanFaturaId)){ const f=Depo.veri.islemler.find(x=>x.id===is.kapatilanFaturaId); if(f){ const o=document.createElement('option'); o.value=f.id; o.textContent=(f.faturaNo||f.no)+' (seçili)'; kf.appendChild(o);} } kf.value=is.kapatilanFaturaId; }
       document.getElementById('kk-sahis').value = is.sahisHesapId||'';
       document.getElementById('kk-gider').value = is.giderHesapId||'';
-      document.getElementById('kk-tutar').value = is.tutar;
-      document.getElementById('kk-odemetipi').value = is.odemeTipi||'tek';
+      document.getElementById('kk-tutar').value = Yardimci.sayiFormat(is.tutar);
+      this.segDeger('kk-odemetipi', is.odemeTipi||'tek');
       document.getElementById('kk-taksit').value = is.taksitSayisi||1;
       const secEl=document.getElementById('kk-taksitsec');
       if(['2','3','4','6','9','12'].includes(String(is.taksitSayisi))) secEl.value=String(is.taksitSayisi); else secEl.value='custom';
@@ -2011,6 +2246,7 @@ const Form = {
       this.kartOdemeTipi();
       if(is.dosyaMeta){ this.bekleyenDosya=null; this.mevcutDosyaGoster(is); }
       this.taksitOnizle();
+      this.ozetGuncelle('kart');
     }
     this.listeVurgu(tur, id);
     Bildirim.goster('bilgi','Kayıt Yüklendi', is.no + ' düzenlemeye hazır.',1800);
@@ -2043,19 +2279,22 @@ const Form = {
     if(kayitlar.length===0){
       ic = `<div class="bos-mesaj">Henüz bu türde kayıt bulunmuyor.</div>`;
     }else if(tur==='alis'||tur==='satis'){
-      const durumRozet = {odenmedi:'<span class="rozet odenmedi">'+(tur==='alis'?'Ödenmedi':'Tahsil Edilmedi')+'</span>', kismi:'<span class="rozet kismi">Kısmi</span>', odendi:'<span class="rozet odendi">'+(tur==='alis'?'Ödendi':'Tahsil Edildi')+'</span>'};
+      const rozetAd = {odenmedi:(tur==='alis'?'Ödenmedi':'Tahsil edilmedi'), kismi:'Kısmi', odendi:(tur==='alis'?'Ödendi':'Tahsil edildi')};
       ic = `<div class="tablo-sar"><table class="veri" id="liste-${tur}"><thead><tr>
-        <th>İşlem No</th><th>Tarih</th><th>Hesap</th><th>Fatura No</th><th>Açıklama</th><th class="sag-hiza">Tutar</th><th>Durum</th><th>Dosya</th></tr></thead><tbody>
+        <th>İşlem No</th><th>Tarih</th><th>Hesap</th><th>Fatura No</th><th class="sag-hiza">Tutar</th><th class="sag-hiza">Kalan</th><th>Durum</th><th>Dosya</th></tr></thead><tbody>
         ${kayitlar.map(k=>{
           const h = Hesap.altBul(k.hesapId);
-          return `<tr data-id="${k.id}" onclick="Form.yukle('${tur}','${k.id}')">
+          const d = k.iptal ? 'iptal' : Fatura.durum(k);
+          const kalan = Fatura.kalan(k);
+          const rozet = k.iptal ? '<span class="rozet odenmedi">İptal</span>' : `<span class="rozet ${d}">${rozetAd[d]}</span>`;
+          return `<tr data-id="${k.id}" onclick="Form.yukle('${tur}','${k.id}')" style="${k.iptal?'opacity:.5':''}">
             <td><span class="kod-rozet">${k.no}</span></td>
             <td>${Yardimci.tarihFormat(k.tarih)}</td>
             <td>${h?Yardimci.kacisHTML(h.kod+' '+Hesap.hesapAdi(h)):'-'}</td>
             <td>${Yardimci.kacisHTML(k.faturaNo||'')}</td>
-            <td>${Yardimci.kacisHTML(k.aciklama||'')}</td>
             <td class="sag-hiza">${Yardimci.paraFormat(k.tutar)}</td>
-            <td>${durumRozet[k.durum]||''}</td>
+            <td class="sag-hiza">${d==='odendi'||k.iptal?'-':Yardimci.paraFormat(kalan)}</td>
+            <td>${rozet}</td>
             <td>${k.dosyaMeta?`<button class="btn btn-cizgi btn-kucuk" onclick="event.stopPropagation();DosyaGoster.islemDosya('${k.id}','goster')">👁</button>`:'-'}</td>
           </tr>`;
         }).join('')}
@@ -2104,8 +2343,8 @@ const Form = {
     if(kayitlar.length===0){ Bildirim.goster('uyari','Kayıt Yok','Yazdırılacak kayıt bulunmuyor.'); return; }
     let bas, satirlar;
     if(tur==='alis'||tur==='satis'){
-      bas = ['İşlem No','Tarih','Hesap','Fatura No','Açıklama','Tutar','Durum'];
-      satirlar = kayitlar.map(k=>{const h=Hesap.altBul(k.hesapId);return [k.no,Yardimci.tarihFormat(k.tarih),h?h.kod+' '+Hesap.hesapAdi(h):'',k.faturaNo,k.aciklama,Yardimci.paraFormat(k.tutar),k.durum];});
+      bas = ['İşlem No','Tarih','Hesap','Fatura No','Tutar','Kalan','Durum'];
+      satirlar = kayitlar.map(k=>{const h=Hesap.altBul(k.hesapId);return [k.no,Yardimci.tarihFormat(k.tarih),h?h.kod+' '+Hesap.hesapAdi(h):'',k.faturaNo,Yardimci.paraFormat(k.tutar),Yardimci.paraFormat(Fatura.kalan(k)),k.iptal?'İptal':Fatura.durumAd(k)];});
     }else{
       bas = ['İşlem No','Tarih','Hesap','İşlem Adı','Şahıs','Tür','Tutar'];
       satirlar = kayitlar.map(k=>{const h=Hesap.altBul(k.hesapId);return [k.no,Yardimci.tarihFormat(k.tarih),h?h.kod+' '+Hesap.hesapAdi(h):'',k.islemAd,k.sahis,k.islemTuru==='giris'?'Para Girişi':'Para Çıkışı',Yardimci.paraFormat(k.tutar)];});
@@ -2117,8 +2356,8 @@ const Form = {
     if(kayitlar.length===0){ Bildirim.goster('uyari','Kayıt Yok','Aktarılacak kayıt bulunmuyor.'); return; }
     let bas, satirlar;
     if(tur==='alis'||tur==='satis'){
-      bas = ['İşlem No','Tarih','Hesap','Fatura No','Açıklama','Tutar','Durum'];
-      satirlar = kayitlar.map(k=>{const h=Hesap.altBul(k.hesapId);return [k.no,Yardimci.tarihFormat(k.tarih),h?h.kod+' '+Hesap.hesapAdi(h):'',k.faturaNo,k.aciklama,Yardimci.sayiFormat(k.tutar),k.durum];});
+      bas = ['İşlem No','Tarih','Hesap','Fatura No','Açıklama','Tutar','Kalan','Durum'];
+      satirlar = kayitlar.map(k=>{const h=Hesap.altBul(k.hesapId);return [k.no,Yardimci.tarihFormat(k.tarih),h?h.kod+' '+Hesap.hesapAdi(h):'',k.faturaNo,k.aciklama,Yardimci.sayiFormat(k.tutar),Yardimci.sayiFormat(Fatura.kalan(k)),k.iptal?'İptal':Fatura.durumAd(k)];});
     }else{
       bas = ['İşlem No','Tarih','Hesap','İşlem Adı','Şahıs','Tür','Tutar'];
       satirlar = kayitlar.map(k=>{const h=Hesap.altBul(k.hesapId);return [k.no,Yardimci.tarihFormat(k.tarih),h?h.kod+' '+Hesap.hesapAdi(h):'',k.islemAd,k.sahis,k.islemTuru==='giris'?'Para Girişi':'Para Çıkışı',Yardimci.sayiFormat(k.tutar)];});
@@ -2672,10 +2911,9 @@ const Rapor = {
     if(f.hesap) fat = fat.filter(x=>x.hesapId===f.hesap);
     if(f.min!=null) fat = fat.filter(x=>x.tutar>=f.min);
     if(f.max!=null) fat = fat.filter(x=>x.tutar<=f.max);
-    const durumAd = {odenmedi:'Ödenmedi/Tahsil Edilmedi',kismi:'Kısmi',odendi:'Ödendi/Tahsil Edildi'};
     const satirlar = fat.map(x=>{
       const h = Hesap.altBul(x.hesapId);
-      return [x.no, Yardimci.tarihFormat(x.tarih), Sayfa.islemTurAdi(x.tur), h?h.kod+' '+Hesap.hesapAdi(h):'', x.faturaNo, Yardimci.paraFormat(x.tutar), durumAd[x.durum]||'', x.dosyaMeta?'Var':'Yok'];
+      return [x.no, Yardimci.tarihFormat(x.tarih), Sayfa.islemTurAdi(x.tur), h?h.kod+' '+Hesap.hesapAdi(h):'', x.faturaNo, Yardimci.paraFormat(x.tutar), x.iptal?'İptal':Fatura.durumAd(x), x.dosyaMeta?'Var':'Yok'];
     });
     return {baslik:'Fatura Raporu', basliklar, satirlar};
   },
