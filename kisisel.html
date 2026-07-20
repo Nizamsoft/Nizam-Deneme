@@ -163,6 +163,19 @@ table.veri tbody tr:hover{background:var(--gri)}
 .wz-alt-btn{display:flex;gap:8px}
 .wz-dahil{display:flex;align-items:center;gap:8px;font-size:13px;color:var(--metin-soluk);cursor:pointer;user-select:none}
 .wz-dahil input{width:17px;height:17px;accent-color:var(--kirmizi)}
+/* ---- Dekont mod seçici ---- */
+.dk-seg{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:16px}
+.dk-seg-btn{text-align:left;border:2px solid var(--kenar);background:var(--kart-bg);border-radius:12px;padding:14px 16px;cursor:pointer;font-family:inherit;color:var(--metin);transition:.15s}
+.dk-seg-btn:hover{border-color:var(--gri-koyu)}
+.dk-seg-btn.aktif{border-color:var(--kirmizi);background:color-mix(in srgb,var(--kirmizi) 5%,transparent)}
+.dk-seg-btn .b{font-size:15px;font-weight:700;margin-bottom:3px}
+.dk-seg-btn .a{font-size:12.5px;color:var(--metin-soluk);line-height:1.4}
+@media(max-width:640px){.dk-seg{grid-template-columns:1fr}}
+.gecmis-ozet{display:flex;flex-wrap:wrap;gap:12px;margin:14px 0}
+.gecmis-ozet .kutu{flex:1;min-width:130px;background:var(--gri);border:1px solid var(--kenar);border-radius:10px;padding:12px 14px}
+.gecmis-ozet .kutu .l{font-size:12px;color:var(--metin-soluk);font-weight:600}
+.gecmis-ozet .kutu .d{font-size:18px;font-weight:800;margin-top:3px}
+.yeni-kat-liste{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px;max-height:150px;overflow-y:auto}
 </style>
 </head>
 <body>
@@ -177,7 +190,7 @@ table.veri tbody tr:hover{background:var(--gri)}
       <li class="menu-oge" data-sayfa="kategoriler"><span class="ik">🏷️</span><span class="etiket">Kategoriler</span></li>
       <li class="menu-oge" data-sayfa="yedek"><span class="ik">💾</span><span class="etiket">Yedekleme</span></li>
     </ul>
-    <div class="menu-alt">Nizam Soft © 2026<br>Kişisel • Sürüm 0.2.0</div>
+    <div class="menu-alt">Nizam Soft © 2026<br>Kişisel • Sürüm 0.3.0</div>
   </nav>
   <div class="icerik">
     <header class="ust-bar">
@@ -460,12 +473,18 @@ const Hareket = {
 };
 /* ============ Dekont Yükle (SheetJS) ============ */
 const Dekont = {
-  _satirlar:null, _hesapId:null,
+  _satirlar:null, _hesapId:null, _mod:'dekont',
   sayfa(el){
     const bankalar=Depo.veri.hesaplar.filter(h=>h.tur==='banka'||h.tur==='kart');
     el.innerHTML=`<div class="kart">
       <h2 class="bolum-baslik">Dekont / Hesap Hareketleri Yükle</h2>
-      <p class="pop-aciklama" style="margin-bottom:16px;line-height:1.6">Bankandan indirdiğin hesap hareketleri dosyasını (<b>Excel .xls / .xlsx / CSV</b>) yükle; uygulama tüm hareketleri otomatik okur, gelir/gideri ayırır ve <b>satır satır kategori</b> sormanı sağlar. Aynı dosyayı tekrar yüklersen (Dekont No ile) çift saymaz.</p>
+      <div class="dk-seg">
+        <button type="button" class="dk-seg-btn aktif" data-mod="dekont" onclick="Dekont.modSec('dekont')">
+          <div class="b">📥 Banka Dekontu</div><div class="a">Yeni hareketleri tek tek kategorile (sihirbaz)</div></button>
+        <button type="button" class="dk-seg-btn" data-mod="gecmis" onclick="Dekont.modSec('gecmis')">
+          <div class="b">🗂️ Eski / Geçmiş Dosya</div><div class="a">Kendi kategorilerinle (Etiket) toplu yükle + açılış bakiyesi</div></button>
+      </div>
+      <p class="pop-aciklama" id="dk-aciklama" style="margin:0 0 16px;line-height:1.6"></p>
       <div class="form-grid" style="margin-bottom:16px">
         <div class="form-alan"><label>Hangi hesaba işlensin? <span class="z">*</span></label>
           <select id="dk-hesap">${bankalar.map(h=>`<option value="${h.id}">${Y.kacis(h.ad)} (${Sayfa.turAd(h.tur)})</option>`).join('')||'<option value="">Önce bir Banka/Kart hesabı ekleyin</option>'}</select></div>
@@ -481,6 +500,16 @@ const Dekont = {
     ['dragover','dragenter'].forEach(ev=>kutu.addEventListener(ev,e=>{e.preventDefault();kutu.classList.add('uzerinde');}));
     ['dragleave','drop'].forEach(ev=>kutu.addEventListener(ev,e=>{e.preventDefault();kutu.classList.remove('uzerinde');}));
     kutu.addEventListener('drop',e=>{ const f=e.dataTransfer.files[0]; if(f) this.oku(f); });
+    this.modSec(this._mod||'dekont');
+  },
+  modSec(mod){
+    this._mod=mod;
+    document.querySelectorAll('.dk-seg-btn').forEach(b=>b.classList.toggle('aktif',b.dataset.mod===mod));
+    const ac=document.getElementById('dk-aciklama');
+    if(ac) ac.innerHTML = mod==='gecmis'
+      ? 'Daha önce <b>manuel tuttuğun</b> hesap hareketleri dosyasını yükle. Uygulama <b>Etiket sütununu kendi kategorin</b> olarak alır, eksik kategorileri otomatik oluşturur ve tümünü <b>toplu</b> yükler. Ayrıca dosyadaki son bakiyeyi baz alıp bir <b>açılış bakiyesi</b> kaydı ekler. Aynı dosyayı tekrar yüklersen çift saymaz.'
+      : 'Bankandan indirdiğin hesap hareketleri dosyasını (<b>Excel .xls / .xlsx / CSV</b>) yükle; uygulama hareketleri okur, gelir/gideri ayırır ve <b>tek tek kategori</b> sorar. Aynı dosyayı tekrar yüklersen (Dekont No ile) çift saymaz.';
+    const sonuc=document.getElementById('dk-sonuc'); if(sonuc) sonuc.innerHTML='';
   },
   async oku(dosya){
     this._hesapId=(document.getElementById('dk-hesap')||{}).value;
@@ -493,7 +522,7 @@ const Dekont = {
       const parsed=this.ayikla(rows);
       if(!parsed.length){ Bildirim.goster('uyari','Boş','Dosyada tanınan hareket bulunamadı.'); return; }
       this._satirlar=parsed;
-      this.sihirbaz();
+      if(this._mod==='gecmis') this.gecmisPlan(); else this.sihirbaz();
     }catch(e){ console.error(e); Bildirim.goster('hata','Okunamadı','Dosya okunamadı: '+e.message); }
   },
   // Başlık satırını bulup Tarih/Açıklama/Tutar/Etiket/Dekont No sütunlarını eşle
@@ -512,12 +541,14 @@ const Dekont = {
       const tutar=Y.coz(ham); if(!tutar) continue;
       const tarih=this.tarihCoz(r[map.tarih]); if(!tarih) continue;
       const acikRaw=String(r[map.aciklama]||'').trim();
-      out.push({ tarih, aciklamaRaw:acikRaw, aciklama:this.temiz(acikRaw), etiket:map.etiket>-1?String(r[map.etiket]||'').trim():'', tutar:Math.abs(tutar), yon:tutar<0?'gider':'gelir', dekontNo:map.dekont>-1?String(r[map.dekont]||'').trim():'' });
+      out.push({ tarih, aciklamaRaw:acikRaw, aciklama:this.temiz(acikRaw), etiket:map.etiket>-1?String(r[map.etiket]||'').trim():'', tutar:Math.abs(tutar), yon:tutar<0?'gider':'gelir', dekontNo:map.dekont>-1?String(r[map.dekont]||'').trim():'', bakiye:map.bakiye>-1?Y.coz(r[map.bakiye]):null });
     }
     return out;
   },
   tarihCoz(v){
     if(v instanceof Date) return v.getFullYear()+'-'+String(v.getMonth()+1).padStart(2,'0')+'-'+String(v.getDate()).padStart(2,'0');
+    // Excel seri numarası (ör. 45839 = 01.07.2025)
+    if(typeof v==='number' && v>20000 && v<80000){ const d=new Date(Date.UTC(1899,11,30)+Math.round(v)*86400000); return d.getUTCFullYear()+'-'+String(d.getUTCMonth()+1).padStart(2,'0')+'-'+String(d.getUTCDate()).padStart(2,'0'); }
     const s=String(v||'').trim();
     let m=s.match(/^(\d{2})[\/.](\d{2})[\/.](\d{4})/); if(m) return `${m[3]}-${m[2]}-${m[1]}`;
     m=s.match(/^(\d{4})-(\d{2})-(\d{2})/); if(m) return `${m[1]}-${m[2]}-${m[3]}`;
@@ -630,7 +661,97 @@ const Dekont = {
     this.wizKapat();
     Bildirim.goster('basari','İçe Aktarıldı', n+' hareket kaydedildi.',4000);
     App.git('anasayfa');
-  }
+  },
+  /* ====== Eski/geçmiş dosya: toplu yükleme (kategori = Etiket) ====== */
+  gecmisPlan(){
+    const satirlar=this._satirlar;
+    // Mükerrer: geçmiş kayıtlar 'E'+dekontNo anahtarıyla saklanır (banka dekont no'larıyla çakışmasın)
+    const anah=s=>s.dekontNo?('E'+s.dekontNo):'';
+    const mevcut=new Set(Depo.veri.hareketler.filter(h=>h.dekontNo).map(h=>h.dekontNo));
+    const yeni=satirlar.filter(s=>{ const a=anah(s); return !a || !mevcut.has(a); });
+    const atlanan=satirlar.length-yeni.length;
+
+    // Etiketleri normalize et → kategori planı (TÜM satırlar üzerinden, tur çoğunluğa göre)
+    const grup={}; // key -> {yaz:{orig:count}, gelir, gider}
+    satirlar.forEach(s=>{
+      const e=(s.etiket||'').trim();
+      if(!e) return; // boş etiket → mevcut Diğer/Diğer Gelir'e gider
+      const key=e.toLocaleLowerCase('tr');
+      const g=grup[key]||(grup[key]={yaz:{},gelir:0,gider:0});
+      g.yaz[e]=(g.yaz[e]||0)+1; if(s.yon==='gelir') g.gelir++; else g.gider++;
+    });
+    // key -> kategoriId (var olanı kullan, yoksa oluşturulacaklar listesine ekle)
+    const keyKat={}, yeniKat=[];
+    Object.keys(grup).forEach(key=>{
+      const g=grup[key];
+      const canon=Object.entries(g.yaz).sort((a,b)=>b[1]-a[1])[0][0]; // en sık yazım
+      const tur=g.gelir>g.gider?'gelir':'gider';
+      const varOlan=Depo.veri.kategoriler.find(k=>k.ad.toLocaleLowerCase('tr')===key);
+      if(varOlan){ keyKat[key]=varOlan.id; }
+      else { const id=Y.id(); keyKat[key]=id; yeniKat.push({id,tur,ad:canon,adet:g.gelir+g.gider}); }
+    });
+    // boş etiket için mevcut kategoriler
+    const bosGelir=Hesap.kategoriIdAd('Diğer Gelir','gelir')||Hesap.kategoriIdAd('Ek Gelir','gelir')||'';
+    const bosGider=Hesap.kategoriIdAd('Diğer','gider')||'';
+
+    // Açılış hedefi: dosyanın SON satırının bakiyesi (dosya sırası = akan bakiye, kronolojik)
+    const bakiyeli=satirlar.filter(s=>typeof s.bakiye==='number'&&!isNaN(s.bakiye));
+    const hedef = bakiyeli.length ? bakiyeli[bakiyeli.length-1].bakiye : null;
+    // Dönem aralığı
+    const tarihler=satirlar.map(s=>s.tarih).filter(Boolean).sort();
+    const ilkT=tarihler[0]||'', sonT=tarihler[tarihler.length-1]||'';
+
+    this._gecmis={ yeni, atlanan, keyKat, yeniKat, bosGelir, bosGider, hedef, anah };
+
+    const hesapAd=Hesap.ad(this._hesapId);
+    document.getElementById('dk-sonuc').innerHTML=`
+      <div class="uyari-serit" style="border-color:var(--yesil)">✓ <b>${yeni.length} yeni hareket</b> bulundu.${atlanan?` ${atlanan} kayıt zaten yüklüydü, atlandı.`:''} Aşağıyı kontrol edip <b>Yükle</b>'ye bas.</div>
+      <div class="gecmis-ozet">
+        <div class="kutu"><div class="l">Yeni Hareket</div><div class="d">${yeni.length}</div></div>
+        <div class="kutu"><div class="l">Dönem</div><div class="d" style="font-size:14px">${ilkT?Y.tf(ilkT):'—'}<br>${sonT?Y.tf(sonT):'—'}</div></div>
+        <div class="kutu"><div class="l">Yeni Kategori</div><div class="d">${yeniKat.length}</div></div>
+        ${hedef!=null?`<div class="kutu"><div class="l">Olacak Bakiye</div><div class="d" style="color:${hedef<0?'var(--kirmizi)':'var(--yesil)'}">${Y.para(hedef)}</div></div>`:''}
+      </div>
+      ${hedef!=null?`<div class="uyari-serit" style="border-color:var(--sari);margin-bottom:12px">📌 <b>${Y.kacis(hesapAd)}</b> hesabının güncel bakiyesi, dosyadaki son bakiyeye göre <b>${Y.para(hedef)}</b> olacak şekilde ayarlanacak (fark otomatik bir <b>Açılış Bakiyesi</b> kaydıyla dengelenir).</div>`:''}
+      ${yeniKat.length?`<div style="margin-bottom:12px"><b style="font-size:13.5px">Oluşturulacak ${yeniKat.length} kategori:</b>
+        <div class="yeni-kat-liste">${yeniKat.sort((a,b)=>b.adet-a.adet).map(k=>`<span class="rozet ${k.tur==='gelir'?'banka':'kart'}">${Y.kacis(k.ad)} <span style="opacity:.7">(${k.adet})</span></span>`).join('')}</div></div>`:''}
+      <div class="buton-grup" style="margin-top:8px;display:flex;gap:10px;flex-wrap:wrap">
+        <button class="btn btn-yesil" onclick="Dekont.gecmisYukle()">💾 ${yeni.length} Hareketi Yükle</button>
+        <button class="btn btn-gri btn-kucuk" onclick="App.git('dekont')">Vazgeç</button>
+      </div>`;
+  },
+  gecmisYukle(){
+    const g=this._gecmis; if(!g){ return; }
+    // 1) yeni kategorileri oluştur
+    g.yeniKat.forEach(k=>Depo.veri.kategoriler.push({id:k.id,tur:k.tur,ad:k.ad}));
+    // 2) hareketleri ekle
+    let n=0, ilkTarih=null;
+    g.yeni.forEach(s=>{
+      const e=(s.etiket||'').trim();
+      const kategoriId = e ? (g.keyKat[e.toLocaleLowerCase('tr')]||'') : (s.yon==='gelir'?g.bosGelir:g.bosGider);
+      Depo.veri.hareketler.push({ id:Y.id(), tarih:s.tarih, tur:s.yon, hesapId:this._hesapId, kategoriId, tutar:s.tutar, aciklama:s.aciklama, etiket:e, dekontNo:g.anah(s), kaynak:'gecmis' });
+      if(!ilkTarih||s.tarih<ilkTarih) ilkTarih=s.tarih;
+      n++;
+    });
+    // 3) açılış bakiyesi kaydı — hesabı dosyanın son bakiyesine sabitle
+    if(g.hedef!=null){
+      // eski açılış kaydını temizle (yeniden hesapla)
+      Depo.veri.hareketler=Depo.veri.hareketler.filter(h=>!(h.kaynak==='gecmis-acilis'&&h.hesapId===this._hesapId));
+      const simdi=Hesap.bakiye(this._hesapId);
+      const fark=Math.round((g.hedef-simdi)*100)/100;
+      if(Math.abs(fark)>=0.01){
+        let acKat=Depo.veri.kategoriler.find(k=>k.ad==='Açılış Bakiyesi');
+        if(!acKat){ acKat={id:Y.id(),tur:'gelir',ad:'Açılış Bakiyesi'}; Depo.veri.kategoriler.push(acKat); }
+        const tarih=ilkTarih?this._birGunOnce(ilkTarih):Y.bugun();
+        Depo.veri.hareketler.push({ id:Y.id(), tarih, tur:fark>=0?'gelir':'gider', hesapId:this._hesapId, kategoriId:acKat.id, tutar:Math.abs(fark), aciklama:'Açılış bakiyesi (eski kayıtlar + manuel tutar düzeltmesi)', kaynak:'gecmis-acilis' });
+      }
+    }
+    Depo.kaydet();
+    const sonBak=Hesap.bakiye(this._hesapId);
+    Bildirim.goster('basari','Geçmiş Yüklendi', `${n} hareket ve ${g.yeniKat.length} kategori eklendi. Güncel bakiye: ${Y.para(sonBak)}`,5000);
+    App.git('anasayfa');
+  },
+  _birGunOnce(iso){ const p=iso.split('-'); const d=new Date(Date.UTC(+p[0],+p[1]-1,+p[2])); d.setUTCDate(d.getUTCDate()-1); return d.getUTCFullYear()+'-'+String(d.getUTCMonth()+1).padStart(2,'0')+'-'+String(d.getUTCDate()).padStart(2,'0'); }
 };
 document.addEventListener('DOMContentLoaded', ()=>App.baslat());
 </script>
