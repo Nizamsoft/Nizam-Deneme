@@ -190,7 +190,7 @@ table.veri tbody tr:hover{background:var(--gri)}
       <li class="menu-oge" data-sayfa="kategoriler"><span class="ik">🏷️</span><span class="etiket">Kategoriler</span></li>
       <li class="menu-oge" data-sayfa="yedek"><span class="ik">💾</span><span class="etiket">Yedekleme</span></li>
     </ul>
-    <div class="menu-alt">Nizam Soft © 2026<br>Kişisel • Sürüm 0.3.0</div>
+    <div class="menu-alt">Nizam Soft © 2026<br>Kişisel • Sürüm 0.3.1</div>
   </nav>
   <div class="icerik">
     <header class="ust-bar">
@@ -344,17 +344,21 @@ const Sayfa = {
     return `<tr><td>${Y.tf(h.tarih)}</td><td>${Y.kacis(kat||'')}</td><td>${Y.kacis(Hesap.ad(h.hesapId))}</td><td>${Y.kacis(h.aciklama||'')}</td><td class="sag-hiza ${isG?'gelir':'gider-r'}">${tutar} TL</td></tr>`;
   },
   hareketler(el){
+    const secHesap=this._hesapFiltre||''; this._hesapFiltre=null;
     el.innerHTML=`<div class="kart">
       <div class="arac-cubuk">
         <button class="btn btn-kirmizi btn-kucuk" onclick="Hareket.ekleModal()">＋ Yeni Hareket</button>
-        <input type="month" id="h-ay" value="${Y.bugun().slice(0,7)}" onchange="Sayfa.hareketListe()">
-        <select id="h-hesap" onchange="Sayfa.hareketListe()"><option value="">Tüm hesaplar</option>${Depo.veri.hesaplar.map(h=>`<option value="${h.id}">${Y.kacis(h.ad)}</option>`).join('')}</select>
+        <label style="font-size:13px;color:var(--metin-soluk);font-weight:600">Ay</label>
+        <input type="month" id="h-ay" value="" onchange="Sayfa.hareketListe()">
+        <button class="btn btn-cizgi btn-kucuk" onclick="document.getElementById('h-ay').value='';Sayfa.hareketListe()">Tüm aylar</button>
+        <select id="h-hesap" onchange="Sayfa.hareketListe()"><option value="">Tüm hesaplar</option>${Depo.veri.hesaplar.map(h=>`<option value="${h.id}" ${h.id===secHesap?'selected':''}>${Y.kacis(h.ad)}</option>`).join('')}</select>
         <select id="h-tur" onchange="Sayfa.hareketListe()"><option value="">Tümü</option><option value="gelir">Gelir</option><option value="gider">Gider</option><option value="transfer">Transfer</option></select>
       </div>
       <div id="h-liste"></div>
     </div>`;
     this.hareketListe();
   },
+  hesapHareket(id){ this._hesapFiltre=id; App.git('hareketler'); },
   hareketListe(){
     const ay=(document.getElementById('h-ay')||{}).value||'';
     const hesap=(document.getElementById('h-hesap')||{}).value||'';
@@ -372,8 +376,9 @@ const Sayfa = {
   },
   hesaplar(el){
     el.innerHTML=`<div class="kart"><div class="arac-cubuk"><h2 class="bolum-baslik" style="margin:0">Hesaplar</h2><button class="btn btn-kirmizi btn-kucuk" style="margin-left:auto" onclick="Sayfa.hesapModal()">＋ Hesap Ekle</button></div>
-      <div class="tablo-sar"><table class="veri"><thead><tr><th>Ad</th><th>Tür</th><th class="sag-hiza">Açılış</th><th class="sag-hiza">Güncel Bakiye</th><th class="sag-hiza">İşlem</th></tr></thead><tbody>
-      ${Depo.veri.hesaplar.map(h=>{const b=Hesap.bakiye(h.id);return `<tr><td>${Y.kacis(h.ad)}</td><td><span class="rozet ${h.tur}">${this.turAd(h.tur)}</span></td><td class="sag-hiza">${Y.para(h.acilis||0)}</td><td class="sag-hiza" style="font-weight:700;color:${b<0?'var(--kirmizi)':'inherit'}">${Y.para(b)}</td><td class="sag-hiza"><button class="btn btn-cizgi btn-kucuk" onclick="Sayfa.hesapModal('${h.id}')">✎</button> <button class="btn btn-cizgi btn-kucuk" onclick="Sayfa.hesapSil('${h.id}')">🗑</button></td></tr>`;}).join('')}
+      <p class="pop-aciklama" style="margin:-4px 0 12px">Bir hesabın hareketlerini görmek için satırdaki <b>📋 Hareketler</b> düğmesine bas.</p>
+      <div class="tablo-sar"><table class="veri"><thead><tr><th>Ad</th><th>Tür</th><th class="sag-hiza">Hareket</th><th class="sag-hiza">Açılış</th><th class="sag-hiza">Güncel Bakiye</th><th class="sag-hiza">İşlem</th></tr></thead><tbody>
+      ${Depo.veri.hesaplar.map(h=>{const b=Hesap.bakiye(h.id);const adet=Depo.veri.hareketler.filter(x=>x.hesapId===h.id||x.karsiHesapId===h.id).length;return `<tr><td><a href="#" onclick="Sayfa.hesapHareket('${h.id}');return false" style="color:var(--kirmizi);font-weight:600;text-decoration:none">${Y.kacis(h.ad)}</a></td><td><span class="rozet ${h.tur}">${this.turAd(h.tur)}</span></td><td class="sag-hiza">${adet}</td><td class="sag-hiza">${Y.para(h.acilis||0)}</td><td class="sag-hiza" style="font-weight:700;color:${b<0?'var(--kirmizi)':'inherit'}">${Y.para(b)}</td><td class="sag-hiza"><button class="btn btn-cizgi btn-kucuk" onclick="Sayfa.hesapHareket('${h.id}')">📋 Hareketler</button> <button class="btn btn-cizgi btn-kucuk" onclick="Sayfa.hesapModal('${h.id}')">✎</button> <button class="btn btn-cizgi btn-kucuk" onclick="Sayfa.hesapSil('${h.id}')">🗑</button></td></tr>`;}).join('')}
       </tbody></table></div></div>`;
   },
   hesapModal(id){
