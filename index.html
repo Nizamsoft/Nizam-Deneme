@@ -262,17 +262,20 @@ table.veri tr.ana-hesap-satir:hover{background:var(--gri-orta)}
 .grp-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px}
 .grp-grid .tam,.grp-grid .gdetay{grid-column:1/-1}
 @media(max-width:540px){.grp-grid{grid-template-columns:1fr}}
-/* Satır içi hızlı hesap/grup ekleme */
+/* Hızlı hesap/grup ekleme: ➕ butonu + mini pencere */
 .sec-satir{display:flex;gap:6px;align-items:stretch}
 .sec-satir select{flex:1;min-width:0}
 .ekle-btn{flex:0 0 auto;width:44px;border:2px solid var(--gri-koyu);background:var(--kart-bg);color:var(--metin);border-radius:10px;font-size:20px;line-height:1;cursor:pointer;transition:.15s}
 .ekle-btn:hover{border-color:var(--kirmizi);color:var(--kirmizi)}
-.hizli-ekle:empty{display:none}
-.hizli-ekle{margin-top:8px}
-.hizli-kutu{background:color-mix(in srgb,var(--kirmizi) 7%,var(--kart-bg));border:1px solid color-mix(in srgb,var(--kirmizi) 30%,var(--kenar));border-radius:10px;padding:12px}
-.hizli-kutu .satir{display:flex;gap:8px;flex-wrap:wrap;align-items:flex-end}
-.hizli-kutu label{font-size:11.5px}
-.hizli-kutu input,.hizli-kutu select{padding:9px 11px;font-size:14px;border:2px solid var(--kenar);border-radius:9px;background:var(--kart-bg);color:var(--metin);font-family:inherit;width:100%}
+.hizli-katman{position:fixed;inset:0;background:rgba(10,14,20,.5);backdrop-filter:blur(3px);display:none;align-items:center;justify-content:center;z-index:120;padding:20px}
+.hizli-katman.acik{display:flex;animation:fadeGiris .18s ease}
+.hizli-modal{background:var(--kart-bg);border-radius:16px;box-shadow:var(--golge-buyuk);width:100%;max-width:440px;padding:22px;animation:modalGiris .26s cubic-bezier(.34,1.3,.64,1)}
+.hizli-modal h4{font-size:16px;font-weight:700;display:flex;align-items:center;gap:9px;margin-bottom:2px}
+.hizli-modal h4 .kapat-x{margin-left:auto;background:none;border:none;font-size:24px;color:var(--metin-soluk);cursor:pointer;line-height:1;width:32px;height:32px;border-radius:8px}
+.hizli-modal h4 .kapat-x:hover{background:var(--gri);color:var(--kirmizi)}
+.hizli-modal .alt-not{font-size:12.5px;color:var(--metin-soluk);margin-bottom:16px}
+.hizli-modal .alanlar{display:flex;flex-direction:column;gap:13px}
+.hizli-modal .btnlar{display:flex;gap:10px;margin-top:18px}
 .bolum-etiket{grid-column:1/-1;display:flex;align-items:center;gap:10px;font-size:11.5px;font-weight:800;letter-spacing:.09em;text-transform:uppercase;color:var(--metin-soluk);margin-top:8px}
 .bolum-etiket::after{content:"";flex:1;height:1px;background:var(--kenar)}
 .bolum-etiket:first-child{margin-top:0}
@@ -516,7 +519,7 @@ table.nakit th.bugun-sutun{background:var(--kirmizi)}
         </ul>
       </li>
     </ul>
-    <div class="menu-alt">Nizam Soft © 2026<br>Sürüm 1.9.2 • 20.07.2026</div>
+    <div class="menu-alt">Nizam Soft © 2026<br>Sürüm 1.9.3 • 20.07.2026</div>
   </nav>
 
   <!-- ANA İÇERİK -->
@@ -542,6 +545,9 @@ table.nakit th.bugun-sutun{background:var(--kirmizi)}
     <div class="modal-alt" id="modal-alt"></div>
   </div>
 </div>
+
+<!-- Hızlı ekleme mini penceresi (ana modalın da üstüne açılabilir) -->
+<div class="hizli-katman" id="hizli-katman" onclick="if(event.target===this)Form.hizliEkleKapat()"><div class="hizli-modal" id="hizli-modal"></div></div>
 
 <!-- Bildirim alanı -->
 <div class="bildirim-alan" id="bildirim-alan"></div>
@@ -1547,58 +1553,70 @@ const Form = {
     return `<div class="grp"><div class="grp-bas"><span class="ik">${ik}</span>${ad}</div><div class="grp-grid">${ic}</div></div>`;
   },
 
-  /* ---- Satır içi hızlı hesap/grup ekleme ---- */
-  // Bir <select>'i ➕ butonu + açılır ekleme paneliyle sar
+  /* ---- Hızlı hesap/grup ekleme: ➕ → mini pencere ---- */
+  // Bir <select>'i ➕ butonuyla sar
   secEkle(selectId, anaKodlarCSV, selectHTML){
-    return `<div class="sec-satir">${selectHTML}<button type="button" class="ekle-btn" title="Yeni ekle" onclick="Form.hizliEkle('${selectId}','${anaKodlarCSV}')">＋</button></div><div class="hizli-ekle" id="${selectId}-ekle"></div>`;
+    return `<div class="sec-satir">${selectHTML}<button type="button" class="ekle-btn" title="Yeni ekle" onclick="Form.hizliEkle('${selectId}','${anaKodlarCSV}')">＋</button></div>`;
   },
   anaAd(kod){ return {'102':'Banka','120':'Alıcı / Müşteri','309':'Kredi Kartı','320':'Satıcı','331':'Ortak','255':'Demirbaş','600':'Gelir','770':'Gider'}[kod]||kod; },
+  // İkon + başlık (ilk anaKod'a göre)
+  ekleBaslik(grupMod, anaKodlar){
+    if(grupMod) return {ik:'🏷️', ad:'Yeni Grup', alt:'Rapor/sınıflandırma grubu — yeni muhasebe hesabı açmaz.'};
+    const ik = {'102':'🏦','120':'👤','309':'💳','320':'🏢','331':'🤝','255':'🖥️','600':'📈','770':'📊'}[anaKodlar[0]]||'📄';
+    const adlar = anaKodlar.map(k=>this.anaAd(k)).join(' / ');
+    return {ik, ad:'Yeni Hesap', alt:adlar+' altına eklenir'};
+  },
   hizliEkle(selectId, anaKodlarCSV){
-    const kutu = document.getElementById(selectId+'-ekle'); if(!kutu) return;
-    if(kutu.dataset.acik==='1'){ this.hizliEkleKapat(selectId); return; }
     const grupMod = anaKodlarCSV==='grup';
     const anaKodlar = anaKodlarCSV.split(',');
+    const b = this.ekleBaslik(grupMod, anaKodlar);
     let turAlan = '';
     if(grupMod){
-      turAlan = `<div style="flex:0 0 120px"><label>Tür</label><select id="${selectId}-yeniana"><option value="gider">Gider</option><option value="gelir">Gelir</option></select></div>`;
+      turAlan = `<div class="form-alan"><label>Tür</label><select id="hz-yeniana"><option value="gider">Gider Grubu</option><option value="gelir">Gelir Grubu</option></select></div>`;
     }else if(anaKodlar.length>1){
-      turAlan = `<div style="flex:0 0 130px"><label>Tür</label><select id="${selectId}-yeniana">${anaKodlar.map(k=>`<option value="${k}">${this.anaAd(k)}</option>`).join('')}</select></div>`;
+      turAlan = `<div class="form-alan"><label>Hesap Türü</label><select id="hz-yeniana">${anaKodlar.map(k=>`<option value="${k}">${this.anaAd(k)}</option>`).join('')}</select></div>`;
     }else{
-      turAlan = `<input type="hidden" id="${selectId}-yeniana" value="${anaKodlar[0]}">`;
+      turAlan = `<input type="hidden" id="hz-yeniana" value="${anaKodlar[0]}">`;
     }
-    kutu.innerHTML = `<div class="hizli-kutu"><div class="satir">
+    document.getElementById('hizli-modal').innerHTML = `
+      <h4><span>${b.ik}</span> ${grupMod?'Yeni Grup':b.ad}<button class="kapat-x" onclick="Form.hizliEkleKapat()">×</button></h4>
+      <div class="alt-not">${b.alt}</div>
+      <div class="alanlar">
         ${turAlan}
-        <div style="flex:1;min-width:150px"><label>${grupMod?'Yeni Grup Adı':'Yeni Hesap Adı'}</label>
-          <input id="${selectId}-yeniad" placeholder="${grupMod?'Örn: Muhasebe':'Örn: Ziraat Bankası'}" onkeydown="if(event.key==='Enter'){event.preventDefault();Form.hizliEkleKaydet('${selectId}','${anaKodlarCSV}')}"></div>
-        <button type="button" class="btn btn-kirmizi btn-kucuk" onclick="Form.hizliEkleKaydet('${selectId}','${anaKodlarCSV}')">Ekle</button>
-        <button type="button" class="btn btn-gri btn-kucuk" onclick="Form.hizliEkleKapat('${selectId}')">İptal</button>
-      </div></div>`;
-    kutu.dataset.acik = '1';
-    const inp = document.getElementById(selectId+'-yeniad'); if(inp) inp.focus();
+        <div class="form-alan"><label>${grupMod?'Grup Adı':'Hesap Adı'} <span class="zorunlu">*</span></label>
+          <input id="hz-yeniad" placeholder="${grupMod?'Örn: Muhasebe':'Örn: Ziraat Bankası'}" onkeydown="if(event.key==='Enter'){event.preventDefault();Form.hizliEkleKaydet('${selectId}','${anaKodlarCSV}')}"></div>
+      </div>
+      <div class="btnlar">
+        <button type="button" class="btn btn-kirmizi" style="flex:1" onclick="Form.hizliEkleKaydet('${selectId}','${anaKodlarCSV}')">✓ Ekle ve Seç</button>
+        <button type="button" class="btn btn-gri" onclick="Form.hizliEkleKapat()">İptal</button>
+      </div>`;
+    document.getElementById('hizli-katman').classList.add('acik');
+    setTimeout(()=>{ const i=document.getElementById('hz-yeniad'); if(i) i.focus(); }, 60);
   },
-  hizliEkleKapat(selectId){
-    const kutu = document.getElementById(selectId+'-ekle'); if(!kutu) return;
-    kutu.innerHTML = ''; kutu.dataset.acik = '0';
+  hizliEkleKapat(){
+    const k = document.getElementById('hizli-katman'); if(k){ k.classList.remove('acik'); }
+    const m = document.getElementById('hizli-modal'); if(m) m.innerHTML = '';
   },
   hizliEkleKaydet(selectId, anaKodlarCSV){
     const grupMod = anaKodlarCSV==='grup';
-    const ad = (document.getElementById(selectId+'-yeniad')||{}).value.trim();
-    if(!ad){ Bildirim.goster('hata','Eksik','Ad girin.'); return; }
+    const adEl = document.getElementById('hz-yeniad');
+    const ad = adEl ? adEl.value.trim() : '';
+    if(!ad){ Bildirim.goster('hata','Eksik','Ad girin.'); if(adEl) adEl.focus(); return; }
     if(grupMod){
-      const tur = document.getElementById(selectId+'-yeniana').value;
+      const tur = document.getElementById('hz-yeniana').value;
       let g = Depo.veri.gruplar.find(x=>x.tur===tur && (x.ad||'').toLocaleLowerCase('tr')===ad.toLocaleLowerCase('tr'));
       if(!g){ g={id:Yardimci.yeniId(), tur, ad}; Depo.veri.gruplar.push(g); Depo.kaydet(); Bildirim.goster('basari','Eklendi',ad+' grubu oluşturuldu.'); }
       else Bildirim.goster('bilgi','Zaten var','Bu grup zaten vardı, seçildi.');
       this.selectYenile(selectId, g.id);
     }else{
-      const anaKod = document.getElementById(selectId+'-yeniana').value;
+      const anaKod = document.getElementById('hz-yeniana').value;
       const tur = {'102':'banka','120':'alici','309':'kart','320':'satici','331':'ortak','255':'demirbas','600':'gelir','770':'gider'}[anaKod]||'';
       let h = Depo.veri.altHesaplar.find(x=>x.anaKod===anaKod && (x.ad||'').toLocaleLowerCase('tr')===ad.toLocaleLowerCase('tr'));
       if(!h){ h={id:Yardimci.yeniId(), kod:Depo.yeniAltKod(anaKod), anaKod, tur, ad, acilis:0}; Depo.veri.altHesaplar.push(h); Depo.kaydet(); Bildirim.goster('basari','Eklendi',h.kod+' '+ad+' oluşturuldu ve seçildi.'); }
       else Bildirim.goster('bilgi','Zaten var','Bu hesap zaten vardı, seçildi.');
       this.selectYenile(selectId, h.id);
     }
-    this.hizliEkleKapat(selectId);
+    this.hizliEkleKapat();
     const on = selectId.split('-')[0]; const t = {al:'alis',sa:'satis',bk:'banka',kk:'kart'}[on]; if(t) this.ozetGuncelle(t);
   },
   // Ekleme sonrası ilgili <select>'i yeniden doldur ve seç
@@ -3999,7 +4017,7 @@ window.addEventListener('DOMContentLoaded', ()=>{
     if(e.target.id==='modal-katman') Modal.kapat();
   });
   // ESC ile modal kapat
-  document.addEventListener('keydown', e=>{ if(e.key==='Escape') Modal.kapat(); });
+  document.addEventListener('keydown', e=>{ if(e.key==='Escape'){ const hz=document.getElementById('hizli-katman'); if(hz && hz.classList.contains('acik')) Form.hizliEkleKapat(); else Modal.kapat(); } });
 });
 </script>
 </body>
