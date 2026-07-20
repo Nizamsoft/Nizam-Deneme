@@ -191,7 +191,7 @@ table.veri tbody tr:hover{background:var(--gri)}
       <li class="menu-oge" data-sayfa="kategoriler"><span class="ik">🏷️</span><span class="etiket">Kategoriler</span></li>
       <li class="menu-oge" data-sayfa="yedek"><span class="ik">💾</span><span class="etiket">Yedekleme</span></li>
     </ul>
-    <div class="menu-alt">Nizam Soft © 2026<br>Kişisel • Sürüm 0.3.2</div>
+    <div class="menu-alt">Nizam Soft © 2026<br>Kişisel • Sürüm 0.4.0</div>
   </nav>
   <div class="icerik">
     <header class="ust-bar">
@@ -354,12 +354,14 @@ const Sayfa = {
         <button class="btn btn-cizgi btn-kucuk" onclick="document.getElementById('h-ay').value='';Sayfa.hareketListe()">Tüm aylar</button>
         <select id="h-hesap" onchange="Sayfa.hareketListe()"><option value="">Tüm hesaplar</option>${Depo.veri.hesaplar.map(h=>`<option value="${h.id}" ${h.id===secHesap?'selected':''}>${Y.kacis(h.ad)}</option>`).join('')}</select>
         <select id="h-tur" onchange="Sayfa.hareketListe()"><option value="">Tümü</option><option value="gelir">Gelir</option><option value="gider">Gider</option><option value="transfer">Transfer</option></select>
+        <button id="h-banka-btn" class="btn btn-cizgi btn-kucuk" style="margin-left:auto" onclick="Sayfa.bankaToggle()">🏦 ${this._bankaAcik?'Banka Açıklamasını Gizle':'Banka Açıklamasını Göster'}</button>
       </div>
       <div id="h-liste"></div>
     </div>`;
     this.hareketListe();
   },
   hesapHareket(id){ this._hesapFiltre=id; App.git('hareketler'); },
+  bankaToggle(){ this._bankaAcik=!this._bankaAcik; const b=document.getElementById('h-banka-btn'); if(b) b.textContent='🏦 '+(this._bankaAcik?'Banka Açıklamasını Gizle':'Banka Açıklamasını Göster'); this.hareketListe(); },
   hareketListe(){
     const ay=(document.getElementById('h-ay')||{}).value||'';
     const hesap=(document.getElementById('h-hesap')||{}).value||'';
@@ -369,10 +371,11 @@ const Sayfa = {
     const el=document.getElementById('h-liste');
     if(!list.length){ el.innerHTML=`<div class="bos-mesaj">Bu filtrede hareket yok.</div>`; return; }
     let g=0,gi=0; list.forEach(h=>{ if(h.tur==='gelir')g+=Number(h.tutar)||0; if(h.tur==='gider')gi+=Number(h.tutar)||0; });
+    const bk=this._bankaAcik;
     el.innerHTML=`<div class="pop-aciklama" style="margin-bottom:10px">${list.length} hareket · Gelir <b class="gelir">+${Y.para(g)}</b> · Gider <b class="gider-r">−${Y.para(gi)}</b> · Fark <b>${Y.para(g-gi)}</b></div>
-      <div class="tablo-sar"><table class="veri"><thead><tr><th>Tarih</th><th>Tür</th><th>Kategori/Hedef</th><th>Hesap</th><th>Açıklama</th><th class="sag-hiza">Tutar</th><th class="sag-hiza">İşlem</th></tr></thead><tbody>
+      <div class="tablo-sar"><table class="veri"><thead><tr><th>Tarih</th><th>Tür</th><th>Kategori/Hedef</th><th>Hesap</th><th>Açıklama</th>${bk?'<th>Banka Açıklaması</th>':''}<th class="sag-hiza">Tutar</th><th class="sag-hiza">İşlem</th></tr></thead><tbody>
       ${list.map(h=>{const isG=h.tur==='gelir'; const kat=h.tur==='transfer'?('→ '+Hesap.ad(h.karsiHesapId)):Hesap.kategoriAd(h.kategoriId);
-        return `<tr><td>${Y.tf(h.tarih)}</td><td><span class="rozet ${h.tur==='gelir'?'banka':h.tur==='transfer'?'birikim':'kart'}">${h.tur==='gelir'?'Gelir':h.tur==='transfer'?'Transfer':'Gider'}</span></td><td>${Y.kacis(kat||'')}</td><td>${Y.kacis(Hesap.ad(h.hesapId))}</td><td>${Y.kacis(h.aciklama||'')}${h.kaynak==='dekont'?' <span class="rozet" title="Dekonttan">📥</span>':''}</td><td class="sag-hiza ${isG?'gelir':'gider-r'}">${(isG?'+':'−')+Y.sayi(h.tutar)} TL</td><td class="sag-hiza"><button class="btn btn-cizgi btn-kucuk" onclick="Hareket.sil('${h.id}')">🗑</button></td></tr>`;}).join('')}
+        return `<tr><td>${Y.tf(h.tarih)}</td><td><span class="rozet ${h.tur==='gelir'?'banka':h.tur==='transfer'?'birikim':'kart'}">${h.tur==='gelir'?'Gelir':h.tur==='transfer'?'Transfer':'Gider'}</span></td><td>${Y.kacis(kat||'')}</td><td>${Y.kacis(Hesap.ad(h.hesapId))}</td><td>${Y.kacis(h.aciklama||'')}${h.kaynak==='dekont'?' <span class="rozet" title="Dekonttan">📥</span>':''}</td>${bk?`<td style="color:var(--metin-soluk);font-size:12.5px">${Y.kacis(h.bankaAciklama||'')}</td>`:''}<td class="sag-hiza ${isG?'gelir':'gider-r'}">${(isG?'+':'−')+Y.sayi(h.tutar)} TL</td><td class="sag-hiza"><button class="btn btn-cizgi btn-kucuk" onclick="Hareket.sil('${h.id}')">🗑</button></td></tr>`;}).join('')}
       </tbody></table></div>`;
   },
   hesaplar(el){
@@ -548,7 +551,9 @@ const Dekont = {
     for(let i=0;i<Math.min(rows.length,40);i++){
       const r=(rows[i]||[]).map(x=>String(x).toLocaleLowerCase('tr').trim());
       const t=r.indexOf('tarih'), a=r.findIndex(x=>x.startsWith('açıklama')||x.startsWith('aciklama')), tt=r.indexOf('tutar');
-      if(t>-1 && a>-1 && tt>-1){ hi=i; map={tarih:t, aciklama:a, tutar:tt, etiket:r.indexOf('etiket'), bakiye:r.indexOf('bakiye'), dekont:r.findIndex(x=>x.includes('dekont'))}; break; }
+      // İkinci açıklama (Açıklama2) sütunu: ilk açıklamadan sonraki bir açıklama başlığı = kullanıcının kendi notu
+      const a2=a>-1?r.findIndex((x,idx)=>idx>a && (x.startsWith('açıklama')||x.startsWith('aciklama'))):-1;
+      if(t>-1 && a>-1 && tt>-1){ hi=i; map={tarih:t, aciklama:a, aciklama2:a2, tutar:tt, etiket:r.indexOf('etiket'), bakiye:r.indexOf('bakiye'), dekont:r.findIndex(x=>x.includes('dekont'))}; break; }
     }
     if(hi<0) return [];
     const out=[];
@@ -558,7 +563,10 @@ const Dekont = {
       const tutar=Y.coz(ham); if(!tutar) continue;
       const tarih=this.tarihCoz(r[map.tarih]); if(!tarih) continue;
       const acikRaw=String(r[map.aciklama]||'').trim();
-      out.push({ tarih, aciklamaRaw:acikRaw, aciklama:this.temiz(acikRaw), etiket:map.etiket>-1?String(r[map.etiket]||'').trim():'', tutar:Math.abs(tutar), yon:tutar<0?'gider':'gelir', dekontNo:map.dekont>-1?String(r[map.dekont]||'').trim():'', bakiye:map.bakiye>-1?Y.coz(r[map.bakiye]):null });
+      let not2=map.aciklama2>-1?String(r[map.aciklama2]||'').trim():'';
+      // Açıklama2 zaman damgası ise (ör. 2025-11-01-16.32.02...) not sayma
+      if(/^\d{4}-\d{2}-\d{2}-\d{2}\.\d{2}\.\d{2}/.test(not2)) not2='';
+      out.push({ tarih, aciklamaRaw:acikRaw, aciklama:this.temiz(acikRaw), not2, etiket:map.etiket>-1?String(r[map.etiket]||'').trim():'', tutar:Math.abs(tutar), yon:tutar<0?'gider':'gelir', dekontNo:map.dekont>-1?String(r[map.dekont]||'').trim():'', bakiye:map.bakiye>-1?Y.coz(r[map.bakiye]):null });
     }
     return out;
   },
@@ -671,7 +679,7 @@ const Dekont = {
     this._yeni.forEach((s,i)=>{
       const sec=this._sec[i]; if(!sec||!sec.dahil) return;
       const not=(sec.not||'').trim();
-      Depo.veri.hareketler.push({ id:Y.id(), tarih:s.tarih, tur:s.yon, hesapId:this._hesapId, kategoriId:sec.kategoriId, tutar:s.tutar, aciklama:not||s.aciklama, etiket:s.etiket, dekontNo:s.dekontNo, kaynak:'dekont' });
+      Depo.veri.hareketler.push({ id:Y.id(), tarih:s.tarih, tur:s.yon, hesapId:this._hesapId, kategoriId:sec.kategoriId, tutar:s.tutar, aciklama:not||s.aciklama, bankaAciklama:s.aciklamaRaw, etiket:s.etiket, dekontNo:s.dekontNo, kaynak:'dekont' });
       n++;
     });
     Depo.kaydet();
@@ -746,7 +754,9 @@ const Dekont = {
     g.yeni.forEach(s=>{
       const e=(s.etiket||'').trim();
       const kategoriId = e ? (g.keyKat[e.toLocaleLowerCase('tr')]||'') : (s.yon==='gelir'?g.bosGelir:g.bosGider);
-      Depo.veri.hareketler.push({ id:Y.id(), tarih:s.tarih, tur:s.yon, hesapId:this._hesapId, kategoriId, tutar:s.tutar, aciklama:s.aciklama, etiket:e, dekontNo:g.anah(s), kaynak:'gecmis' });
+      // Açıklama = kendi notun (Açıklama2); yoksa temiz banka metni. Banka açıklaması = ham metin.
+      const aciklama = (s.not2||'').trim() || s.aciklama;
+      Depo.veri.hareketler.push({ id:Y.id(), tarih:s.tarih, tur:s.yon, hesapId:this._hesapId, kategoriId, tutar:s.tutar, aciklama, bankaAciklama:s.aciklamaRaw, etiket:e, dekontNo:g.anah(s), kaynak:'gecmis' });
       if(!ilkTarih||s.tarih<ilkTarih) ilkTarih=s.tarih;
       n++;
     });
