@@ -176,6 +176,7 @@ table.veri tbody tr:hover{background:var(--gri)}
 .gecmis-ozet .kutu .l{font-size:12px;color:var(--metin-soluk);font-weight:600}
 .gecmis-ozet .kutu .d{font-size:18px;font-weight:800;margin-top:3px}
 .yeni-kat-liste{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px;max-height:150px;overflow-y:auto}
+.tehlike-kart{border:1.5px solid color-mix(in srgb,var(--kirmizi) 40%,var(--kenar))}
 </style>
 </head>
 <body>
@@ -190,7 +191,7 @@ table.veri tbody tr:hover{background:var(--gri)}
       <li class="menu-oge" data-sayfa="kategoriler"><span class="ik">🏷️</span><span class="etiket">Kategoriler</span></li>
       <li class="menu-oge" data-sayfa="yedek"><span class="ik">💾</span><span class="etiket">Yedekleme</span></li>
     </ul>
-    <div class="menu-alt">Nizam Soft © 2026<br>Kişisel • Sürüm 0.3.1</div>
+    <div class="menu-alt">Nizam Soft © 2026<br>Kişisel • Sürüm 0.3.2</div>
   </nav>
   <div class="icerik">
     <header class="ust-bar">
@@ -410,11 +411,22 @@ const Sayfa = {
   katEkle(tur){ const el=document.getElementById('kat-'+tur); const ad=(el.value||'').trim(); if(!ad) return; if(Depo.veri.kategoriler.some(k=>k.tur===tur&&k.ad.toLocaleLowerCase('tr')===ad.toLocaleLowerCase('tr'))){ Bildirim.goster('uyari','Var','Bu kategori zaten var.'); return; } Depo.veri.kategoriler.push({id:Y.id(),tur,ad}); Depo.kaydet(); App.git('kategoriler'); },
   katSil(id){ Depo.veri.kategoriler=Depo.veri.kategoriler.filter(k=>k.id!==id); Depo.kaydet(); App.git('kategoriler'); },
   yedek(el){
+    const harSay=Depo.veri.hareketler.length, hesSay=Depo.veri.hesaplar.length, katSay=Depo.veri.kategoriler.length;
     el.innerHTML=`<div class="kart"><h2 class="bolum-baslik">Yedekleme</h2><p class="pop-aciklama" style="margin-bottom:16px;line-height:1.6">Tüm kişisel verin tarayıcının yerel deposunda tutulur. Güvenlik için JSON yedeği al; başka cihaza taşırken geri yükle.</p>
-      <div class="buton-grup"><button class="btn btn-yesil" onclick="Sayfa.yedekAl()">⬇ Yedek Al (JSON)</button><button class="btn btn-cizgi" onclick="document.getElementById('yedek-dosya').click()">⬆ Yedek Geri Yükle</button><input type="file" id="yedek-dosya" accept=".json" style="display:none" onchange="Sayfa.yedekYukle(event)"></div></div>`;
+      <div class="buton-grup"><button class="btn btn-yesil" onclick="Sayfa.yedekAl()">⬇ Yedek Al (JSON)</button><button class="btn btn-cizgi" onclick="document.getElementById('yedek-dosya').click()">⬆ Yedek Geri Yükle</button><input type="file" id="yedek-dosya" accept=".json" style="display:none" onchange="Sayfa.yedekYukle(event)"></div></div>
+      <div class="kart tehlike-kart" style="margin-top:18px"><h2 class="bolum-baslik" style="color:var(--kirmizi)">⚠️ Tehlikeli Bölge</h2>
+      <p class="pop-aciklama" style="margin-bottom:14px;line-height:1.6">Bu işlemler <b>geri alınamaz</b>. Devam etmeden önce yukarıdan <b>yedek almanı</b> öneririm. Şu an: <b>${harSay}</b> hareket, <b>${hesSay}</b> hesap, <b>${katSay}</b> kategori.</p>
+      <div class="buton-grup">
+        <button class="btn btn-cizgi" onclick="Sayfa.tumHareketSil()">🧹 Tüm Hareketleri Sil</button>
+        <button class="btn btn-kirmizi" onclick="Sayfa.hepsiniSifirla()">🗑 Her Şeyi Sıfırla</button>
+      </div>
+      <p class="pop-aciklama" style="margin-top:10px;font-size:12px">“Tüm Hareketleri Sil” hesap ve kategorilerini korur, sadece hareketleri siler. “Her Şeyi Sıfırla” uygulamayı ilk günkü haline döndürür (hesaplar, kategoriler ve hareketler dahil her şey silinir).</p>
+      </div>`;
   },
   yedekAl(){ const blob=new Blob([JSON.stringify(Depo.veri,null,2)],{type:'application/json'}); const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download='nizam-kisisel-yedek-'+Y.bugun()+'.json'; a.click(); Bildirim.goster('basari','Yedek Alındı','JSON indirildi.'); },
-  yedekYukle(e){ const f=e.target.files[0]; if(!f) return; const r=new FileReader(); r.onload=()=>{ try{ const v=JSON.parse(r.result); if(!v.hesaplar||!v.hareketler) throw 0; Modal.onay('Geri Yükle','Mevcut veriler yedekle değiştirilecek. Emin misin?',()=>{ Depo.veri=v; Depo.kaydet(); App.temaUygula(); App.git('anasayfa'); Bildirim.goster('basari','Yüklendi','Yedek geri yüklendi.'); },'Evet, Yükle'); }catch(x){ Bildirim.goster('hata','Geçersiz','Dosya okunamadı.'); } }; r.readAsText(f); e.target.value=''; }
+  yedekYukle(e){ const f=e.target.files[0]; if(!f) return; const r=new FileReader(); r.onload=()=>{ try{ const v=JSON.parse(r.result); if(!v.hesaplar||!v.hareketler) throw 0; Modal.onay('Geri Yükle','Mevcut veriler yedekle değiştirilecek. Emin misin?',()=>{ Depo.veri=v; Depo.kaydet(); App.temaUygula(); App.git('anasayfa'); Bildirim.goster('basari','Yüklendi','Yedek geri yüklendi.'); },'Evet, Yükle'); }catch(x){ Bildirim.goster('hata','Geçersiz','Dosya okunamadı.'); } }; r.readAsText(f); e.target.value=''; },
+  tumHareketSil(){ const n=Depo.veri.hareketler.length; if(!n){ Bildirim.goster('uyari','Boş','Silinecek hareket yok.'); return; } Modal.onay('Tüm Hareketleri Sil',`${n} hareketin tamamı silinecek. Hesaplar ve kategoriler korunur. Bu işlem geri alınamaz — emin misin?`,()=>{ Depo.veri.hareketler=[]; Depo.kaydet(); App.git('yedek'); Bildirim.goster('basari','Silindi',n+' hareket silindi.'); },'Evet, Hepsini Sil'); },
+  hepsiniSifirla(){ Modal.onay('Her Şeyi Sıfırla','TÜM verilerin (hesaplar, kategoriler, hareketler) silinip uygulama ilk günkü haline dönecek. Bu işlem GERİ ALINAMAZ. Emin misin?',()=>{ Depo.veri=Depo.varsayilan(); Depo.kaydet(); App.temaUygula(); App.git('anasayfa'); Bildirim.goster('basari','Sıfırlandı','Tüm kayıtlar silindi, uygulama sıfırlandı.'); },'Evet, Her Şeyi Sil'); }
 };
 /* ============ Manuel Hareket Ekleme ============ */
 const Hareket = {
