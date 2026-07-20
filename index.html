@@ -242,6 +242,28 @@ table.veri tr.ana-hesap-satir:hover{background:var(--gri-orta)}
 .rozet.gider{background:rgba(211,32,39,.14);color:var(--kirmizi)}
 .rozet.gelir{background:rgba(31,157,85,.14);color:var(--yesil)}
 
+/* Ana sayfa: dikey nakit akışı */
+.ana-govde{display:grid;grid-template-columns:1.25fr .9fr;gap:20px;align-items:start}
+.ana-govde>.kart{min-width:0}
+.nakit-ust{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:12px;flex-wrap:wrap}
+.nakit-ust .devir{font-size:12.5px;color:var(--metin-soluk)}
+.nakit-ust .devir b{color:var(--metin);font-variant-numeric:tabular-nums}
+.nakit-sar{max-height:432px;overflow:auto;border:1px solid var(--kenar);border-radius:10px}
+.nakit-bos{color:var(--metin-soluk);font-size:13px;text-align:center;padding:24px 0;line-height:1.6}
+.nlist{width:100%;border-collapse:collapse;font-size:13.5px}
+.nlist th{position:sticky;top:0;background:var(--kart-bg);text-align:right;padding:8px 10px;font-size:11px;color:var(--metin-soluk);border-bottom:2px solid var(--kenar);text-transform:uppercase;letter-spacing:.03em;z-index:1}
+.nlist th:first-child{text-align:left}
+.nlist td{padding:9px 10px;border-bottom:1px solid var(--kenar);text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap}
+.nlist tr:last-child td{border-bottom:none}
+.nlist td:first-child{text-align:left;white-space:normal}
+.nlist .n-tar{font-weight:700}.nlist .n-gun{color:var(--metin-soluk);font-weight:400;font-size:11.5px}
+.nlist .n-ac{color:var(--metin-soluk);font-size:11.5px;font-weight:400;margin-top:1px}
+.nlist .n-gir{color:var(--yesil);font-weight:700}.nlist .n-cik{color:var(--kirmizi);font-weight:700}
+.nlist .n-kalan{font-weight:800}.nlist .n-dusuk{color:var(--kirmizi)}
+.nlist tr.n-bugun td{background:color-mix(in srgb,var(--kirmizi) 6%,transparent)}
+.nlist tr.n-tahmini{opacity:.74}
+@media(max-width:900px){.ana-govde{grid-template-columns:1fr}}
+
 /* Formlar */
 .form-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:18px}
 .form-alan{display:flex;flex-direction:column;gap:7px}
@@ -535,7 +557,7 @@ table.nakit th.bugun-sutun{background:var(--kirmizi)}
         </ul>
       </li>
     </ul>
-    <div class="menu-alt">Nizam Soft © 2026<br>Sürüm 1.9.7 • 20.07.2026</div>
+    <div class="menu-alt">Nizam Soft © 2026<br>Sürüm 1.9.8 • 20.07.2026</div>
   </nav>
 
   <!-- ANA İÇERİK -->
@@ -1150,11 +1172,53 @@ const Sayfa = {
         ${this.ozetKart('i-kirmizi','📤','Toplam Satıcı Borçları', saticiBorc)}
         ${this.ozetKart('i-turuncu','💳','Toplam Kredi Kartı Borcu', kartBorc)}
       </div>
-      <div class="kart">
-        <h2 class="bolum-baslik">Son İşlemler</h2>
-        <div id="son-islemler"></div>
+      <div class="ana-govde">
+        <div class="kart">
+          <h2 class="bolum-baslik">Son İşlemler</h2>
+          <div id="son-islemler"></div>
+        </div>
+        <div class="kart">
+          <h2 class="bolum-baslik">Nakit Akışı · 1 Ay</h2>
+          <div id="ana-nakit"></div>
+        </div>
       </div>`;
     this.sonIslemler(el.querySelector('#son-islemler'));
+    this.anaNakit(el.querySelector('#ana-nakit'));
+  },
+
+  // Ana sayfa dikey nakit akışı (önümüzdeki 1 ay, gerçekleşen + öngörülen)
+  anaNakit(el){
+    if(!el) return;
+    const bankaIds = NakitAkis.filtreliBankalar();
+    if(!bankaIds.length){ el.innerHTML = `<div class="nakit-bos">Henüz banka hesabı yok.<br><span style="font-size:12px">Hesaplar’dan 102 altına bir banka hesabı ekleyin.</span></div>`; return; }
+    const bas = Yardimci.bugun();
+    const bit = Yardimci.gunEkle(bas, 30);
+    const {seri, devir} = NakitAkis.projeksiyon(bas, bit, 'tahmin', bankaIds, true);
+    const hareketli = seri.filter(s=>s.giris>0.005 || s.cikis>0.005);
+    const esik = Number(Depo.veri.nakitAyar.dusukBakiye)||0;
+    const HAFTA = ['Pazar','Pazartesi','Salı','Çarşamba','Perşembe','Cuma','Cumartesi'];
+    const gunAdi = iso=>{ const p=iso.split('-'); return HAFTA[new Date(+p[0],+p[1]-1,+p[2]).getDay()]; };
+    const S = Yardimci.sayiFormat, P = Yardimci.paraFormat;
+    const govde = hareketli.map(s=>{
+      const olaylar = [...s.gd, ...s.cd];
+      const tumTahmin = olaylar.length>0 && olaylar.every(x=>x.tip==='tahmini');
+      const dusuk = s.kalan < esik || s.kalan < -0.005;
+      const adlar = olaylar.map(x=>Yardimci.kacisHTML(x.ad)).join(' · ');
+      return `<tr class="${s.tarih===bas?'n-bugun':''} ${tumTahmin?'n-tahmini':''}">
+        <td><span class="n-tar">${Yardimci.tarihFormat(s.tarih)}</span> <span class="n-gun">${gunAdi(s.tarih)}</span><div class="n-ac">${adlar}</div></td>
+        <td>${s.giris>0.005?`<span class="n-gir">+${S(s.giris)}</span>`:'–'}</td>
+        <td>${s.cikis>0.005?`<span class="n-cik">−${S(s.cikis)}</span>`:'–'}</td>
+        <td class="n-kalan ${dusuk?'n-dusuk':''}">${S(s.kalan)}</td>
+      </tr>`;
+    }).join('');
+    el.innerHTML = `
+      <div class="nakit-ust">
+        <span class="devir">Bugünkü bakiye <b>${P(devir)}</b></span>
+        <button class="btn btn-cizgi btn-kucuk" onclick="App.sayfaGit('nakit')">Detaylı →</button>
+      </div>
+      ${hareketli.length
+        ? `<div class="nakit-sar"><table class="nlist"><thead><tr><th>Tarih</th><th class="sag-hiza">Giriş ₺</th><th class="sag-hiza">Çıkış ₺</th><th class="sag-hiza">Kalan ₺</th></tr></thead><tbody>${govde}</tbody></table></div>`
+        : `<div class="nakit-bos">Önümüzdeki 1 ayda beklenen para hareketi yok.<br><span style="font-size:12px">Banka/kart işlemi girin ya da Ayarlar › Öngörülen İşlemler ekleyin.</span></div>`}`;
   },
 
   ozetKart(renk, ikon, etiket, deger){
