@@ -262,6 +262,14 @@ table.veri tr.ana-hesap-satir:hover{background:var(--gri-orta)}
 .grp-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px}
 .grp-grid .tam,.grp-grid .gdetay{grid-column:1/-1}
 @media(max-width:540px){.grp-grid{grid-template-columns:1fr}}
+/* Sekmeli ayarlar */
+.ayar-duzen{display:grid;grid-template-columns:230px 1fr;gap:18px;align-items:start}
+.ayar-nav{background:var(--kart-bg);border:1px solid var(--kenar);border-radius:14px;padding:8px;display:flex;flex-direction:column;gap:3px;position:sticky;top:14px}
+.ayar-nav button{display:flex;align-items:center;gap:11px;width:100%;text-align:left;border:none;background:none;font:inherit;font-size:14px;font-weight:600;color:var(--metin-soluk);padding:12px 13px;border-radius:10px;cursor:pointer;transition:.15s}
+.ayar-nav button:hover{background:var(--gri);color:var(--metin)}
+.ayar-nav button.aktif{background:var(--kirmizi);color:#fff;box-shadow:0 5px 14px rgba(211,32,39,.3)}
+.ayar-nav button .ik{font-size:17px;width:22px;text-align:center}
+@media(max-width:760px){.ayar-duzen{grid-template-columns:1fr}.ayar-nav{flex-direction:row;flex-wrap:wrap;position:static}}
 /* Hızlı hesap/grup ekleme: ➕ butonu + mini pencere */
 .sec-satir{display:flex;gap:6px;align-items:stretch}
 .sec-satir select{flex:1;min-width:0}
@@ -519,7 +527,7 @@ table.nakit th.bugun-sutun{background:var(--kirmizi)}
         </ul>
       </li>
     </ul>
-    <div class="menu-alt">Nizam Soft © 2026<br>Sürüm 1.9.3 • 20.07.2026</div>
+    <div class="menu-alt">Nizam Soft © 2026<br>Sürüm 1.9.4 • 20.07.2026</div>
   </nav>
 
   <!-- ANA İÇERİK -->
@@ -1349,10 +1357,15 @@ const Sayfa = {
   nakit(el){ NakitAkis.sayfa(el); },
 
   /* ---------- AYARLAR ---------- */
+  _ayarSekme:'firma',
+  ayarSekmeGit(k){ this._ayarSekme = k; App.sayfaGit('ayarlar'); },
   ayarlar(el){
     const f = Depo.veri.firma, a = Depo.veri.ayarlar;
-    el.innerHTML = `
-      <div class="kart" style="margin-bottom:20px">
+    const sek = this._ayarSekme || 'firma';
+    const nav = [['firma','🏢','Firma Bilgileri'],['program','⚙️','Program Ayarları'],['gruplar','🏷️','Gider / Gelir Grupları'],['ongoru','🔁','Öngörülen İşlemler']];
+    let ic = '';
+    if(sek==='firma'){
+      ic = `<div class="kart">
         <h2 class="bolum-baslik">Firma Bilgileri</h2>
         <div class="form-grid">
           <div class="form-alan"><label>Firma Adı</label><input id="f-ad" value="${Yardimci.kacisHTML(f.ad)}"></div>
@@ -1365,8 +1378,10 @@ const Sayfa = {
           <div class="form-alan"><label>Logo Yükleme</label><input type="file" id="f-logo" accept="image/*"></div>
           <div class="form-alan"><label>Mevcut Logo</label><div id="logo-onizle">${f.logo?`<img src="${f.logo}" style="height:46px;border-radius:8px">`:'<span style="color:var(--metin-soluk)">Logo yüklenmedi</span>'}</div></div>
         </div>
-      </div>
-      <div class="kart" style="margin-bottom:20px">
+        <div class="buton-grup" style="margin-top:20px"><button class="btn btn-kirmizi" onclick="Ayar.kaydet()">💾 Kaydet</button></div>
+      </div>`;
+    }else if(sek==='program'){
+      ic = `<div class="kart">
         <h2 class="bolum-baslik">Program Ayarları</h2>
         <div class="form-grid">
           <div class="form-alan"><label>Para Birimi</label><input id="a-para" value="${Yardimci.kacisHTML(a.paraBirimi)}" readonly></div>
@@ -1378,15 +1393,20 @@ const Sayfa = {
             <select id="a-tema"><option value="acik" ${a.tema==='acik'?'selected':''}>Açık Tema</option><option value="koyu" ${a.tema==='koyu'?'selected':''}>Koyu Tema</option></select></div>
           <div class="form-alan"><label>İşlem Numarası Başlangıcı</label><input type="number" id="a-baslangic" min="1" value="${a.islemBaslangic}"></div>
         </div>
-        <div class="buton-grup" style="margin-top:20px">
-          <button class="btn btn-kirmizi" onclick="Ayar.kaydet()">💾 Ayarları Kaydet</button>
-        </div>
-      </div>
-      <div class="kart" style="margin-bottom:20px" id="gruplar-kart"></div>
-      <div class="kart" id="ongoru-kart"></div>`;
-    el.querySelector('#f-logo').addEventListener('change', e=>Ayar.logoYukle(e));
-    Gruplar.kart(el.querySelector('#gruplar-kart'));
-    Ongoru.kart(el.querySelector('#ongoru-kart'));
+        <div class="buton-grup" style="margin-top:20px"><button class="btn btn-kirmizi" onclick="Ayar.kaydet()">💾 Ayarları Kaydet</button></div>
+      </div>`;
+    }else if(sek==='gruplar'){
+      ic = `<div class="kart" id="gruplar-kart"></div>`;
+    }else{
+      ic = `<div class="kart" id="ongoru-kart"></div>`;
+    }
+    el.innerHTML = `<div class="ayar-duzen">
+      <div class="ayar-nav">${nav.map(n=>`<button class="${n[0]===sek?'aktif':''}" onclick="Sayfa.ayarSekmeGit('${n[0]}')"><span class="ik">${n[1]}</span>${n[2]}</button>`).join('')}</div>
+      <div class="ayar-icerik">${ic}</div>
+    </div>`;
+    if(sek==='firma'){ const lg=el.querySelector('#f-logo'); if(lg) lg.addEventListener('change', e=>Ayar.logoYukle(e)); }
+    if(sek==='gruplar') Gruplar.kart(el.querySelector('#gruplar-kart'));
+    if(sek==='ongoru') Ongoru.kart(el.querySelector('#ongoru-kart'));
   },
 
   /* ---------- YEDEKLEME ---------- */
@@ -3071,22 +3091,27 @@ const Ayar = {
     okuyucu.readAsDataURL(dosya);
   },
   kaydet(){
-    const f = Depo.veri.firma;
-    f.ad = document.getElementById('f-ad').value.trim();
-    f.yetkili = document.getElementById('f-yetkili').value.trim();
-    f.telefon = document.getElementById('f-telefon').value.trim();
-    f.eposta = document.getElementById('f-eposta').value.trim();
-    f.vergiDairesi = document.getElementById('f-vd').value.trim();
-    f.vergiNo = document.getElementById('f-vno').value.trim();
-    f.adres = document.getElementById('f-adres').value.trim();
-    if(this.logoGecici) f.logo = this.logoGecici;
-
-    const a = Depo.veri.ayarlar;
-    a.varsayilanTarih = document.getElementById('a-tarih').value;
-    a.ondalik = parseInt(document.getElementById('a-ondalik').value);
-    a.tema = document.getElementById('a-tema').value;
-    a.islemBaslangic = parseInt(document.getElementById('a-baslangic').value)||1;
-
+    const g = id=>document.getElementById(id);
+    // Firma sekmesi açıksa firma alanlarını kaydet
+    if(g('f-ad')){
+      const f = Depo.veri.firma;
+      f.ad = g('f-ad').value.trim();
+      f.yetkili = g('f-yetkili').value.trim();
+      f.telefon = g('f-telefon').value.trim();
+      f.eposta = g('f-eposta').value.trim();
+      f.vergiDairesi = g('f-vd').value.trim();
+      f.vergiNo = g('f-vno').value.trim();
+      f.adres = g('f-adres').value.trim();
+      if(this.logoGecici) f.logo = this.logoGecici;
+    }
+    // Program sekmesi açıksa program alanlarını kaydet
+    if(g('a-tarih')){
+      const a = Depo.veri.ayarlar;
+      a.varsayilanTarih = g('a-tarih').value;
+      a.ondalik = parseInt(g('a-ondalik').value);
+      a.tema = g('a-tema').value;
+      a.islemBaslangic = parseInt(g('a-baslangic').value)||1;
+    }
     Depo.kaydet();
     App.temaUygula();
     App.firmaGuncelle();
