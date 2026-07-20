@@ -262,6 +262,17 @@ table.veri tr.ana-hesap-satir:hover{background:var(--gri-orta)}
 .grp-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px}
 .grp-grid .tam,.grp-grid .gdetay{grid-column:1/-1}
 @media(max-width:540px){.grp-grid{grid-template-columns:1fr}}
+/* Satır içi hızlı hesap/grup ekleme */
+.sec-satir{display:flex;gap:6px;align-items:stretch}
+.sec-satir select{flex:1;min-width:0}
+.ekle-btn{flex:0 0 auto;width:44px;border:2px solid var(--gri-koyu);background:var(--kart-bg);color:var(--metin);border-radius:10px;font-size:20px;line-height:1;cursor:pointer;transition:.15s}
+.ekle-btn:hover{border-color:var(--kirmizi);color:var(--kirmizi)}
+.hizli-ekle:empty{display:none}
+.hizli-ekle{margin-top:8px}
+.hizli-kutu{background:color-mix(in srgb,var(--kirmizi) 7%,var(--kart-bg));border:1px solid color-mix(in srgb,var(--kirmizi) 30%,var(--kenar));border-radius:10px;padding:12px}
+.hizli-kutu .satir{display:flex;gap:8px;flex-wrap:wrap;align-items:flex-end}
+.hizli-kutu label{font-size:11.5px}
+.hizli-kutu input,.hizli-kutu select{padding:9px 11px;font-size:14px;border:2px solid var(--kenar);border-radius:9px;background:var(--kart-bg);color:var(--metin);font-family:inherit;width:100%}
 .bolum-etiket{grid-column:1/-1;display:flex;align-items:center;gap:10px;font-size:11.5px;font-weight:800;letter-spacing:.09em;text-transform:uppercase;color:var(--metin-soluk);margin-top:8px}
 .bolum-etiket::after{content:"";flex:1;height:1px;background:var(--kenar)}
 .bolum-etiket:first-child{margin-top:0}
@@ -505,7 +516,7 @@ table.nakit th.bugun-sutun{background:var(--kirmizi)}
         </ul>
       </li>
     </ul>
-    <div class="menu-alt">Nizam Soft © 2026<br>Sürüm 1.9.1 • 20.07.2026</div>
+    <div class="menu-alt">Nizam Soft © 2026<br>Sürüm 1.9.2 • 20.07.2026</div>
   </nav>
 
   <!-- ANA İÇERİK -->
@@ -1535,6 +1546,76 @@ const Form = {
   grup(ik, ad, ic){
     return `<div class="grp"><div class="grp-bas"><span class="ik">${ik}</span>${ad}</div><div class="grp-grid">${ic}</div></div>`;
   },
+
+  /* ---- Satır içi hızlı hesap/grup ekleme ---- */
+  // Bir <select>'i ➕ butonu + açılır ekleme paneliyle sar
+  secEkle(selectId, anaKodlarCSV, selectHTML){
+    return `<div class="sec-satir">${selectHTML}<button type="button" class="ekle-btn" title="Yeni ekle" onclick="Form.hizliEkle('${selectId}','${anaKodlarCSV}')">＋</button></div><div class="hizli-ekle" id="${selectId}-ekle"></div>`;
+  },
+  anaAd(kod){ return {'102':'Banka','120':'Alıcı / Müşteri','309':'Kredi Kartı','320':'Satıcı','331':'Ortak','255':'Demirbaş','600':'Gelir','770':'Gider'}[kod]||kod; },
+  hizliEkle(selectId, anaKodlarCSV){
+    const kutu = document.getElementById(selectId+'-ekle'); if(!kutu) return;
+    if(kutu.dataset.acik==='1'){ this.hizliEkleKapat(selectId); return; }
+    const grupMod = anaKodlarCSV==='grup';
+    const anaKodlar = anaKodlarCSV.split(',');
+    let turAlan = '';
+    if(grupMod){
+      turAlan = `<div style="flex:0 0 120px"><label>Tür</label><select id="${selectId}-yeniana"><option value="gider">Gider</option><option value="gelir">Gelir</option></select></div>`;
+    }else if(anaKodlar.length>1){
+      turAlan = `<div style="flex:0 0 130px"><label>Tür</label><select id="${selectId}-yeniana">${anaKodlar.map(k=>`<option value="${k}">${this.anaAd(k)}</option>`).join('')}</select></div>`;
+    }else{
+      turAlan = `<input type="hidden" id="${selectId}-yeniana" value="${anaKodlar[0]}">`;
+    }
+    kutu.innerHTML = `<div class="hizli-kutu"><div class="satir">
+        ${turAlan}
+        <div style="flex:1;min-width:150px"><label>${grupMod?'Yeni Grup Adı':'Yeni Hesap Adı'}</label>
+          <input id="${selectId}-yeniad" placeholder="${grupMod?'Örn: Muhasebe':'Örn: Ziraat Bankası'}" onkeydown="if(event.key==='Enter'){event.preventDefault();Form.hizliEkleKaydet('${selectId}','${anaKodlarCSV}')}"></div>
+        <button type="button" class="btn btn-kirmizi btn-kucuk" onclick="Form.hizliEkleKaydet('${selectId}','${anaKodlarCSV}')">Ekle</button>
+        <button type="button" class="btn btn-gri btn-kucuk" onclick="Form.hizliEkleKapat('${selectId}')">İptal</button>
+      </div></div>`;
+    kutu.dataset.acik = '1';
+    const inp = document.getElementById(selectId+'-yeniad'); if(inp) inp.focus();
+  },
+  hizliEkleKapat(selectId){
+    const kutu = document.getElementById(selectId+'-ekle'); if(!kutu) return;
+    kutu.innerHTML = ''; kutu.dataset.acik = '0';
+  },
+  hizliEkleKaydet(selectId, anaKodlarCSV){
+    const grupMod = anaKodlarCSV==='grup';
+    const ad = (document.getElementById(selectId+'-yeniad')||{}).value.trim();
+    if(!ad){ Bildirim.goster('hata','Eksik','Ad girin.'); return; }
+    if(grupMod){
+      const tur = document.getElementById(selectId+'-yeniana').value;
+      let g = Depo.veri.gruplar.find(x=>x.tur===tur && (x.ad||'').toLocaleLowerCase('tr')===ad.toLocaleLowerCase('tr'));
+      if(!g){ g={id:Yardimci.yeniId(), tur, ad}; Depo.veri.gruplar.push(g); Depo.kaydet(); Bildirim.goster('basari','Eklendi',ad+' grubu oluşturuldu.'); }
+      else Bildirim.goster('bilgi','Zaten var','Bu grup zaten vardı, seçildi.');
+      this.selectYenile(selectId, g.id);
+    }else{
+      const anaKod = document.getElementById(selectId+'-yeniana').value;
+      const tur = {'102':'banka','120':'alici','309':'kart','320':'satici','331':'ortak','255':'demirbas','600':'gelir','770':'gider'}[anaKod]||'';
+      let h = Depo.veri.altHesaplar.find(x=>x.anaKod===anaKod && (x.ad||'').toLocaleLowerCase('tr')===ad.toLocaleLowerCase('tr'));
+      if(!h){ h={id:Yardimci.yeniId(), kod:Depo.yeniAltKod(anaKod), anaKod, tur, ad, acilis:0}; Depo.veri.altHesaplar.push(h); Depo.kaydet(); Bildirim.goster('basari','Eklendi',h.kod+' '+ad+' oluşturuldu ve seçildi.'); }
+      else Bildirim.goster('bilgi','Zaten var','Bu hesap zaten vardı, seçildi.');
+      this.selectYenile(selectId, h.id);
+    }
+    this.hizliEkleKapat(selectId);
+    const on = selectId.split('-')[0]; const t = {al:'alis',sa:'satis',bk:'banka',kk:'kart'}[on]; if(t) this.ozetGuncelle(t);
+  },
+  // Ekleme sonrası ilgili <select>'i yeniden doldur ve seç
+  selectYenile(selectId, secili){
+    const sel = document.getElementById(selectId); if(!sel) return;
+    const cur = secili || sel.value;
+    const bankaOpt = ()=>`<option value="">— Seçiniz —</option>`+Depo.veri.altHesaplar.filter(h=>h.anaKod==='102').map(h=>`<option value="${h.id}" ${h.id===cur?'selected':''}>${h.kod} - ${Yardimci.kacisHTML(Hesap.hesapAdi(h))}</option>`).join('');
+    const m = {
+      'al-hesap':()=>this.hesapSecenek('320',cur),'sa-hesap':()=>this.hesapSecenek('120',cur),
+      'bk-hesap':()=>this.hesapSecenek('102',cur),'kk-hesap':()=>this.hesapSecenek('309',cur),
+      'al-demirbas':()=>this.demirbasSecenek(cur),
+      'bk-sahis':()=>this.sahisSecenek(cur),'kk-sahis':()=>this.sahisSecenek(cur),
+      'bk-gider':()=>this.giderSecenek(cur),'kk-gider':()=>this.giderSecenek(cur),
+      'og-banka':bankaOpt,'og-grup':()=>Gruplar.secenek('',cur)
+    };
+    if(m[selectId]){ sel.innerHTML = m[selectId](); sel.value = cur; }
+  },
   // Katlanır belge/not bölümü
   gdetay(on){
     return `<div class="gdetay">
@@ -1662,13 +1743,13 @@ const Form = {
           <div class="sol">
             ${this.grup('📄','Fatura Bilgileri',
               `<div class="form-alan"><label>Tarih <span class="zorunlu">*</span></label><input type="date" id="al-tarih" value="${this.varsayilanTarih()}"></div>
-               <div class="form-alan"><label>Satıcı Hesabı <span class="zorunlu">*</span></label><select id="al-hesap">${this.hesapSecenek('320')}</select></div>
+               <div class="form-alan"><label>Satıcı Hesabı <span class="zorunlu">*</span></label>${this.secEkle('al-hesap','320',`<select id="al-hesap">${this.hesapSecenek('320')}</select>`)}</div>
                <div class="form-alan"><label>Fatura No <span class="zorunlu">*</span></label><input id="al-faturano" placeholder="Örn: A-2026-001"></div>
                <div class="form-alan"><label>İşlem No</label><input id="al-no" value="${no}" readonly></div>`)}
             ${this.grup('💰','Tutar &amp; Alım Türü',
               `<div class="form-alan"><label>Tutar (₺) <span class="zorunlu">*</span></label><div class="gtutar"><span class="pb">₺</span><input type="text" inputmode="decimal" id="al-tutar" placeholder="0,00"></div></div>
                <div class="form-alan"><label>Alım Türü</label>${this.segment('al-alimturu',[{v:'gider',ad:'Gider / Normal'},{v:'demirbas',ad:'Demirbaş'}],'gider')}</div>
-               <div class="form-alan tam" id="al-demirbas-alan" style="display:none"><label>Demirbaş Hesabı <span class="zorunlu">*</span></label><select id="al-demirbas">${this.demirbasSecenek()}</select></div>`)}
+               <div class="form-alan tam" id="al-demirbas-alan" style="display:none"><label>Demirbaş Hesabı <span class="zorunlu">*</span></label>${this.secEkle('al-demirbas','255',`<select id="al-demirbas">${this.demirbasSecenek()}</select>`)}</div>`)}
             ${this.grup('📝','Açıklama &amp; Belge',
               `<div class="form-alan tam"><label>Açıklama</label><input id="al-aciklama" placeholder="Fatura açıklaması"></div>
                ${this.gdetay('al')}`)}
@@ -1692,7 +1773,7 @@ const Form = {
           <div class="sol">
             ${this.grup('📄','Fatura Bilgileri',
               `<div class="form-alan"><label>Tarih <span class="zorunlu">*</span></label><input type="date" id="sa-tarih" value="${this.varsayilanTarih()}"></div>
-               <div class="form-alan"><label>Alıcı Hesabı <span class="zorunlu">*</span></label><select id="sa-hesap">${this.hesapSecenek('120')}</select></div>
+               <div class="form-alan"><label>Alıcı Hesabı <span class="zorunlu">*</span></label>${this.secEkle('sa-hesap','120',`<select id="sa-hesap">${this.hesapSecenek('120')}</select>`)}</div>
                <div class="form-alan"><label>Fatura No <span class="zorunlu">*</span></label><input id="sa-faturano" placeholder="Örn: S-2026-001"></div>
                <div class="form-alan"><label>İşlem No</label><input id="sa-no" value="${no}" readonly></div>`)}
             ${this.grup('💰','Tutar',
@@ -1720,15 +1801,15 @@ const Form = {
           <div class="sol">
             ${this.grup('🏦','Hareket Bilgileri',
               `<div class="form-alan"><label>Tarih <span class="zorunlu">*</span></label><input type="date" id="bk-tarih" value="${this.varsayilanTarih()}"></div>
-               <div class="form-alan"><label>Banka Hesabı <span class="zorunlu">*</span></label><select id="bk-hesap">${this.hesapSecenek('102')}</select></div>
+               <div class="form-alan"><label>Banka Hesabı <span class="zorunlu">*</span></label>${this.secEkle('bk-hesap','102',`<select id="bk-hesap">${this.hesapSecenek('102')}</select>`)}</div>
                <div class="form-alan"><label>İşlem Adı <span class="zorunlu">*</span></label><input id="bk-islemad" placeholder="Örn: EFT, Havale, Fatura Ödeme"></div>
                <div class="form-alan"><label>İşlem No</label><input id="bk-no" value="${no}" readonly></div>
                <div class="form-alan tam"><label>İşlem Türü <span class="zorunlu">*</span></label>${this.segment('bk-tur',[{v:'giris',ad:'Para Girişi'},{v:'cikis',ad:'Para Çıkışı'}],'cikis')}</div>`)}
             ${this.grup('💳','Tutar &amp; Karşı Hesap',
               `<div class="form-alan tam"><label>Kapatılacak Fatura</label><select id="bk-fatura" onchange="Form.faturaSecildi('bk')">${Fatura.secenek('cikis')}</select></div>
                <div class="form-alan"><label>Tutar (₺) <span class="zorunlu">*</span></label><div class="gtutar"><span class="pb">₺</span><input type="text" inputmode="decimal" id="bk-tutar" placeholder="0,00"></div></div>
-               <div class="form-alan"><label>Şahıs veya Firma</label><select id="bk-sahis">${this.sahisSecenek()}</select></div>
-               <div class="form-alan tam"><label>Gelir/Gider Hesabı</label><select id="bk-gider">${this.giderSecenek()}</select></div>`)}
+               <div class="form-alan"><label>Şahıs veya Firma</label>${this.secEkle('bk-sahis','320,120,331',`<select id="bk-sahis">${this.sahisSecenek()}</select>`)}</div>
+               <div class="form-alan tam"><label>Gelir/Gider Hesabı</label>${this.secEkle('bk-gider','770,600,331',`<select id="bk-gider">${this.giderSecenek()}</select>`)}</div>`)}
             ${this.grup('📝','Açıklama',
               `<div class="form-alan tam"><label>Açıklama</label><input id="bk-aciklama"></div>
                <div class="form-alan tam"><label>Banka Açıklaması</label><input id="bk-bankaac" placeholder="Banka dekontundaki açıklama"></div>`)}
@@ -1751,7 +1832,7 @@ const Form = {
           <div class="sol">
             ${this.grup('💳','Harcama Bilgileri',
               `<div class="form-alan"><label>İşlem Tarihi <span class="zorunlu">*</span></label><input type="date" id="kk-tarih" value="${this.varsayilanTarih()}" oninput="Form.taksitOnizle()"></div>
-               <div class="form-alan"><label>Kredi Kartı Hesabı <span class="zorunlu">*</span></label><select id="kk-hesap" onchange="Form.kartSecildi()">${this.hesapSecenek('309')}</select></div>
+               <div class="form-alan"><label>Kredi Kartı Hesabı <span class="zorunlu">*</span></label>${this.secEkle('kk-hesap','309',`<select id="kk-hesap" onchange="Form.kartSecildi()">${this.hesapSecenek('309')}</select>`)}</div>
                <div class="form-alan"><label>İşlem Adı <span class="zorunlu">*</span></label><input id="kk-islemad" placeholder="Örn: Bilgisayar Alımı"></div>
                <div class="form-alan"><label>İşlem No</label><input id="kk-no" value="${no}" readonly></div>`)}
             ${this.grup('🧾','Tutar &amp; Taksit',
@@ -1767,8 +1848,8 @@ const Form = {
                <div class="form-alan"><label>Kart Ödeme Günü</label><input type="number" id="kk-odemegunu" min="1" max="31" placeholder="Ayın günü" oninput="Form.taksitOnizle()"></div>`)}
             ${this.grup('🏷️','Karşı Hesap',
               `<div class="form-alan tam"><label>Kapatılacak Fatura</label><select id="kk-fatura" onchange="Form.faturaSecildi('kk')">${Fatura.secenek('cikis')}</select></div>
-               <div class="form-alan"><label>Satıcı veya Şahıs</label><select id="kk-sahis">${this.sahisSecenek()}</select></div>
-               <div class="form-alan"><label>Gider Hesabı</label><select id="kk-gider">${this.giderSecenek()}</select></div>`)}
+               <div class="form-alan"><label>Satıcı veya Şahıs</label>${this.secEkle('kk-sahis','320,120,331',`<select id="kk-sahis">${this.sahisSecenek()}</select>`)}</div>
+               <div class="form-alan"><label>Gider Hesabı</label>${this.secEkle('kk-gider','770,600,331',`<select id="kk-gider">${this.giderSecenek()}</select>`)}</div>`)}
             ${this.grup('📝','Açıklama &amp; Belge',
               `<div class="form-alan tam"><label>Açıklama</label><input id="kk-aciklama"></div>
                ${this.gdetay('kk')}`)}
@@ -3322,9 +3403,9 @@ const Ongoru = {
       <div class="form-alan"><label>İşlem Türü <span class="zorunlu">*</span></label>
         <select id="og-tur"><option value="odeme" ${g('tur','odeme')==='odeme'?'selected':''}>Öngörülen Ödeme</option><option value="gelir" ${g('tur','')==='gelir'?'selected':''}>Öngörülen Gelir</option></select></div>
       <div class="form-alan"><label>Açıklama <span class="zorunlu">*</span></label><input id="og-aciklama" value="${Yardimci.kacisHTML(g('aciklama',''))}"></div>
-      <div class="form-alan"><label>Gider/Gelir Grubu</label><select id="og-grup">${Gruplar.secenek('', g('grupId',''))}</select></div>
+      <div class="form-alan"><label>Gider/Gelir Grubu</label>${Form.secEkle('og-grup','grup',`<select id="og-grup">${Gruplar.secenek('', g('grupId',''))}</select>`)}</div>
       <div class="form-alan"><label>Tutar <span class="zorunlu">*</span></label><input type="number" min="0" step="0.01" id="og-tutar" value="${g('tutar','')}"></div>
-      <div class="form-alan"><label>Bağlı Banka Hesabı</label><select id="og-banka"><option value="">— Seçiniz —</option>${bankaOpts}</select></div>
+      <div class="form-alan"><label>Bağlı Banka Hesabı</label>${Form.secEkle('og-banka','102',`<select id="og-banka"><option value="">— Seçiniz —</option>${bankaOpts}</select>`)}</div>
       <div class="form-alan"><label>Tekrarlama Türü <span class="zorunlu">*</span></label>
         <select id="og-tekrar" onchange="Ongoru.tekrarAlan()">
           <option value="tek" ${g('tekrar','tek')==='tek'?'selected':''}>Tek Seferlik / Net Tarih</option>
