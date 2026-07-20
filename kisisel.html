@@ -127,6 +127,42 @@ table.veri tbody tr:hover{background:var(--gri)}
 .wiz-tablo select,.wiz-tablo input{padding:7px 9px;font-size:13px;border:1.5px solid var(--kenar);border-radius:8px;background:var(--kart-bg);color:var(--metin);font-family:inherit;width:100%}
 .arac-cubuk{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-bottom:16px}
 .arac-cubuk input,.arac-cubuk select{padding:9px 12px;border:2px solid var(--kenar);border-radius:9px;font-family:inherit;font-size:14px;background:var(--kart-bg);color:var(--metin)}
+/* ---- Dekont tek-tek sihirbaz ---- */
+.wz-kat{position:fixed;inset:0;background:rgba(17,20,24,.55);display:flex;align-items:center;justify-content:center;z-index:130;padding:20px}
+.wz{background:var(--kart-bg);border-radius:16px;box-shadow:var(--golge-buyuk);width:100%;max-width:560px;overflow:hidden;display:flex;flex-direction:column;max-height:92vh}
+.wz-bas{padding:18px 22px 14px;border-bottom:1px solid var(--kenar)}
+.wz-bas-ust{display:flex;justify-content:space-between;align-items:center;margin-bottom:12px}
+.wz-bas h2{font-size:16px;margin:0}
+.wz-sayac{font-size:13px;color:var(--metin-soluk);font-weight:600}
+.wz-ilerleme{height:7px;background:var(--gri-orta);border-radius:20px;overflow:hidden}
+.wz-ilerleme > i{display:block;height:100%;background:var(--kirmizi);border-radius:20px;transition:width .25s}
+.wz-govde{padding:20px 22px;overflow-y:auto}
+.wz-kart{border:1px solid var(--kenar);border-radius:12px;padding:16px;margin-bottom:20px;background:var(--gri)}
+.wz-kart-ust{display:flex;justify-content:space-between;align-items:flex-start;gap:12px}
+.wz-tarih{font-size:13px;color:var(--metin-soluk);font-weight:600;margin-bottom:5px}
+.wz-aciklama{font-size:14.5px;font-weight:600;word-break:break-word}
+.wz-tutar{font-size:24px;font-weight:800;white-space:nowrap}
+.wz-tutar.gider{color:var(--kirmizi)}.wz-tutar.gelir{color:var(--yesil)}
+.wz-yon{display:inline-block;padding:3px 10px;border-radius:20px;font-size:12px;font-weight:700;margin-top:9px}
+.wz-yon.gider{background:rgba(211,32,39,.12);color:var(--kirmizi)}
+.wz-yon.gelir{background:rgba(31,157,85,.14);color:var(--yesil)}
+.wz-alan{margin-bottom:16px}
+.wz-alan > label{display:block;font-size:13px;font-weight:600;margin-bottom:8px}
+.wz-alan input[type=text]{width:100%;padding:11px 12px;border:1.5px solid var(--gri-koyu);border-radius:9px;font-size:14px;font-family:inherit;background:var(--kart-bg);color:var(--metin)}
+.wz-alan input:focus{outline:none;border-color:var(--kirmizi)}
+.wz-cipler{display:flex;flex-wrap:wrap;gap:7px}
+.wz-cip{padding:8px 13px;border-radius:20px;border:1.5px solid var(--gri-koyu);background:var(--kart-bg);color:var(--metin);font-size:13px;font-weight:600;cursor:pointer;transition:.12s}
+.wz-cip:hover{border-color:var(--kirmizi)}
+.wz-cip.sec{background:var(--kirmizi);border-color:var(--kirmizi);color:#fff}
+.wz-cip.oneri{border-color:var(--yesil);color:var(--yesil)}
+.wz-cip.oneri.sec{background:var(--yesil);border-color:var(--yesil);color:#fff}
+.wz-oneri-not{font-size:12px;color:var(--yesil);font-weight:600}
+.wz-alt{padding:14px 22px;border-top:1px solid var(--kenar);display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap}
+.wz-ipuc{font-size:12px;color:var(--metin-soluk)}
+.wz-ipuc kbd{background:var(--gri-orta);border-radius:5px;padding:2px 7px;font-family:inherit;font-weight:700;font-size:11px}
+.wz-alt-btn{display:flex;gap:8px}
+.wz-dahil{display:flex;align-items:center;gap:8px;font-size:13px;color:var(--metin-soluk);cursor:pointer;user-select:none}
+.wz-dahil input{width:17px;height:17px;accent-color:var(--kirmizi)}
 </style>
 </head>
 <body>
@@ -135,13 +171,13 @@ table.veri tbody tr:hover{background:var(--gri)}
     <div class="marka"><div class="marka-logo">NS</div><div class="marka-yazi"><b>Nizam Soft</b><span>KİŞİSEL BÜTÇE</span></div></div>
     <ul class="menu-liste" id="menu">
       <li class="menu-oge" data-sayfa="anasayfa"><span class="ik">🏠</span><span class="etiket">Ana Sayfa</span></li>
-      <li class="menu-oge" data-sayfa="hareketler"><span class="ik">📝</span><span class="etiket">Hareketler</span></li>
+      <!-- Hareketler sayfası şimdilik gizli (kod duruyor, menüden kaldırıldı) -->
       <li class="menu-oge" data-sayfa="dekont"><span class="ik">📥</span><span class="etiket">Dekont Yükle</span></li>
       <li class="menu-oge" data-sayfa="hesaplar"><span class="ik">💳</span><span class="etiket">Hesaplar</span></li>
       <li class="menu-oge" data-sayfa="kategoriler"><span class="ik">🏷️</span><span class="etiket">Kategoriler</span></li>
       <li class="menu-oge" data-sayfa="yedek"><span class="ik">💾</span><span class="etiket">Yedekleme</span></li>
     </ul>
-    <div class="menu-alt">Nizam Soft © 2026<br>Kişisel • Sürüm 0.1.1</div>
+    <div class="menu-alt">Nizam Soft © 2026<br>Kişisel • Sürüm 0.2.0</div>
   </nav>
   <div class="icerik">
     <header class="ust-bar">
@@ -418,7 +454,7 @@ const Hareket = {
     if(t==='gelir'){ hareket.tur='gelir'; hareket.hesapId=g('hf-hesap'); hareket.kategoriId=g('hf-kat'); }
     else if(t==='gider'||t==='kart'){ hareket.tur='gider'; hareket.hesapId=g('hf-hesap'); hareket.kategoriId=g('hf-kat'); }
     else { hareket.tur='transfer'; hareket.hesapId=g('hf-hesap'); hareket.karsiHesapId=g('hf-karsi'); if(hareket.hesapId===hareket.karsiHesapId){ Bildirim.goster('hata','Transfer','Aynı hesaba transfer olmaz.'); return; } }
-    Depo.veri.hareketler.push(hareket); Depo.kaydet(); Modal.kapat(); App.git(App.aktif==='hareketler'?'hareketler':'anasayfa'); Bildirim.goster('basari','Eklendi','Hareket kaydedildi.');
+    Depo.veri.hareketler.push(hareket); Depo.kaydet(); Modal.kapat(); App.git('anasayfa'); Bildirim.goster('basari','Eklendi','Hareket kaydedildi.');
   },
   sil(id){ Modal.onay('Hareket Sil','Bu hareketi silmek istiyor musunuz?',()=>{ Depo.veri.hareketler=Depo.veri.hareketler.filter(h=>h.id!==id); Depo.kaydet(); App.git(App.aktif); },'Evet, Sil'); }
 };
@@ -500,43 +536,100 @@ const Dekont = {
     if(etiket&&em[etiket]){ const id=Hesap.kategoriIdAd(em[etiket],'gider'); if(id) return id; }
     return Hesap.kategoriIdAd('Diğer','gider')||'';
   },
+  // Dekont okunduktan sonra: mükerrer ayıkla ve tek-tek sihirbazı başlat
   sihirbaz(){
-    // mükerrer kontrolü
     const mevcut=new Set(Depo.veri.hareketler.filter(h=>h.dekontNo).map(h=>h.dekontNo));
     const yeni=this._satirlar.filter(s=>!s.dekontNo || !mevcut.has(s.dekontNo));
     const atlanan=this._satirlar.length-yeni.length;
     this._yeni=yeni;
     if(!yeni.length){ document.getElementById('dk-sonuc').innerHTML=`<div class="uyari-serit" style="border-color:var(--sari)">Tüm hareketler (${this._satirlar.length}) zaten yüklenmiş, yeni kayıt yok.</div>`; return; }
-    const katOpt=(tur,sel)=>Depo.veri.kategoriler.filter(k=>k.tur===tur).map(k=>`<option value="${k.id}" ${k.id===sel?'selected':''}>${Y.kacis(k.ad)}</option>`).join('');
+    // Her satır için varsayılan seçim: önerilen kategori + not olarak temiz açıklama
+    this._sec=yeni.map(s=>({ dahil:true, kategoriId:this.oneriKat(s.aciklamaRaw,s.etiket,s.yon), not:s.aciklama }));
+    this._i=0;
     const gelirN=yeni.filter(s=>s.yon==='gelir').length, giderN=yeni.length-gelirN;
-    document.getElementById('dk-sonuc').innerHTML=`
-      <div class="uyari-serit" style="border-color:var(--yesil);margin-bottom:14px">✓ <b>${yeni.length} yeni hareket</b> bulundu (${giderN} gider, ${gelirN} gelir).${atlanan?` ${atlanan} kayıt zaten vardı, atlandı.`:''} Aşağıda her satırın <b>kategorisini</b> ve notunu kontrol et, sonra kaydet.</div>
-      <div class="buton-grup" style="margin-bottom:12px"><button class="btn btn-yesil" onclick="Dekont.kaydet()">💾 Tümünü Kaydet (${yeni.length})</button><button class="btn btn-gri btn-kucuk" onclick="App.git('dekont')">Vazgeç</button></div>
-      <div class="tablo-sar"><table class="veri wiz-tablo"><thead><tr><th>Dahil</th><th>Tarih</th><th>Banka Açıklaması</th><th>Yön</th><th class="sag-hiza">Tutar</th><th>Kategori</th><th>Not</th></tr></thead><tbody>
-      ${yeni.map((s,i)=>{ const kid=s.yon==='gider'?this.oneriKat(s.aciklamaRaw,s.etiket,'gider'):this.oneriKat(s.aciklamaRaw,s.etiket,'gelir');
-        return `<tr>
-          <td style="text-align:center"><input type="checkbox" id="w-d-${i}" checked></td>
-          <td>${Y.tf(s.tarih)}</td>
-          <td title="${Y.kacis(s.aciklamaRaw)}">${Y.kacis(s.aciklamaRaw.slice(0,42))}${s.etiket?` <span class="rozet">${Y.kacis(s.etiket)}</span>`:''}</td>
-          <td><span class="rozet ${s.yon==='gelir'?'banka':'kart'}">${s.yon==='gelir'?'Gelir':'Gider'}</span></td>
-          <td class="sag-hiza ${s.yon==='gelir'?'gelir':'gider-r'}">${(s.yon==='gelir'?'+':'−')+Y.sayi(s.tutar)}</td>
-          <td><select id="w-k-${i}">${katOpt(s.yon,kid)}</select></td>
-          <td><input id="w-n-${i}" value="${Y.kacis(s.aciklama)}"></td>
-        </tr>`; }).join('')}
-      </tbody></table></div>`;
+    document.getElementById('dk-sonuc').innerHTML=`<div class="uyari-serit" style="border-color:var(--yesil)">✓ <b>${yeni.length} yeni hareket</b> bulundu (${giderN} gider, ${gelirN} gelir).${atlanan?` ${atlanan} kayıt zaten vardı, atlandı.`:''} Sihirbaz açıldı — her hareketin kategorisini seçip <b>Enter</b> ile ilerle.</div>`;
+    this.wizGoster();
+  },
+  wizGoster(){
+    if(!this._yeni||this._i>=this._yeni.length){ this.wizBitir(); return; }
+    const s=this._yeni[this._i], sec=this._sec[this._i];
+    const oneriId=this.oneriKat(s.aciklamaRaw,s.etiket,s.yon);
+    const oneriKat=Depo.veri.kategoriler.find(k=>k.id===oneriId);
+    const yuzde=Math.round(this._i/this._yeni.length*100);
+    const cipler=Depo.veri.kategoriler.filter(k=>k.tur===s.yon).map(k=>
+      `<div class="wz-cip ${k.id===oneriId?'oneri':''} ${k.id===sec.kategoriId?'sec':''}" onclick="Dekont.wizKat('${k.id}')">${Y.kacis(k.ad)}</div>`).join('');
+    let kat=document.getElementById('dk-wiz'); if(!kat){ kat=document.createElement('div'); kat.id='dk-wiz'; document.body.appendChild(kat); }
+    kat.innerHTML=`
+      <div class="wz-kat">
+        <div class="wz">
+          <div class="wz-bas">
+            <div class="wz-bas-ust"><h2>Hareketi Kategorile</h2><span class="wz-sayac">${this._i+1} / ${this._yeni.length}</span></div>
+            <div class="wz-ilerleme"><i style="width:${yuzde}%"></i></div>
+          </div>
+          <div class="wz-govde">
+            <div class="wz-kart"><div class="wz-kart-ust">
+              <div>
+                <div class="wz-tarih">${Y.tf(s.tarih)}</div>
+                <div class="wz-aciklama">${Y.kacis(s.aciklamaRaw)}</div>
+                <span class="wz-yon ${s.yon}">${s.yon==='gelir'?'⬆ Gelir':'⬇ Gider'}</span>${s.etiket?` <span class="rozet">${Y.kacis(s.etiket)}</span>`:''}
+              </div>
+              <div class="wz-tutar ${s.yon}">${s.yon==='gelir'?'+':'−'}${Y.para(s.tutar)}</div>
+            </div></div>
+            <div class="wz-alan">
+              <label>Kategori ${oneriKat?`<span class="wz-oneri-not">— önerilen: ${Y.kacis(oneriKat.ad)}</span>`:''}</label>
+              <div class="wz-cipler">${cipler}</div>
+            </div>
+            <div class="wz-alan">
+              <label>Not / Açıklama</label>
+              <input type="text" id="wz-not" value="${Y.kacis(sec.not||'')}" placeholder="İstersen düzenle…">
+            </div>
+          </div>
+          <div class="wz-alt">
+            <label class="wz-dahil"><input type="checkbox" id="wz-dahil" ${sec.dahil?'checked':''}> Dahil et</label>
+            <div class="wz-alt-btn">
+              ${this._i>0?`<button class="btn btn-cizgi btn-kucuk" onclick="Dekont.wizGeri()">← Geri</button>`:''}
+              <button class="btn btn-gri btn-kucuk" onclick="Dekont.wizKapat()">Vazgeç</button>
+              <button class="btn btn-yesil btn-kucuk" onclick="Dekont.wizIleri()">Kaydet & İleri →</button>
+            </div>
+          </div>
+        </div>
+      </div>`;
+    const not=document.getElementById('wz-not'); not.focus(); not.select();
+    not.onkeydown=e=>{ if(e.key==='Enter'){ e.preventDefault(); this.wizIleri(); } };
+  },
+  wizOku(){ const sec=this._sec[this._i]; if(!sec) return; const n=document.getElementById('wz-not'), d=document.getElementById('wz-dahil'); if(n) sec.not=n.value; if(d) sec.dahil=d.checked; },
+  wizKat(kid){ this.wizOku(); this._sec[this._i].kategoriId=kid; this.wizGoster(); },
+  wizIleri(){ this.wizOku(); this._i++; this.wizGoster(); },
+  wizGeri(){ this.wizOku(); if(this._i>0) this._i--; this.wizGoster(); },
+  wizKapat(){ const kat=document.getElementById('dk-wiz'); if(kat) kat.remove(); },
+  wizBitir(){
+    const dahil=this._sec.filter(s=>s.dahil).length;
+    let kat=document.getElementById('dk-wiz'); if(!kat){ kat=document.createElement('div'); kat.id='dk-wiz'; document.body.appendChild(kat); }
+    kat.innerHTML=`
+      <div class="wz-kat"><div class="wz" style="max-width:440px;text-align:center">
+        <div class="wz-govde" style="padding:34px 26px">
+          <div style="font-size:46px;margin-bottom:12px">✅</div>
+          <h2 style="font-size:18px;margin-bottom:8px">Hepsi Kategorilendi!</h2>
+          <p class="pop-aciklama" style="margin-bottom:22px"><b>${dahil}</b> hareket işleme hazır${dahil<this._yeni.length?` (${this._yeni.length-dahil} tanesi dahil edilmedi)`:''}. Kaydet ile hepsi hesap hareketlerine eklenir.</p>
+          <div style="display:flex;gap:10px;justify-content:center;flex-wrap:wrap">
+            <button class="btn btn-cizgi btn-kucuk" onclick="Dekont._i=0;Dekont.wizGoster()">← Baştan Gözden Geçir</button>
+            <button class="btn btn-yesil" onclick="Dekont.kaydet()">💾 ${dahil} Hareketi Kaydet</button>
+          </div>
+        </div>
+      </div></div>`;
   },
   kaydet(){
     let n=0;
     this._yeni.forEach((s,i)=>{
-      if(!document.getElementById('w-d-'+i).checked) return;
-      const kategoriId=document.getElementById('w-k-'+i).value;
-      const not=(document.getElementById('w-n-'+i).value||'').trim();
-      Depo.veri.hareketler.push({ id:Y.id(), tarih:s.tarih, tur:s.yon, hesapId:this._hesapId, kategoriId, tutar:s.tutar, aciklama:not||s.aciklama, etiket:s.etiket, dekontNo:s.dekontNo, kaynak:'dekont' });
+      const sec=this._sec[i]; if(!sec||!sec.dahil) return;
+      const not=(sec.not||'').trim();
+      Depo.veri.hareketler.push({ id:Y.id(), tarih:s.tarih, tur:s.yon, hesapId:this._hesapId, kategoriId:sec.kategoriId, tutar:s.tutar, aciklama:not||s.aciklama, etiket:s.etiket, dekontNo:s.dekontNo, kaynak:'dekont' });
       n++;
     });
     Depo.kaydet();
+    this.wizKapat();
     Bildirim.goster('basari','İçe Aktarıldı', n+' hareket kaydedildi.',4000);
-    App.git('hareketler');
+    App.git('anasayfa');
   }
 };
 document.addEventListener('DOMContentLoaded', ()=>App.baslat());
