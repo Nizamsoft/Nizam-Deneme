@@ -229,6 +229,19 @@ table.veri tr.ana-hesap-satir:hover{background:var(--gri-orta)}
 .sekme:hover{background:var(--gri);color:var(--metin)}
 .sekme.aktif{background:var(--kirmizi);color:#fff;box-shadow:0 5px 14px rgba(211,32,39,.35)}
 
+/* İşlem türü seçici (tek akıllı seçici) */
+.islem-secici{display:flex;gap:6px;flex-wrap:wrap;background:var(--kart-bg);padding:7px;border-radius:var(--radius);border:1px solid var(--kenar);margin-bottom:18px}
+.islem-secici button{display:inline-flex;align-items:center;gap:9px;padding:11px 16px;border-radius:9px;cursor:pointer;font-weight:600;font-size:13.5px;color:var(--metin-soluk);border:none;background:none;font-family:inherit;transition:.18s}
+.islem-secici button:hover{background:var(--gri);color:var(--metin)}
+.islem-secici button.aktif{background:var(--kirmizi);color:#fff;box-shadow:0 5px 14px rgba(211,32,39,.32)}
+.islem-secici button .ik{font-size:16px}
+.mini-rozet{font-size:10px;font-weight:800;letter-spacing:.04em;padding:2px 7px;border-radius:20px}
+.mini-rozet.gider{background:rgba(211,32,39,.15);color:var(--kirmizi)}
+.mini-rozet.gelir{background:rgba(31,157,85,.16);color:var(--yesil)}
+.islem-secici button.aktif .mini-rozet{background:rgba(255,255,255,.22);color:#fff}
+.rozet.gider{background:rgba(211,32,39,.14);color:var(--kirmizi)}
+.rozet.gelir{background:rgba(31,157,85,.14);color:var(--yesil)}
+
 /* Formlar */
 .form-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:18px}
 .form-alan{display:flex;flex-direction:column;gap:7px}
@@ -522,7 +535,7 @@ table.nakit th.bugun-sutun{background:var(--kirmizi)}
         </ul>
       </li>
     </ul>
-    <div class="menu-alt">Nizam Soft © 2026<br>Sürüm 1.9.5 • 20.07.2026</div>
+    <div class="menu-alt">Nizam Soft © 2026<br>Sürüm 1.9.6 • 20.07.2026</div>
   </nav>
 
   <!-- ANA İÇERİK -->
@@ -1037,7 +1050,17 @@ const Disari = {
 const App = {
   aktifSayfa:'anasayfa',
   aktifSekme:'alis',
+  aktifTip:'alis', // 5'li: alis, satis, odeme, tahsilat, kart
   aktifRapor:null,
+
+  // İşlem tipi -> hangi form (4'lü sekme) + banka yönü
+  tipSekme(tip){ return {alis:'alis', satis:'satis', odeme:'banka', tahsilat:'banka', kart:'kart'}[tip] || 'alis'; },
+  tipYon(tip){ return {odeme:'cikis', tahsilat:'giris'}[tip] || null; },
+  islemTipi(is){ // bir kayıttan tipini bul
+    if(is.tur==='banka') return is.islemTuru==='giris' ? 'tahsilat' : 'odeme';
+    return is.tur; // alis/satis/kart
+  },
+  tipAyarla(tip){ this.aktifTip = tip; this.aktifSekme = this.tipSekme(tip); },
 
   baslat(){
     Depo.yukle();
@@ -1182,25 +1205,29 @@ const Sayfa = {
   },
 
   /* ---------- İŞLEM GİRİŞLERİ ---------- */
+  _islemTipler:[
+    ['alis','🧾','Alış Faturası','gider'],
+    ['satis','🧾','Satış Faturası','gelir'],
+    ['odeme','🏦','Bankadan Ödeme','gider'],
+    ['tahsilat','🏦','Bankaya Tahsilat','gelir'],
+    ['kart','💳','Kredi Kartı','gider']
+  ],
   islemler(el){
     el.innerHTML = `
-      <div class="sekmeler no-print">
-        <button class="sekme" data-sekme="alis">Alış Faturaları</button>
-        <button class="sekme" data-sekme="satis">Satış Faturaları</button>
-        <button class="sekme" data-sekme="banka">Banka Hareketleri</button>
-        <button class="sekme" data-sekme="kart">Kredi Kartı Ödemeleri</button>
+      <div class="islem-secici no-print">
+        ${this._islemTipler.map(t=>`<button data-tip="${t[0]}"><span class="ik">${t[1]}</span>${t[2]}<span class="mini-rozet ${t[3]}">${t[3]==='gelir'?'GELİR':'GİDER'}</span></button>`).join('')}
       </div>
       <div id="sekme-icerik"></div>`;
-    el.querySelectorAll('.sekme').forEach(s=>{
-      s.addEventListener('click',()=>{ App.aktifSekme = s.dataset.sekme; this.sekmeGuncelle(el); });
+    el.querySelectorAll('.islem-secici button').forEach(s=>{
+      s.addEventListener('click',()=>{ App.tipAyarla(s.dataset.tip); this.sekmeGuncelle(el); });
     });
     this.sekmeGuncelle(el);
   },
 
   sekmeGuncelle(el){
-    el.querySelectorAll('.sekme').forEach(s=>s.classList.toggle('aktif', s.dataset.sekme===App.aktifSekme));
+    el.querySelectorAll('.islem-secici button').forEach(s=>s.classList.toggle('aktif', s.dataset.tip===App.aktifTip));
     const ic = el.querySelector('#sekme-icerik');
-    Form.render(ic, App.aktifSekme);
+    Form.render(ic, App.aktifTip);
   },
 
   /* ---------- HESAPLAR ---------- */
@@ -1474,12 +1501,14 @@ const Form = {
   aktifKayit:{alis:null, satis:null, banka:null, kart:null},
   bekleyenDosya:null, // {ad,tur,boyut,data}
 
-  render(el, tur){
+  render(el, tip){
     this.bekleyenDosya = null;
-    if(tur==='alis') this.alis(el);
-    else if(tur==='satis') this.satis(el);
-    else if(tur==='banka') this.banka(el);
-    else if(tur==='kart') this.kart(el);
+    if(tip==='alis') this.alis(el);
+    else if(tip==='satis') this.satis(el);
+    else if(tip==='odeme') this.banka(el,'cikis');
+    else if(tip==='tahsilat') this.banka(el,'giris');
+    else if(tip==='kart') this.kart(el);
+    else if(tip==='banka') this.banka(el,'cikis'); // geriye dönük
   },
 
   butonlar(tur){
@@ -1821,25 +1850,30 @@ const Form = {
     this.ozetBagla('sa','satis');
   },
 
-  /* --- BANKA HAREKETİ --- */
-  banka(el){
+  /* --- BANKA HAREKETİ (yön: cikis=Ödeme/Gider, giris=Tahsilat/Gelir) --- */
+  banka(el, yon){
+    yon = yon || 'cikis';
+    const cikis = yon==='cikis';
     const no = 'ISL-' + String((Depo.veri.sayaclar.islemNo||0)+1).padStart(6,'0');
+    const giderAnaKodlar = cikis ? '770,331' : '600,331';
+    const giderEtiket = cikis ? 'Gider Hesabı' : 'Gelir Hesabı';
     el.innerHTML = `
       <div class="kart">
-        <div class="form-ust"><span class="form-baslik" style="border:none;margin:0;padding:0">Banka Hareketi Girişi</span></div>
+        <div class="form-ust"><span class="form-baslik" style="border:none;margin:0;padding:0">${cikis?'Bankadan Ödeme':'Bankaya Tahsilat'}</span><span class="rozet ${cikis?'gider':'gelir'}">${cikis?'GİDER · Para Çıkışı':'GELİR · Para Girişi'}</span></div>
         <div class="form2">
           <div class="sol">
             ${this.grup('🏦','Hareket Bilgileri',
               `<div class="form-alan"><label>Tarih <span class="zorunlu">*</span></label><input type="date" id="bk-tarih" value="${this.varsayilanTarih()}"></div>
                <div class="form-alan"><label>Banka Hesabı <span class="zorunlu">*</span></label>${this.secEkle('bk-hesap','102',`<select id="bk-hesap">${this.hesapSecenek('102')}</select>`)}</div>
-               <div class="form-alan"><label>İşlem Adı <span class="zorunlu">*</span></label><input id="bk-islemad" placeholder="Örn: EFT, Havale, Fatura Ödeme"></div>
+               <div class="form-alan"><label>İşlem Adı <span class="zorunlu">*</span></label><input id="bk-islemad" placeholder="${cikis?'Örn: Kira ödemesi, EFT':'Örn: Müşteri tahsilatı'}"></div>
                <div class="form-alan"><label>İşlem No</label><input id="bk-no" value="${no}" readonly></div>
-               <div class="form-alan tam"><label>İşlem Türü <span class="zorunlu">*</span></label>${this.segment('bk-tur',[{v:'giris',ad:'Para Girişi'},{v:'cikis',ad:'Para Çıkışı'}],'cikis')}</div>`)}
+               <input type="hidden" id="bk-tur" value="${yon}">`)}
             ${this.grup('💳','Tutar &amp; Karşı Hesap',
-              `<div class="form-alan tam"><label>Kapatılacak Fatura</label><select id="bk-fatura" onchange="Form.faturaSecildi('bk')">${Fatura.secenek('cikis')}</select></div>
+              `<div class="form-alan tam"><label>${cikis?'Ödenecek (Kapatılacak) Fatura':'Tahsil Edilecek Fatura'}</label><select id="bk-fatura" onchange="Form.faturaSecildi('bk')">${Fatura.secenek(yon)}</select></div>
                <div class="form-alan"><label>Tutar (₺) <span class="zorunlu">*</span></label><div class="gtutar"><span class="pb">₺</span><input type="text" inputmode="decimal" id="bk-tutar" placeholder="0,00"></div></div>
-               <div class="form-alan"><label>Şahıs veya Firma</label>${this.secEkle('bk-sahis','320,120,331',`<select id="bk-sahis">${this.sahisSecenek()}</select>`)}</div>
-               <div class="form-alan tam"><label>Gelir/Gider Hesabı</label>${this.secEkle('bk-gider','770,600,331',`<select id="bk-gider">${this.giderSecenek()}</select>`)}</div>`)}
+               <div class="form-alan"><label>${cikis?'Satıcı / Şahıs':'Müşteri / Şahıs'}</label>${this.secEkle('bk-sahis','320,120,331',`<select id="bk-sahis">${this.sahisSecenek()}</select>`)}</div>
+               <div class="form-alan tam"><label>${giderEtiket}${cikis?' <span class="zorunlu">*</span>':''}</label>${this.secEkle('bk-gider',giderAnaKodlar,`<select id="bk-gider">${this.giderSecenek()}</select>`)}
+                 ${cikis?'<span style="font-size:11px;color:var(--metin-soluk);font-weight:600;margin-top:2px">Bir fatura ya da cari seçmediysen zorunlu.</span>':''}</div>`)}
             ${this.grup('📝','Açıklama',
               `<div class="form-alan tam"><label>Açıklama</label><input id="bk-aciklama"></div>
                <div class="form-alan tam"><label>Banka Açıklaması</label><input id="bk-bankaac" placeholder="Banka dekontundaki açıklama"></div>`)}
@@ -1848,7 +1882,7 @@ const Form = {
         </div>
         ${this.butonlar('banka')}
       </div>
-      ${this.kayitListesi('banka')}`;
+      ${this.kayitListesi('banka', yon)}`;
     this.ozetBagla('bk','banka');
   },
 
@@ -2054,9 +2088,10 @@ const Form = {
     let adet = odemeTipi==='tek' ? 1 : Math.max(1, Number(document.getElementById('kk-taksit').value)||1);
     const sahisId = document.getElementById('kk-sahis').value || null;
     const giderId = document.getElementById('kk-gider').value || null;
-    // Karşı hesap zorunlu: dengeli kayıt için Satıcı/Şahıs veya Gider Hesabı seçilmeli
-    if(!sahisId && !giderId){
-      Bildirim.goster('hata','Karşı Hesap Gerekli','Bu harcamanın kime/neye ait olduğunu seçin: Satıcı/Şahıs (ör. ödeme yaptığınız cari) veya Gider Hesabı. Aksi halde kayıt dengelenemez.');
+    const faturaId = (document.getElementById('kk-fatura')||{}).value || null;
+    // Kart harcaması gider'dir: fatura/cari kapatmıyorsan Gider Hesabı zorunlu
+    if(!faturaId && !sahisId && !giderId){
+      Bildirim.goster('hata','Gider Hesabı Gerekli','Bu kart harcaması için bir <b>Gider Hesabı</b> seçin — ya da bir fatura/cari seçerek onu kapatın. Aksi halde kayıt dengelenemez.');
       return;
     }
     const sahisH = sahisId ? Hesap.altBul(sahisId) : null;
@@ -2188,9 +2223,13 @@ const Form = {
     // Şahıs/Firma: hesap seçimi -> id sakla, ekranlarda gösterim için etiket üret
     const sahisId = document.getElementById(on+'-sahis').value || null;
     const giderId = document.getElementById(on+'-gider').value || null;
-    // Karşı hesap zorunlu: dengeli kayıt için Şahıs/Firma veya Gelir/Gider Hesabı seçilmeli
-    if(!sahisId && !giderId){
-      Bildirim.goster('hata','Karşı Hesap Gerekli','Bu paranın kaynağını/gideceği yeri seçin: Şahıs/Firma (ör. ortak parası için Ortaklara Borçlar, tahsilat için müşteri) veya Gelir/Gider Hesabı. Aksi halde kayıt dengelenemez.');
+    const faturaId = (document.getElementById(on+'-fatura')||{}).value || null;
+    // Karşı hesap zorunlu (dengeli kayıt). Ödemede (çıkış) fatura/cari yoksa Gider Hesabı şart.
+    if(!faturaId && !sahisId && !giderId){
+      if(islemTuru==='cikis')
+        Bildirim.goster('hata','Gider Hesabı Gerekli','Bu ödeme için bir <b>Gider Hesabı</b> seçin — ya da bir fatura/cari seçerek onu kapatın. Aksi halde kayıt dengelenemez.');
+      else
+        Bildirim.goster('hata','Karşı Hesap Gerekli','Bu tahsilatın kaynağını seçin: Müşteri/Şahıs ya da Gelir Hesabı. Aksi halde kayıt dengelenemez.');
       return;
     }
     const sahisH = sahisId ? Hesap.altBul(sahisId) : null;
@@ -2394,8 +2433,8 @@ const Form = {
   },
 
   /* ---- Kayıt Listesi (form altında) ---- */
-  kayitListesi(tur){
-    const kayitlar = Depo.veri.islemler.filter(x=>x.tur===tur).sort((a,b)=>(b.no||'').localeCompare(a.no||''));
+  kayitListesi(tur, yon){
+    const kayitlar = Depo.veri.islemler.filter(x=>x.tur===tur && (!yon || tur!=='banka' || x.islemTuru===yon)).sort((a,b)=>(b.no||'').localeCompare(a.no||''));
     let ic;
     if(kayitlar.length===0){
       ic = `<div class="bos-mesaj">Henüz bu türde kayıt bulunmuyor.</div>`;
@@ -2455,7 +2494,8 @@ const Form = {
         }).join('')}
       </tbody></table></div>`;
     }
-    return `<div class="satir-arasi"><div class="mini-liste-baslik">Kayıtlı ${Sayfa.islemTurAdi(tur)} Listesi (${kayitlar.length})</div>${ic}</div>`;
+    const baslikAd = (tur==='banka' && yon) ? (yon==='cikis'?'Ödeme':'Tahsilat') : Sayfa.islemTurAdi(tur);
+    return `<div class="satir-arasi"><div class="mini-liste-baslik">Kayıtlı ${baslikAd} Listesi (${kayitlar.length})</div>${ic}</div>`;
   },
 
   /* ---- YAZDIR / EXCEL ---- */
@@ -2818,8 +2858,8 @@ const Detay = {
   yeniIslem(hesapId){
     const h = Hesap.altBul(hesapId);
     // İlgili işlem sekmesine yönlendir
-    const eslesme = {banka:'banka', kart:'kart', alici:'satis', satici:'alis'};
-    App.aktifSekme = eslesme[h.tur]||'banka';
+    const eslesme = {banka:'odeme', kart:'kart', alici:'satis', satici:'alis', ortak:'odeme'};
+    App.tipAyarla(eslesme[h.tur]||'odeme');
     App.sayfaGit('islemler');
     setTimeout(()=>{
       const on = {banka:'bk', kart:'kk', satis:'sa', alis:'al'}[App.aktifSekme];
@@ -2832,7 +2872,7 @@ const Detay = {
   islemDuzenle(islemId){
     const is = Depo.veri.islemler.find(x=>x.id===islemId);
     if(!is) return;
-    App.aktifSekme = is.tur;
+    App.tipAyarla(App.islemTipi(is));
     App.sayfaGit('islemler');
     setTimeout(()=>Form.yukle(is.tur, islemId), 120);
   },
