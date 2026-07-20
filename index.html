@@ -262,14 +262,6 @@ table.veri tr.ana-hesap-satir:hover{background:var(--gri-orta)}
 .grp-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px}
 .grp-grid .tam,.grp-grid .gdetay{grid-column:1/-1}
 @media(max-width:540px){.grp-grid{grid-template-columns:1fr}}
-/* Sekmeli ayarlar */
-.ayar-duzen{display:grid;grid-template-columns:230px 1fr;gap:18px;align-items:start}
-.ayar-nav{background:var(--kart-bg);border:1px solid var(--kenar);border-radius:14px;padding:8px;display:flex;flex-direction:column;gap:3px;position:sticky;top:14px}
-.ayar-nav button{display:flex;align-items:center;gap:11px;width:100%;text-align:left;border:none;background:none;font:inherit;font-size:14px;font-weight:600;color:var(--metin-soluk);padding:12px 13px;border-radius:10px;cursor:pointer;transition:.15s}
-.ayar-nav button:hover{background:var(--gri);color:var(--metin)}
-.ayar-nav button.aktif{background:var(--kirmizi);color:#fff;box-shadow:0 5px 14px rgba(211,32,39,.3)}
-.ayar-nav button .ik{font-size:17px;width:22px;text-align:center}
-@media(max-width:760px){.ayar-duzen{grid-template-columns:1fr}.ayar-nav{flex-direction:row;flex-wrap:wrap;position:static}}
 /* Hızlı hesap/grup ekleme: ➕ butonu + mini pencere */
 .sec-satir{display:flex;gap:6px;align-items:stretch}
 .sec-satir select{flex:1;min-width:0}
@@ -522,12 +514,15 @@ table.nakit th.bugun-sutun{background:var(--kirmizi)}
       <li class="menu-grup" data-grup="ayarlargrup">
         <div class="menu-grup-baslik"><span class="ikon">⚙️</span><span class="etiket">Ayarlar</span><span class="ok">▸</span></div>
         <ul class="menu-alt-liste">
-          <li class="menu-oge alt" data-sayfa="ayarlar"><span class="etiket">Genel Ayarlar</span></li>
+          <li class="menu-oge alt" data-sayfa="ay-firma"><span class="etiket">Firma Bilgileri</span></li>
+          <li class="menu-oge alt" data-sayfa="ay-program"><span class="etiket">Program Ayarları</span></li>
+          <li class="menu-oge alt" data-sayfa="ay-gruplar"><span class="etiket">Gider / Gelir Grupları</span></li>
+          <li class="menu-oge alt" data-sayfa="ay-ongoru"><span class="etiket">Öngörülen İşlemler</span></li>
           <li class="menu-oge alt" data-sayfa="yedekleme"><span class="etiket">Yedekleme</span></li>
         </ul>
       </li>
     </ul>
-    <div class="menu-alt">Nizam Soft © 2026<br>Sürüm 1.9.4 • 20.07.2026</div>
+    <div class="menu-alt">Nizam Soft © 2026<br>Sürüm 1.9.5 • 20.07.2026</div>
   </nav>
 
   <!-- ANA İÇERİK -->
@@ -1055,7 +1050,7 @@ const App = {
   },
 
   // Alt sayfa -> ait olduğu grup
-  sayfaGrup:{ raporlar:'raporlar', karzarar:'raporlar', nakit:'raporlar', ayarlar:'ayarlargrup', yedekleme:'ayarlargrup' },
+  sayfaGrup:{ raporlar:'raporlar', karzarar:'raporlar', nakit:'raporlar', 'ay-firma':'ayarlargrup', 'ay-program':'ayarlargrup', 'ay-gruplar':'ayarlargrup', 'ay-ongoru':'ayarlargrup', yedekleme:'ayarlargrup' },
 
   menuBagla(){
     document.querySelectorAll('.menu-oge').forEach(el=>{
@@ -1088,7 +1083,7 @@ const App = {
     // aktif sayfanın grubunu aç
     const grup = this.sayfaGrup[sayfa];
     document.querySelectorAll('.menu-grup').forEach(g=>{ if(g.dataset.grup===grup) g.classList.add('acik'); });
-    const basliklar = {anasayfa:'Ana Sayfa', islemler:'İşlem Girişleri', hesaplar:'Hesaplar', nakit:'Nakit Akışı', karzarar:'Kâr / Zarar Tablosu', raporlar:'Genel Raporlar', ayarlar:'Ayarlar', yedekleme:'Yedekleme'};
+    const basliklar = {anasayfa:'Ana Sayfa', islemler:'İşlem Girişleri', hesaplar:'Hesaplar', nakit:'Nakit Akışı', karzarar:'Kâr / Zarar Tablosu', raporlar:'Genel Raporlar', 'ay-firma':'Firma Bilgileri', 'ay-program':'Program Ayarları', 'ay-gruplar':'Gider / Gelir Grupları', 'ay-ongoru':'Öngörülen İşlemler', yedekleme:'Yedekleme'};
     document.getElementById('sayfa-baslik').textContent = basliklar[sayfa]||'';
     const alan = document.getElementById('sayfa-alan');
     alan.innerHTML = '';
@@ -1102,7 +1097,10 @@ const App = {
       case 'nakit': Sayfa.nakit(sarma); break;
       case 'karzarar': KarZarar.sayfa(sarma); break;
       case 'raporlar': Sayfa.raporlar(sarma); break;
-      case 'ayarlar': Sayfa.ayarlar(sarma); break;
+      case 'ay-firma': Sayfa.ayarBolum(sarma,'firma'); break;
+      case 'ay-program': Sayfa.ayarBolum(sarma,'program'); break;
+      case 'ay-gruplar': Sayfa.ayarBolum(sarma,'gruplar'); break;
+      case 'ay-ongoru': Sayfa.ayarBolum(sarma,'ongoru'); break;
       case 'yedekleme': Sayfa.yedekleme(sarma); break;
     }
     if(window.innerWidth<820) document.body.classList.add('menu-kapali');
@@ -1357,12 +1355,9 @@ const Sayfa = {
   nakit(el){ NakitAkis.sayfa(el); },
 
   /* ---------- AYARLAR ---------- */
-  _ayarSekme:'firma',
-  ayarSekmeGit(k){ this._ayarSekme = k; App.sayfaGit('ayarlar'); },
-  ayarlar(el){
+  // Ayarlar alt sayfaları (sol menüden bölüm bölüm açılır)
+  ayarBolum(el, sek){
     const f = Depo.veri.firma, a = Depo.veri.ayarlar;
-    const sek = this._ayarSekme || 'firma';
-    const nav = [['firma','🏢','Firma Bilgileri'],['program','⚙️','Program Ayarları'],['gruplar','🏷️','Gider / Gelir Grupları'],['ongoru','🔁','Öngörülen İşlemler']];
     let ic = '';
     if(sek==='firma'){
       ic = `<div class="kart">
@@ -1400,10 +1395,7 @@ const Sayfa = {
     }else{
       ic = `<div class="kart" id="ongoru-kart"></div>`;
     }
-    el.innerHTML = `<div class="ayar-duzen">
-      <div class="ayar-nav">${nav.map(n=>`<button class="${n[0]===sek?'aktif':''}" onclick="Sayfa.ayarSekmeGit('${n[0]}')"><span class="ik">${n[1]}</span>${n[2]}</button>`).join('')}</div>
-      <div class="ayar-icerik">${ic}</div>
-    </div>`;
+    el.innerHTML = ic;
     if(sek==='firma'){ const lg=el.querySelector('#f-logo'); if(lg) lg.addEventListener('change', e=>Ayar.logoYukle(e)); }
     if(sek==='gruplar') Gruplar.kart(el.querySelector('#gruplar-kart'));
     if(sek==='ongoru') Ongoru.kart(el.querySelector('#ongoru-kart'));
@@ -3516,7 +3508,7 @@ const Ongoru = {
     Depo.kaydet(); Modal.kapat();
     Bildirim.goster('basari','Kaydedildi','Öngörülen işlem kaydedildi.');
     // hangi ekrandaysak yenile
-    if(App.aktifSayfa==='ayarlar') App.sayfaGit('ayarlar'); else if(App.aktifSayfa==='nakit') App.sayfaGit('nakit');
+    if(App.aktifSayfa==='ay-ongoru') App.sayfaGit('ay-ongoru'); else if(App.aktifSayfa==='nakit') App.sayfaGit('nakit');
   },
   aktifDegis(id){ const o=Depo.veri.ongoruler.find(x=>x.id===id); if(o){ o.aktif = o.aktif===false; Depo.kaydet(); const el=document.getElementById('ongoru-kart'); if(el)this.kart(el); } },
   sil(id){ Modal.onay('Öngörü Sil','Bu öngörülen işlemi silmek istiyor musunuz?', ()=>{ Depo.veri.ongoruler=Depo.veri.ongoruler.filter(x=>x.id!==id); Depo.veri.ongoruGercek=Depo.veri.ongoruGercek.filter(x=>x.kuralId!==id); Depo.kaydet(); const el=document.getElementById('ongoru-kart'); if(el)this.kart(el); }, 'Evet, Sil', true); },
