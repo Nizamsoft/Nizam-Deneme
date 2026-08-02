@@ -1,0 +1,46 @@
+<!doctype html>
+<html lang="tr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Nizam Soft — Uygulamalar</title>
+<link rel="icon" href="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCA2NCA2NCI+PHJlY3Qgd2lkdGg9IjY0IiBoZWlnaHQ9IjY0IiByeD0iMTQiIGZpbGw9IiNkMzIwMjciLz48dGV4dCB4PSIzMiIgeT0iNDQiIGZvbnQtZmFtaWx5PSJTZWdvZSBVSSxBcmlhbCxzYW5zLXNlcmlmIiBmb250LXNpemU9IjI5IiBmb250LXdlaWdodD0iODAwIiBmaWxsPSIjZmZmZmZmIiB0ZXh0LWFuY2hvcj0ibWlkZGxlIj5OUzwvdGV4dD48L3N2Zz4=">
+<style>
+:root{--kirmizi:#d32027;--kirmizi-koyu:#a5161c;--siyah:#111418;--antrasit:#1f2530;--metin:#1f2530;--metin-soluk:#5b6472;--kenar:#e2e6ec}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:"Segoe UI",Roboto,Arial,sans-serif;background:linear-gradient(160deg,#1f2530,#111418);color:#fff;min-height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:24px}
+.marka{display:flex;align-items:center;gap:14px;margin-bottom:8px}
+.logo{width:56px;height:56px;border-radius:14px;background:var(--kirmizi);display:flex;align-items:center;justify-content:center;font-weight:800;font-size:24px;box-shadow:0 8px 24px rgba(211,32,39,.4)}
+h1{font-size:24px;font-weight:800;letter-spacing:.02em}
+.alt{color:#9aa4b2;font-size:14px;margin-bottom:36px;text-align:center}
+.kartlar{display:grid;grid-template-columns:1fr 1fr;gap:22px;width:100%;max-width:760px}
+.uyg{display:block;text-decoration:none;color:var(--metin);background:#fff;border-radius:18px;padding:30px 26px;transition:.18s;border:2px solid transparent}
+.uyg:hover{transform:translateY(-4px);box-shadow:0 18px 40px rgba(0,0,0,.35);border-color:var(--kirmizi)}
+.uyg .ik{font-size:44px;margin-bottom:14px}
+.uyg .b{font-size:19px;font-weight:800;margin-bottom:6px}
+.uyg .a{font-size:13.5px;color:var(--metin-soluk);line-height:1.5}
+.uyg .git{margin-top:16px;display:inline-block;background:var(--kirmizi);color:#fff;padding:9px 18px;border-radius:9px;font-weight:700;font-size:14px}
+.dip{margin-top:38px;color:#6b7686;font-size:12.5px;text-align:center;line-height:1.7}
+@media(max-width:640px){.kartlar{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+  <div class="marka"><div class="logo">NS</div><h1>Nizam Soft</h1></div>
+  <div class="alt">Hangi uygulamayı açmak istersin?</div>
+  <div class="kartlar">
+    <a class="uyg" href="index.html">
+      <div class="ik">🏢</div>
+      <div class="b">Ön Muhasebe</div>
+      <div class="a">Şirket ön muhasebesi — alış/satış faturaları, banka, kredi kartı, cari hesaplar, raporlar ve banka dosyası toplu aktarım.</div>
+      <span class="git">Aç →</span>
+    </a>
+    <a class="uyg" href="kisisel.html">
+      <div class="ik">👛</div>
+      <div class="b">Kişisel Bütçe</div>
+      <div class="a">Şahsi bütçe — gelir/gider, hesaplar, kategoriler, dekont yükleme ve geçmiş hesap hareketleri aktarımı.</div>
+      <span class="git">Aç →</span>
+    </a>
+  </div>
+  <div class="dip">Veriler yalnızca kullandığın tarayıcıda (yerel depolamada) saklanır.<br>Güncellemeler otomatik gelir — sayfayı yenilemen yeterli.</div>
+</body>
+</html>
