@@ -402,6 +402,8 @@ table.veri tr.ana-hesap-satir:hover{background:var(--gri-orta)}
   animation:modalGiris .28s cubic-bezier(.34,1.3,.64,1);
 }
 .modal.genis{max-width:900px}
+.modal.dar{max-width:480px}
+.modal.dar .modal-govde{padding:20px 22px}
 @keyframes modalGiris{from{opacity:0;transform:translateY(30px) scale(.96)}to{opacity:1;transform:none}}
 .modal-ust{padding:20px 24px;border-bottom:1px solid var(--kenar);display:flex;align-items:center;justify-content:space-between}
 .modal-ust h3{font-size:18px}
@@ -616,7 +618,7 @@ table.nakit th.bugun-sutun{background:var(--kirmizi)}
         </ul>
       </li>
     </ul>
-    <div class="menu-alt">Nizam Soft © 2026<br>Sürüm 1.17.0 • 02.08.2026</div>
+    <div class="menu-alt">Nizam Soft © 2026<br>Sürüm 1.17.1 • 02.08.2026</div>
   </nav>
 
   <!-- ANA İÇERİK -->
@@ -3331,25 +3333,34 @@ const Detay = {
   },
   duzenleModal(islemId){
     const is = Depo.veri.islemler.find(x=>x.id===islemId); if(!is) return;
-    const t=is.tur;
-    const F=(lbl,inner,tam)=>`<div class="form-alan${tam?' tam':''}"><label>${lbl}</label>${inner}</div>`;
-    const tarih=F('Tarih',`<input type="date" id="dz-tarih" value="${is.tarih||''}">`);
-    const tutar=F('Tutar (₺)',`<input id="dz-tutar" value="${Yardimci.sayiFormat(is.tutar)}">`);
-    const aciklama=F('Açıklama',`<input id="dz-aciklama" value="${Yardimci.kacisHTML(is.aciklama||'')}">`,true);
+    const t=is.tur, kac=Yardimci.kacisHTML;
+    const A=(lbl,inner,tam)=>`<div class="form-alan${tam?' tam':''}"><label>${lbl}</label>${inner}</div>`;
+    const tarih=A('Tarih',`<input type="date" id="dz-tarih" value="${is.tarih||''}">`);
+    const tutar=A('Tutar (₺)',`<input id="dz-tutar" value="${Yardimci.sayiFormat(is.tutar)}">`);
+    const aciklama=A('Açıklama',`<input id="dz-aciklama" value="${kac(is.aciklama||'')}" placeholder="İsteğe bağlı">`,true);
     let ic='';
-    if(t==='banka'||t==='kart'){
-      const islemad=F('İşlem Adı',`<input id="dz-islemad" value="${Yardimci.kacisHTML(is.islemAd||'')}">`);
-      const yon = t==='banka'?F('Yön',`<select id="dz-yon"><option value="giris" ${is.islemTuru==='giris'?'selected':''}>⬆ Giriş (para geldi)</option><option value="cikis" ${is.islemTuru!=='giris'?'selected':''}>⬇ Çıkış (para gitti)</option></select>`):'';
-      const karsi=F('Karşı Hesap',`<select id="dz-karsi">${this._karsiOpsiyon(this._karsiDeger(is))}</select>`,true);
-      ic=`<div class="form-grid">${tarih}${islemad}${yon}${tutar}${karsi}${aciklama}</div>`;
+    if(t==='banka'){
+      ic = tarih
+        + A('Yön',`<select id="dz-yon"><option value="giris" ${is.islemTuru==='giris'?'selected':''}>⬆ Giriş</option><option value="cikis" ${is.islemTuru!=='giris'?'selected':''}>⬇ Çıkış</option></select>`)
+        + A('İşlem Adı',`<input id="dz-islemad" value="${kac(is.islemAd||'')}">`) + tutar
+        + A('Karşı Hesap',`<select id="dz-karsi">${this._karsiOpsiyon(this._karsiDeger(is))}</select>`,true)
+        + aciklama;
+    } else if(t==='kart'){
+      ic = tarih + tutar
+        + A('İşlem Adı',`<input id="dz-islemad" value="${kac(is.islemAd||'')}">`,true)
+        + A('Karşı Hesap',`<select id="dz-karsi">${this._karsiOpsiyon(this._karsiDeger(is))}</select>`,true)
+        + aciklama;
     } else if(t==='alis'||t==='satis'){
       const anaKod=t==='alis'?'320':'120', et=t==='alis'?'Satıcı':'Alıcı';
       const cariler=Hesap.altHesaplarByAna(anaKod);
-      const cari=F(et,`<select id="dz-hesap">${cariler.map(x=>`<option value="${x.id}" ${x.id===is.hesapId?'selected':''}>${x.kod} - ${Yardimci.kacisHTML(Hesap.hesapAdi(x))}</option>`).join('')}</select>`);
-      const fno=F('Fatura No',`<input id="dz-faturano" value="${Yardimci.kacisHTML(is.faturaNo||'')}">`);
-      ic=`<div class="form-grid">${tarih}${cari}${fno}${tutar}${aciklama}</div>`;
-    } else { ic=`<div class="form-grid">${tarih}${tutar}${aciklama}</div>`; }
-    Modal.ac('Kaydı Düzenle', ic, `<button class="btn btn-gri" onclick="Modal.kapat()">Vazgeç</button><button class="btn btn-kirmizi" onclick="Detay.duzenleKaydet('${islemId}')">Kaydet</button>`, true);
+      ic = tarih + tutar
+        + A(et,`<select id="dz-hesap">${cariler.map(x=>`<option value="${x.id}" ${x.id===is.hesapId?'selected':''}>${x.kod} - ${kac(Hesap.hesapAdi(x))}</option>`).join('')}</select>`)
+        + A('Fatura No',`<input id="dz-faturano" value="${kac(is.faturaNo||'')}">`)
+        + aciklama;
+    } else { ic = tarih + tutar + aciklama; }
+    Modal.ac('Kaydı Düzenle', `<div class="form-grid" style="grid-template-columns:1fr 1fr;gap:14px">${ic}</div>`,
+      `<button class="btn btn-gri" onclick="Modal.kapat()">Vazgeç</button><button class="btn btn-kirmizi" onclick="Detay.duzenleKaydet('${islemId}')">Kaydet</button>`);
+    const mk=document.getElementById('modal-kutu'); if(mk) mk.classList.add('dar');
   },
   duzenleKaydet(islemId){
     const is = Depo.veri.islemler.find(x=>x.id===islemId); if(!is) return;
