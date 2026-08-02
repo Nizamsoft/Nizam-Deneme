@@ -595,7 +595,7 @@ table.nakit th.bugun-sutun{background:var(--kirmizi)}
         </ul>
       </li>
     </ul>
-    <div class="menu-alt">Nizam Soft © 2026<br>Sürüm 1.12.0 • 02.08.2026</div>
+    <div class="menu-alt">Nizam Soft © 2026<br>Sürüm 1.12.1 • 02.08.2026</div>
   </nav>
 
   <!-- ANA İÇERİK -->
@@ -3692,9 +3692,9 @@ const FaturaPDF = {
     const tahakkuk = /TAHAKKUK|MAL[İI]?YE\s*BAKAN|DEFTERDAR|DA[İI]?RES[İI]?\s*M[ÜU]D/.test(U);
     // --- Tarih ---
     let tarih='';
-    const trTarih = s=>{ const m=s.match(/(\d{1,2})\s*[.\/]\s*(\d{1,2})\s*[.\/]\s*(\d{4})/); return m?this._iso(+m[1],+m[2],m[3]):''; };
-    // Önce etiketli: Fatura Tarihi / Düzenleme / Date paid / Kabul / Vergilendirme
-    for(const et of ['fatura tarihi','düzenleme','duzenleme','date paid','date of issue','kabul tarihi']){
+    const trTarih = s=>{ const m=String(s).match(/(\d{1,2})\s*[.\/\-]\s*(\d{1,2})\s*[.\/\-]\s*(\d{4})/); return m?this._iso(+m[1],+m[2],m[3]):''; };
+    // Önce etiketli: Fatura Tarihi / Düzenleme(-nme) / Date paid / Kabul / Vergilendirme
+    for(const et of ['fatura tarihi','düzenlen','duzenlen','date paid','date of issue','kabul tarihi']){
       const idx = satirlar.findIndex(l=>l.toLocaleLowerCase('tr').includes(et));
       if(idx>-1){
         for(let j=idx;j<Math.min(idx+3,satirlar.length);j++){ const d=trTarih(satirlar[j]); if(d){tarih=d;break;} }
@@ -3746,9 +3746,16 @@ const FaturaPDF = {
       const vdAd = satirlar.find(l=>/VERG[İI]?\s*DA[İI]?RES/i.test(l));
       if(vdAd){ const mm=vdAd.match(/([A-ZÇĞİÖŞÜ]{3,}(?:\s+[A-ZÇĞİÖŞÜ]+){0,3})\s+VERG/i); if(mm) firma = this._baslikDuzelt(mm[1])+' Vergi Dairesi'; }
     } else {
-      const sirket = satirlar.find(l=>/(Limited Şirketi|Ltd\.?\s*Şti|Anonim Şirketi|A\.?Ş\.?\b|Şirketi|PBC|\bInc\.?\b|\bLLC\b|\bLtd\b|\bGmbH\b|Perakende)/i.test(l) && l.length<90);
-      firma = (sirket || satirlar[0] || '').replace(/\s+/g,' ').trim();
-      // sonundaki etiketleri temizle
+      // 1) "DÜZENLEYEN / SATICI / SATIŞ YAPAN" etiketinden sonraki isim (e-SMM, bazı e-faturalar)
+      const dzIdx = alt.findIndex(l=>/^(düzenleyen|duzenleyen|sat[ıi]c[ıi]|sat[ıi]ş yapan)\b/.test(l.trim()));
+      if(dzIdx>-1){
+        for(let j=dzIdx+1;j<Math.min(dzIdx+3,satirlar.length);j++){ const l=satirlar[j].trim(); if(l && !/^(sayın|adres|tel|fax|vergi|tckn|vkn|web|e-posta|mersis)/i.test(l)){ firma=l; break; } }
+      }
+      // 2) Şirket işaretli satır
+      if(!firma){ const sirket = satirlar.find(l=>/(Limited Şirketi|Ltd\.?\s*Şti|Anonim Şirketi|A\.?Ş\.?\b|Şirketi|PBC|\bInc\.?\b|\bLLC\b|\bLtd\b|\bGmbH\b|Perakende)/i.test(l) && l.length<90); if(sirket) firma=sirket; }
+      // 3) İlk anlamlı satır
+      if(!firma) firma = satirlar[0] || '';
+      firma = String(firma).replace(/\s+/g,' ').trim();
       firma = firma.replace(/\s+(Bill to|Fatura Adresi|Satıcı|Sayın|Bill To|Invoice.*|Fatura.*)$/i,'').trim().slice(0,70);
     }
     // --- Alış/Satış önerisi (gelen fatura genelde Alış) ---
