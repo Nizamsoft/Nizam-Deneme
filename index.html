@@ -621,7 +621,7 @@ table.nakit th.bugun-sutun{background:var(--kirmizi)}
         </ul>
       </li>
     </ul>
-    <div class="menu-alt">Nizam Soft © 2026<br>Sürüm 1.18.0 • 02.08.2026</div>
+    <div class="menu-alt">Nizam Soft © 2026<br>Sürüm 1.18.1 • 02.08.2026</div>
   </nav>
 
   <!-- ANA İÇERİK -->
@@ -1986,10 +1986,13 @@ const Ode = {
         <div class="form-alan"><label>Tarih</label><input type="date" id="ode-tarih" value="${Yardimci.bugun()}"></div>
         <div class="form-alan"><label>Tutar <span class="zorunlu">*</span></label><input type="number" min="0" step="0.01" id="ode-tutar" value="${kalan}"></div>
       </div>
-      <div id="ode-ortak-satir" style="display:none;margin-top:4px">
-        <div class="form-alan tam"><label>Parayı koyan ortak <span class="zorunlu">*</span></label>
+      <div id="ode-dis-satir" style="display:none;margin-top:8px">
+        <label style="display:flex;align-items:center;gap:9px;cursor:pointer;font-size:13.5px"><input type="checkbox" id="ode-dis" onchange="Ode.disToggle()" style="width:18px;height:18px;accent-color:var(--kirmizi);flex:none">Bu bankada param yoktu — ${this.yon==='tahsil'?'tahsilatı ortak aldı':'ödemeyi ortak karşıladı'} (dış banka)</label>
+      </div>
+      <div id="ode-ortak-satir" style="display:none;margin-top:10px">
+        <div class="form-alan tam"><label>${this.yon==='tahsil'?'Parayı alan ortak':'Parayı koyan ortak'} <span class="zorunlu">*</span></label>
           <select id="ode-ortak">${ortakOpt||'<option value="">Ortak hesabı yok</option>'}</select>
-          <div style="font-size:12px;color:var(--metin-soluk);margin-top:6px;line-height:1.5">Dış banka: önce ortağa borç yazılıp bankaya para girecek, sonra ${this.yon==='tahsil'?'tahsilat ortağa aktarılacak':'o parayla ödeme yapılacak'}. Banka bakiyesi net değişmez.</div></div>
+          <div style="font-size:12px;color:var(--metin-soluk);margin-top:6px;line-height:1.5">Önce ${this.yon==='tahsil'?'tahsilat bankaya girip ortağa aktarılacak':'ortağa borç yazılıp bankaya para girecek, sonra o parayla ödeme yapılacak'}. Banka bakiyesi net değişmez, borç ortağa geçer.</div></div>
       </div>`;
     const alt = `<button class="btn btn-gri" onclick="Modal.kapat()">Vazgeç</button>
       <button class="btn btn-yesil" onclick="Ode.kaydet()">${this.yon==='tahsil'?'💰 Tahsil Et':'💳 Öde'}</button>`;
@@ -1999,8 +2002,19 @@ const Ode = {
   kaynakChange(){
     const sel = document.getElementById('ode-kaynak');
     const opt = sel.options[sel.selectedIndex];
-    const dis = !!(opt && opt.dataset && opt.dataset.dis==='1');
-    document.getElementById('ode-ortak-satir').style.display = dis ? 'block' : 'none';
+    const isBanka = (sel.value||'').startsWith('b:');
+    const disSatir = document.getElementById('ode-dis-satir');
+    const disCb = document.getElementById('ode-dis');
+    // Banka seçilince "ortak karşıladı" seçeneği görünür; hesap dış banka işaretliyse otomatik açık gelir
+    disSatir.style.display = isBanka ? 'block' : 'none';
+    disCb.checked = isBanka && !!(opt && opt.dataset && opt.dataset.dis==='1');
+    this.disToggle();
+  },
+  disToggle(){
+    const disCb = document.getElementById('ode-dis');
+    const disGorunur = document.getElementById('ode-dis-satir').style.display!=='none';
+    const acik = disGorunur && disCb && disCb.checked;
+    document.getElementById('ode-ortak-satir').style.display = acik ? 'block' : 'none';
   },
   kaydet(){
     const is = Depo.veri.islemler.find(x=>x.id===this.faturaId); if(!is) return;
@@ -2023,9 +2037,11 @@ const Ode = {
         tutar, odemeTipi:'tek', taksitSayisi:1, ilkTaksitTarihi:tarih, kartOdemeGunu:null, aciklama:'' });
     } else {
       const banka = Hesap.altBul(id);
-      if(banka && banka.disBanka){
+      const disCb = document.getElementById('ode-dis');
+      const disMod = !!(disCb && disCb.checked);
+      if(disMod){
         const ortakId = document.getElementById('ode-ortak').value;
-        if(!ortakId){ Bildirim.goster('hata','Ortak Seç','Dış banka için parayı koyan ortağı seç. (Yoksa Hesaplar\'dan bir Ortak ekle.)'); return; }
+        if(!ortakId){ Bildirim.goster('hata','Ortak Seç','Ödemeyi karşılayan ortağı seç. (Yoksa Hesaplar\'dan bir Ortak ekle.)'); return; }
         const ortak = Hesap.altBul(ortakId); const ortakEt = ortak ? (ortak.kod+' '+Hesap.hesapAdi(ortak)) : '';
         if(this.yon==='ode'){
           yeni.push({ id:Yardimci.yeniId(), no:Depo.yeniIslemNo(), tur:'banka', tarih, hesapId:id, islemTuru:'giris',
