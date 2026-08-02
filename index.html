@@ -609,7 +609,7 @@ table.nakit th.bugun-sutun{background:var(--kirmizi)}
         </ul>
       </li>
     </ul>
-    <div class="menu-alt">Nizam Soft © 2026<br>Sürüm 1.14.1 • 02.08.2026</div>
+    <div class="menu-alt">Nizam Soft © 2026<br>Sürüm 1.15.0 • 02.08.2026</div>
   </nav>
 
   <!-- ANA İÇERİK -->
@@ -1604,7 +1604,6 @@ const Sayfa = {
       const tur = this.islemTurAdi(is.tur);
       const {borc,alacak} = this.islemBorcAlacak(is);
       return `<tr>
-        <td><span class="kod-rozet">${is.no}</span></td>
         <td>${Yardimci.tarihFormat(is.tarih)}</td>
         <td>${tur}</td>
         <td>${Yardimci.kacisHTML(hesap)}</td>
@@ -1614,7 +1613,7 @@ const Sayfa = {
       </tr>`;
     }).join('');
     el.innerHTML = `<div class="tablo-sar"><table class="veri">
-      <thead><tr><th>İşlem No</th><th>Tarih</th><th>İşlem Türü</th><th>Hesap</th><th>Açıklama</th><th class="sag-hiza">Borç</th><th class="sag-hiza">Alacak</th></tr></thead>
+      <thead><tr><th>Tarih</th><th>İşlem Türü</th><th>Hesap</th><th>Açıklama</th><th class="sag-hiza">Borç</th><th class="sag-hiza">Alacak</th></tr></thead>
       <tbody>${satir}</tbody></table></div>`;
   },
 
@@ -1656,24 +1655,18 @@ const Sayfa = {
     else { App.aktifTip='kart'; App.aktifSekme='kart'; Form.render(ic,'kart'); }
   },
   bankaGrup(ic){
-    ic.innerHTML = `
-      <div class="alt-secici">
-        <button data-m="dosya"><span>📥</span> Dosyadan Toplu Aktar</button>
-        <button data-m="elle"><span>✍️</span> Elle Tek İşlem</button>
-      </div>
-      <div id="banka-ic"></div>`;
-    ic.querySelectorAll('.alt-secici button').forEach(b=>{ b.classList.toggle('aktif', b.dataset.m===App.bankaMod); b.addEventListener('click',()=>{ App.bankaMod=b.dataset.m; this.bankaGrup(ic); }); });
-    const bic = ic.querySelector('#banka-ic');
+    // Banka grubu artık yalnızca dosyadan toplu aktarım. Manuel banka formu
+    // sadece mevcut kaydı düzenlemede / cari ödemesinde (bankaMod==='elle') kullanılır.
     if(App.bankaMod==='elle'){
       if(App.aktifTip!=='odeme'&&App.aktifTip!=='tahsilat'){ App.aktifTip='odeme'; App.aktifSekme='banka'; }
-      bic.innerHTML = `<div class="alt-secici">
+      ic.innerHTML = `<div class="alt-secici">
           <button data-t="odeme"><span>🏦</span> Bankadan Ödeme <span class="mini-rozet gider">GİDER</span></button>
           <button data-t="tahsilat"><span>🏦</span> Bankaya Tahsilat <span class="mini-rozet gelir">GELİR</span></button>
         </div><div id="banka-form"></div>`;
-      bic.querySelectorAll('.alt-secici button').forEach(b=>{ b.classList.toggle('aktif', b.dataset.t===App.aktifTip); b.addEventListener('click',()=>{ App.tipAyarla(b.dataset.t); this.bankaGrup(ic); }); });
-      Form.render(bic.querySelector('#banka-form'), App.aktifTip);
+      ic.querySelectorAll('.alt-secici button').forEach(b=>{ b.classList.toggle('aktif', b.dataset.t===App.aktifTip); b.addEventListener('click',()=>{ App.tipAyarla(b.dataset.t); this.bankaGrup(ic); }); });
+      Form.render(ic.querySelector('#banka-form'), App.aktifTip);
     } else {
-      BankaAktar.gomulu(bic);
+      BankaAktar.gomulu(ic);
     }
   },
   faturaGrup(ic){
@@ -2860,7 +2853,8 @@ const Form = {
     }
     this.listeVurgu(tur, id);
     Bildirim.goster('bilgi','Kayıt Yüklendi', is.no + ' düzenlemeye hazır.',1800);
-    document.getElementById('sekme-icerik').scrollIntoView({behavior:'smooth',block:'start'});
+    const kaydir=document.getElementById('sekme-icerik')||document.getElementById('grup-icerik');
+    if(kaydir) kaydir.scrollIntoView({behavior:'smooth',block:'start'});
   },
 
   mevcutDosyaGoster(is){
@@ -3151,11 +3145,19 @@ const AltHesap = {
    Bölüm 10: Alt Hesap Detay Ekranı ve Hareket Tabloları
    ================================================================== */
 const Detay = {
-  aktifId:null,
+  aktifId:null, _bankaAcik:false,
+
+  bankaAcikToggle(id){
+    this._bankaAcik = !this._bankaAcik;
+    const btn = document.getElementById('banka-acik-btn');
+    if(btn) btn.textContent = '🏦 Banka Açıklamasını ' + (this._bankaAcik?'Gizle':'Göster');
+    this.filtrele(id);
+  },
 
   ac(id){
     const h = Hesap.altBul(id);
     if(!h) return;
+    this._bankaAcik = false;
     this.aktifId = id;
     App.aktifSayfa='hesaplar';
     document.getElementById('sayfa-baslik').textContent = h.kod + ' - ' + Hesap.hesapAdi(h);
@@ -3206,6 +3208,7 @@ const Detay = {
           <input type="date" id="har-bas" class="btn btn-gri" style="padding:9px" title="Başlangıç">
           <input type="date" id="har-bit" class="btn btn-gri" style="padding:9px" title="Bitiş">
           <button class="btn btn-koyu btn-kucuk" onclick="Detay.filtrele('${h.id}')">Filtrele</button>
+          ${(h.anaKod==='102'||h.tur==='kart')?`<button id="banka-acik-btn" class="btn btn-cizgi btn-kucuk" style="margin-left:auto" onclick="Detay.bankaAcikToggle('${h.id}')">🏦 Banka Açıklamasını ${this._bankaAcik?'Gizle':'Göster'}</button>`:''}
         </div>
         <div id="hareket-tablo"></div>
       </div>`;
@@ -3245,13 +3248,13 @@ const Detay = {
       const gider = is.giderHesapId ? Hesap.altBul(is.giderHesapId) : null;
       const etkiRenk = x.etki>=0 ? 'borc' : 'alacak';
       const etkiYazi = (x.etki>=0?'+':'') + Yardimci.paraFormat(x.etki);
+      const ba = this._bankaAcik;
       return `<tr>
-        <td><span class="kod-rozet">${x.islemNo}</span></td>
         <td>${Yardimci.tarihFormat(x.tarih)}</td>
         <td>${Yardimci.kacisHTML(is.islemAd||'')}</td>
         <td>${Yardimci.kacisHTML(is.sahis||'')}</td>
         <td>${Yardimci.kacisHTML(is.aciklama||'')}</td>
-        <td>${Yardimci.kacisHTML(is.bankaAciklama||'')}</td>
+        ${ba?`<td style="color:var(--metin-soluk);font-size:12.5px">${Yardimci.kacisHTML(is.bankaAciklama||'')}</td>`:''}
         <td>${gider?Yardimci.kacisHTML(gider.kod+' '+Hesap.hesapAdi(gider)):'-'}</td>
         <td class="sag-hiza borc">${x.borc?Yardimci.paraFormat(x.borc):'-'}</td>
         <td class="sag-hiza alacak">${x.alacak?Yardimci.paraFormat(x.alacak):'-'}</td>
@@ -3264,7 +3267,7 @@ const Detay = {
       </tr>`;
     }).join('');
     return `<div class="tablo-sar"><table class="veri"><thead><tr>
-      <th>İşlem No</th><th>Tarih</th><th>İşlem Adı</th><th>Şahıs</th><th>Açıklama</th><th>Banka Açıklaması</th><th>Gider Hesabı</th>
+      <th>Tarih</th><th>İşlem Adı</th><th>Şahıs</th><th>Açıklama</th>${this._bankaAcik?'<th>Banka Açıklaması</th>':''}<th>Gider Hesabı</th>
       <th class="sag-hiza">Borç</th><th class="sag-hiza">Alacak</th><th class="sag-hiza">Bakiye</th><th class="sag-hiza">Güncel Bakiye</th><th class="no-print">İşlemler</th>
     </tr></thead><tbody>${satir}</tbody></table></div>`;
   },
@@ -3285,7 +3288,6 @@ const Detay = {
         }
       }
       return `<tr>
-        <td><span class="kod-rozet">${x.islemNo}</span></td>
         <td>${Yardimci.tarihFormat(x.tarih)}</td>
         <td>${Yardimci.kacisHTML(x.aciklama||'')}</td>
         <td class="sag-hiza borc">${x.borc?Yardimci.paraFormat(x.borc):'-'}</td>
@@ -3301,15 +3303,17 @@ const Detay = {
       </tr>`;
     }).join('');
     return `<div class="tablo-sar"><table class="veri"><thead><tr>
-      <th>İşlem No</th><th>Tarih</th><th>Açıklama</th><th class="sag-hiza">Borç</th><th class="sag-hiza">Alacak</th>
+      <th>Tarih</th><th>Açıklama</th><th class="sag-hiza">Borç</th><th class="sag-hiza">Alacak</th>
       <th class="sag-hiza">Bakiye</th><th class="sag-hiza">Güncel Bakiye</th><th>Fatura</th><th>Fatura No</th><th class="no-print">İşlemler</th>
     </tr></thead><tbody>${satir}</tbody></table></div>`;
   },
 
   yeniIslem(hesapId){
     const h = Hesap.altBul(hesapId);
+    // Banka: manuel giriş kaldırıldı → toplu içe aktarım ekranına git
+    if(h.anaKod==='102'){ BankaAktar.ac(hesapId); return; }
     // İlgili işlem sekmesine yönlendir
-    const eslesme = {banka:'odeme', kart:'kart', alici:'satis', satici:'alis', ortak:'odeme'};
+    const eslesme = {kart:'kart', alici:'satis', satici:'alis', ortak:'odeme'};
     App.tipAyarla(eslesme[h.tur]||'odeme');
     App.sayfaGit('islemler');
     setTimeout(()=>{
