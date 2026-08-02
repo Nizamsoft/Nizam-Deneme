@@ -621,7 +621,7 @@ table.nakit th.bugun-sutun{background:var(--kirmizi)}
         </ul>
       </li>
     </ul>
-    <div class="menu-alt">Nizam Soft © 2026<br>Sürüm 1.17.2 • 02.08.2026</div>
+    <div class="menu-alt">Nizam Soft © 2026<br>Sürüm 1.17.3 • 02.08.2026</div>
   </nav>
 
   <!-- ANA İÇERİK -->
@@ -1754,8 +1754,8 @@ const Sayfa = {
         });
       }
     });
-    el.innerHTML = `<div class="tablo-sar"><table class="veri">
-      <thead><tr><th>Hesap Kodu</th><th>Hesap Adı</th><th class="sag-hiza">Bakiye</th><th class="no-print">İşlemler</th></tr></thead>
+    el.innerHTML = `<div class="tablo-sar"><table class="veri" style="table-layout:fixed">
+      <thead><tr><th style="width:230px">Hesap Kodu</th><th>Hesap Adı</th><th class="sag-hiza" style="width:220px">Bakiye</th><th class="no-print" style="width:230px">İşlemler</th></tr></thead>
       <tbody>${govde}</tbody></table></div>`;
   },
 
