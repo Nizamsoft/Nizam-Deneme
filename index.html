@@ -567,6 +567,11 @@ table.nakit th.bugun-sutun{background:var(--kirmizi)}
 .kz-sonuc-satir{display:flex;justify-content:space-between;padding:5px 0;font-size:13.5px;border-top:1px dashed var(--kenar)}
 .kz-not{font-size:12.5px;color:var(--metin-soluk);line-height:1.55;margin-top:10px;padding:10px 12px;background:var(--gri);border-radius:9px}
 .kz-bos-olay{font-size:13px;color:var(--metin-soluk);font-style:italic;padding:6px 0}
+/* Öde penceresi mod seçimi (yeni ödeme / eşleştir) */
+.ode-mod-secim{display:flex;gap:8px;margin-bottom:16px}
+.ode-mod-btn{flex:1;padding:9px 10px;border:1.5px solid var(--kenar);border-radius:9px;background:var(--kart-bg);color:var(--metin-soluk);font-size:13px;font-weight:600;cursor:pointer;font-family:inherit;transition:.15s}
+.ode-mod-btn:hover{border-color:var(--gri-koyu,var(--gri-orta))}
+.ode-mod-btn.aktif{background:var(--kirmizi);border-color:var(--kirmizi);color:#fff}
 @media(max-width:640px){.kz-bakiye{grid-template-columns:1fr}}
 
 /* Responsive */
@@ -650,7 +655,7 @@ table.nakit th.bugun-sutun{background:var(--kirmizi)}
         </ul>
       </li>
     </ul>
-    <div class="menu-alt">Nizam Soft © 2026<br>Sürüm 1.19.1 • 02.08.2026</div>
+    <div class="menu-alt">Nizam Soft © 2026<br>Sürüm 1.20.0 • 02.08.2026</div>
   </nav>
 
   <!-- ANA İÇERİK -->
@@ -1955,44 +1960,17 @@ const Sayfa = {
    Bölüm 8a: Fatura Ödeme Durumu (bankadan/karttan yapılan ödemelerden türetilir)
    ================================================================== */
 const Fatura = {
-  // Bir faturaya DOĞRUDAN bağlı (kapatilanFaturaId) ödemelerin toplamı
-  _bagli(faturaId){
+  // Bir faturaya bağlı (kapatilanFaturaId) ödemelerin toplamı
+  odenen(faturaId){
     return Depo.veri.islemler
       .filter(x=>(x.tur==='banka'||x.tur==='kart') && x.kapatilanFaturaId===faturaId && !x.iptal)
       .reduce((s,x)=>s+(Number(x.tutar)||0),0);
   },
-  // Bir cariye yapılmış ama hiçbir faturaya bağlanmamış serbest ödeme havuzu
-  _havuz(hesapId){
-    let h=0;
-    Depo.veri.islemler.forEach(x=>{
-      if((x.tur==='banka'||x.tur==='kart') && !x.iptal && x.sahisHesapId===hesapId && !x.kapatilanFaturaId){
-        h += Number(x.tutar)||0;
-      }
-    });
-    return Math.round(h*100)/100;
-  },
-  // Carinin açık faturalarına, serbest ödeme havuzunu tarih sırasıyla (FIFO) dağıt.
-  // Böylece faturaya elle bağlanmamış ödemeler de faturayı "ödendi" yapar.
-  dagitim(hesapId){
-    const fatlar = Depo.veri.islemler
-      .filter(is=>(is.tur==='alis'||is.tur==='satis') && is.hesapId===hesapId && !is.iptal)
-      .sort((a,b)=>(a.tarih||'').localeCompare(b.tarih||'')||(a.no||'').localeCompare(b.no||''));
-    let havuz = this._havuz(hesapId);
-    const sonuc = {};
-    fatlar.forEach(is=>{
-      const t = Number(is.tutar)||0;
-      let odenen = Math.min(this._bagli(is.id), t);
-      const eksik = t - odenen;
-      if(eksik>0.005 && havuz>0.005){ const kullan=Math.min(eksik, havuz); odenen+=kullan; havuz-=kullan; }
-      sonuc[is.id] = odenen;
-    });
-    return sonuc;
-  },
-  // Bir faturanın ödenen tutarı: doğrudan bağlı ödemeler + havuzdan FIFO payı
-  odenen(faturaId){
-    const is = Depo.veri.islemler.find(x=>x.id===faturaId);
-    if(is && is.hesapId){ const d=this.dagitim(is.hesapId); if(d[faturaId]!==undefined) return d[faturaId]; }
-    return this._bagli(faturaId);
+  // Bir cariye yapılmış ama hiçbir faturaya bağlanmamış ödemeler (elle eşleştirme için)
+  serbestOdemeler(hesapId){
+    return Depo.veri.islemler
+      .filter(x=>(x.tur==='banka'||x.tur==='kart') && !x.iptal && x.sahisHesapId===hesapId && !x.kapatilanFaturaId)
+      .sort((a,b)=>(a.tarih||'').localeCompare(b.tarih||''));
   },
   kalan(is){ return Math.max(0, Math.round(((Number(is.tutar)||0)-this.odenen(is.id))*100)/100); },
   durum(is){
@@ -2046,27 +2024,51 @@ const Ode = {
     if(bankalar.length) kaynakOpt += `<optgroup label="🏦 Bankalar">`+bankalar.map(b=>`<option value="b:${b.id}"${b.disBanka?' data-dis="1"':''}>${b.kod} - ${kac(Hesap.hesapAdi(b))}${b.disBanka?' · dış banka':''}</option>`).join('')+`</optgroup>`;
     if(this.yon==='ode' && kartlar.length) kaynakOpt += `<optgroup label="💳 Kredi Kartları">`+kartlar.map(k=>`<option value="k:${k.id}">${k.kod} - ${kac(Hesap.hesapAdi(k))}</option>`).join('')+`</optgroup>`;
     const ortakOpt = ortaklar.map(o=>`<option value="${o.id}">${o.kod} - ${kac(Hesap.hesapAdi(o))}</option>`).join('');
+    const serbest = Fatura.serbestOdemeler(is.hesapId);
+    const serbestOpt = serbest.length
+      ? `<option value="">— Seç —</option>`+serbest.map(o=>`<option value="${o.id}">${Yardimci.tarihFormat(o.tarih)} · ${kac(o.islemAd||o.aciklama||(o.tur==='kart'?'Kart':'Banka'))} · ${Yardimci.paraFormat(Number(o.tutar)||0)}</option>`).join('')
+      : `<option value="">Bağlanmamış ödeme yok</option>`;
+    this._mod = 'yeni';
     const baslik = (this.yon==='tahsil'?'💰 Tahsil Et':'💳 Öde') + ' — ' + kac(is.faturaNo||is.no);
-    const govde = `<div style="font-size:13.5px;color:var(--metin-soluk);margin-bottom:15px">
+    const govde = `<div style="font-size:13.5px;color:var(--metin-soluk);margin-bottom:14px">
         ${kac(Hesap.hesapAdi(cari))} · Kalan: <b style="color:var(--metin)">${Yardimci.paraFormat(kalan)}</b></div>
-      <div class="form-grid" style="grid-template-columns:1fr 1fr;gap:14px">
-        <div class="form-alan tam"><label>${this.yon==='tahsil'?'Neyle tahsil ettin?':'Ne ile ödüyorsun?'} <span class="zorunlu">*</span></label>
-          <select id="ode-kaynak" onchange="Ode.kaynakChange()">${kaynakOpt}</select></div>
-        <div class="form-alan"><label>Tarih</label><input type="date" id="ode-tarih" value="${Yardimci.bugun()}"></div>
-        <div class="form-alan"><label>Tutar <span class="zorunlu">*</span></label><input type="number" min="0" step="0.01" id="ode-tutar" value="${kalan}"></div>
+      <div class="ode-mod-secim">
+        <button type="button" class="ode-mod-btn aktif" data-mod="yeni" onclick="Ode.mod('yeni')">${this.yon==='tahsil'?'💰 Yeni tahsilat':'💳 Yeni ödeme'}</button>
+        <button type="button" class="ode-mod-btn" data-mod="eslesme" onclick="Ode.mod('eslesme')">🔗 Zaten ${this.yon==='tahsil'?'tahsil edildi':'ödendi'}</button>
       </div>
-      <div id="ode-dis-satir" style="display:none;margin-top:8px">
-        <label style="display:flex;align-items:center;gap:9px;cursor:pointer;font-size:13.5px"><input type="checkbox" id="ode-dis" onchange="Ode.disToggle()" style="width:18px;height:18px;accent-color:var(--kirmizi);flex:none">Bu bankada param yoktu — ${this.yon==='tahsil'?'tahsilatı ortak aldı':'ödemeyi ortak karşıladı'} (dış banka)</label>
+      <div id="ode-yeni">
+        <div class="form-grid" style="grid-template-columns:1fr 1fr;gap:14px">
+          <div class="form-alan tam"><label>${this.yon==='tahsil'?'Neyle tahsil ettin?':'Ne ile ödüyorsun?'} <span class="zorunlu">*</span></label>
+            <select id="ode-kaynak" onchange="Ode.kaynakChange()">${kaynakOpt}</select></div>
+          <div class="form-alan"><label>Tarih</label><input type="date" id="ode-tarih" value="${Yardimci.bugun()}"></div>
+          <div class="form-alan"><label>Tutar <span class="zorunlu">*</span></label><input type="number" min="0" step="0.01" id="ode-tutar" value="${kalan}"></div>
+        </div>
+        <div id="ode-dis-satir" style="display:none;margin-top:8px">
+          <label style="display:flex;align-items:center;gap:9px;cursor:pointer;font-size:13.5px"><input type="checkbox" id="ode-dis" onchange="Ode.disToggle()" style="width:18px;height:18px;accent-color:var(--kirmizi);flex:none">Bu bankada param yoktu — ${this.yon==='tahsil'?'tahsilatı ortak aldı':'ödemeyi ortak karşıladı'} (dış banka)</label>
+        </div>
+        <div id="ode-ortak-satir" style="display:none;margin-top:10px">
+          <div class="form-alan tam"><label>${this.yon==='tahsil'?'Parayı alan ortak':'Parayı koyan ortak'} <span class="zorunlu">*</span></label>
+            <select id="ode-ortak">${ortakOpt||'<option value="">Ortak hesabı yok</option>'}</select>
+            <div style="font-size:12px;color:var(--metin-soluk);margin-top:6px;line-height:1.5">Önce ${this.yon==='tahsil'?'tahsilat bankaya girip ortağa aktarılacak':'ortağa borç yazılıp bankaya para girecek, sonra o parayla ödeme yapılacak'}. Banka bakiyesi net değişmez, borç ortağa geçer.</div></div>
+        </div>
       </div>
-      <div id="ode-ortak-satir" style="display:none;margin-top:10px">
-        <div class="form-alan tam"><label>${this.yon==='tahsil'?'Parayı alan ortak':'Parayı koyan ortak'} <span class="zorunlu">*</span></label>
-          <select id="ode-ortak">${ortakOpt||'<option value="">Ortak hesabı yok</option>'}</select>
-          <div style="font-size:12px;color:var(--metin-soluk);margin-top:6px;line-height:1.5">Önce ${this.yon==='tahsil'?'tahsilat bankaya girip ortağa aktarılacak':'ortağa borç yazılıp bankaya para girecek, sonra o parayla ödeme yapılacak'}. Banka bakiyesi net değişmez, borç ortağa geçer.</div></div>
+      <div id="ode-eslesme-alan" style="display:none">
+        <div class="form-alan tam"><label>Hangi ${this.yon==='tahsil'?'tahsilatla':'ödemeyle'} eşleşiyor? <span class="zorunlu">*</span></label>
+          <select id="ode-eslesme">${serbestOpt}</select>
+          <div style="font-size:12px;color:var(--metin-soluk);margin-top:6px;line-height:1.5">Bu faturayı daha önce yaptığın bir ${this.yon==='tahsil'?'tahsilatla':'ödemeyle'} eşleştir. <b>Yeni kayıt oluşturulmaz</b> — seçtiğin işlem bu faturaya bağlanır ve fatura kapanır.</div></div>
       </div>`;
     const alt = `<button class="btn btn-gri" onclick="Modal.kapat()">Vazgeç</button>
-      <button class="btn btn-yesil" onclick="Ode.kaydet()">${this.yon==='tahsil'?'💰 Tahsil Et':'💳 Öde'}</button>`;
+      <button class="btn btn-yesil" id="ode-btn" onclick="Ode.kaydet()">${this.yon==='tahsil'?'💰 Tahsil Et':'💳 Öde'}</button>`;
     Modal.ac(baslik, govde, alt, false);
     document.getElementById('modal-kutu').classList.add('dar');
+  },
+  mod(m){
+    this._mod = m;
+    document.querySelectorAll('.ode-mod-btn').forEach(b=>b.classList.toggle('aktif', b.dataset.mod===m));
+    document.getElementById('ode-yeni').style.display = m==='yeni' ? 'block' : 'none';
+    document.getElementById('ode-eslesme-alan').style.display = m==='eslesme' ? 'block' : 'none';
+    const btn = document.getElementById('ode-btn');
+    if(btn) btn.textContent = m==='eslesme' ? '🔗 Eşleştir' : (this.yon==='tahsil'?'💰 Tahsil Et':'💳 Öde');
   },
   kaynakChange(){
     const sel = document.getElementById('ode-kaynak');
@@ -2087,6 +2089,19 @@ const Ode = {
   },
   kaydet(){
     const is = Depo.veri.islemler.find(x=>x.id===this.faturaId); if(!is) return;
+    // Eşleştirme modu: mevcut bir ödemeyi bu faturaya bağla (yeni kayıt yok)
+    if(this._mod==='eslesme'){
+      const oid = document.getElementById('ode-eslesme').value;
+      if(!oid){ Bildirim.goster('hata','Ödeme Seç','Eşleştirmek için mevcut bir '+(this.yon==='tahsil'?'tahsilat':'ödeme')+' seç.'); return; }
+      const od = Depo.veri.islemler.find(x=>x.id===oid);
+      if(!od){ Bildirim.goster('hata','Bulunamadı','Seçilen kayıt bulunamadı.'); return; }
+      od.kapatilanFaturaId = is.id;
+      Depo.kaydet();
+      Modal.kapat();
+      Bildirim.goster('basari','Eşleştirildi','Fatura mevcut '+(this.yon==='tahsil'?'tahsilatla':'ödemeyle')+' eşleştirildi ve kapandı.');
+      if(Detay.aktifId) Detay.ac(Detay.aktifId);
+      return;
+    }
     const kaynak = document.getElementById('ode-kaynak').value;
     if(!kaynak){ Bildirim.goster('hata','Kaynak Seç', this.yon==='tahsil'?'Neyle tahsil ettiğini seç.':'Ne ile ödediğini seç.'); return; }
     const tarih = document.getElementById('ode-tarih').value || Yardimci.bugun();
