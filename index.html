@@ -595,7 +595,7 @@ table.nakit th.bugun-sutun{background:var(--kirmizi)}
         </ul>
       </li>
     </ul>
-    <div class="menu-alt">Nizam Soft © 2026<br>Sürüm 1.12.1 • 02.08.2026</div>
+    <div class="menu-alt">Nizam Soft © 2026<br>Sürüm 1.13.0 • 02.08.2026</div>
   </nav>
 
   <!-- ANA İÇERİK -->
@@ -1692,7 +1692,6 @@ const Sayfa = {
         <h2 class="bolum-baslik">Hesap Planı</h2>
         <div class="arac-cubuk no-print">
           <div class="arama-kutu"><input type="text" id="hesap-arama" placeholder="Hesap kodu, adı, banka, alıcı, satıcı veya kart ara..."></div>
-          <button class="btn ${this._sonucGoster?'btn-kirmizi':'btn-cizgi'} btn-kucuk" onclick="Sayfa.sonucAcKapa()">${this._sonucGoster?'👁 Gelir/Gider Hesaplarını Gizle':'👁 Gelir/Gider Hesaplarını Göster'}</button>
           <button class="btn btn-koyu btn-kucuk" onclick="Disari.yazdir('Hesap Planı', Sayfa.hesapPlaniYazdir())">🖨 Yazdır</button>
           <button class="btn btn-yesil btn-kucuk" onclick="Sayfa.hesapPlaniExcel()">📊 Excel</button>
         </div>
@@ -1710,8 +1709,8 @@ const Sayfa = {
     const q = (aranan||'').toLocaleLowerCase('tr');
     let govde = '';
     Depo.veri.anaHesaplar.forEach(ana=>{
-      // Sonuç/vergi hesapları gizliyse ve arama yoksa atla
-      if(this.gizliAna(ana) && !this._sonucGoster && !q) return;
+      // Gelir/Gider/sistem hesapları hesap planında gösterilmez (ön muhasebe)
+      if(this.gizliAna(ana)) return;
       const altlar = Hesap.altHesaplarByAna(ana.kod).filter(h=>{
         if(!q) return true;
         const metin = (h.kod+' '+Hesap.hesapAdi(h)+' '+(h.bankaAd||'')+' '+(h.ad||'')).toLocaleLowerCase('tr');
@@ -2188,16 +2187,14 @@ const Form = {
     if(tur==='alis'){
       const s=cari(g('al-hesap')), demirbas=g('al-alimturu')==='demirbas', d=demirbas?cari(g('al-demirbas')):null;
       ic += s?satir(s.kod,s.ad,'Satıcıya borç','alacak',tutar):bos('Satıcı hesabı seçilmedi');
-      ic += demirbas ? (d?satir(d.kod,d.ad,'Duran varlık (demirbaş)','borc',tutar):bos('Demirbaş hesabı seçilmedi'))
-                     : satir('770','Gider','Kâr/Zarar’a gider','borc',tutar);
+      if(demirbas) ic += (d?satir(d.kod,d.ad,'Duran varlık (demirbaş)','borc',tutar):bos('Demirbaş hesabı seçilmedi'));
       ic += toplam(tutar);
-      ic += chip('Fatura <b>açık</b> kaydedilir. Ödemesini Banka/Kart ekranından bu faturayı seçerek yaparsın.');
+      ic += chip(demirbas?'Fatura <b>açık</b> kaydedilir; tutar demirbaşa işlenir.':'Fatura <b>açık</b> kaydedilir; tutar dönem giderine yansır. Ödemesini Banka/Kart ekranından bu faturayı seçerek yaparsın.');
     }else if(tur==='satis'){
       const a=cari(g('sa-hesap'));
       ic += a?satir(a.kod,a.ad,'Alıcıdan alacak','borc',tutar):bos('Alıcı hesabı seçilmedi');
-      ic += satir('600','Gelir','Kâr/Zarar’a gelir','alacak',tutar);
       ic += toplam(tutar);
-      ic += chip('Fatura <b>açık</b> kaydedilir. Tahsilatını Banka ekranından bu faturayı seçerek yaparsın.');
+      ic += chip('Fatura <b>açık</b> kaydedilir; tutar dönem gelirine yansır. Tahsilatını Banka ekranından bu faturayı seçerek yaparsın.');
     }else if(tur==='banka'){
       const cikis=g('bk-tur')==='cikis', b=cari(g('bk-hesap'));
       ic += b?satir(b.kod,b.ad,cikis?'Bankadan çıkış':'Bankaya giriş',cikis?'alacak':'borc',tutar):bos('Banka hesabı seçilmedi');
@@ -3770,6 +3767,7 @@ const FaturaPDF = {
   // --- UI: PDF yükle → oku → Alış/Satış sor → formu doldur ---
   async isle(dosya){
     Bildirim.goster('bilgi','Okunuyor','PDF okunuyor, lütfen bekleyin…',1500);
+    this._dosya = dosya;
     try{
       const sat = await this.metinCoz(dosya);
       const v = this.ayikla(sat);
@@ -3811,7 +3809,22 @@ const FaturaPDF = {
     if(g(on+'-hesap') && hesapId) g(on+'-hesap').value = hesapId;
     if(g(on+'-aciklama')) g(on+'-aciklama').value = v.firma + (v.yabanci ? (' — '+Yardimci.sayiFormat(v.tutar)+' '+v.paraBirimi+' (TL karşılığını gir)') : '');
     if(Form.ozetGuncelle) Form.ozetGuncelle(tip);
-    Bildirim.goster('basari','Dolduruldu', (tip==='alis'?'Alış':'Satış')+' faturası PDF\'ten dolduruldu. Kontrol edip Kaydet\'e bas.'+(v.yabanci?' (TL tutarını girmeyi unutma)':''), 5500);
+    // Yüklenen PDF'i faturanın belgesi olarak otomatik ekle
+    this.pdfEkle();
+    Bildirim.goster('basari','Dolduruldu', (tip==='alis'?'Alış':'Satış')+' faturası PDF\'ten dolduruldu (PDF belge olarak eklendi). Kontrol edip Kaydet\'e bas.'+(v.yabanci?' — TL tutarını girmeyi unutma.':''), 6000);
+  },
+  pdfEkle(){
+    if(!this._dosya) return;
+    const dosya=this._dosya;
+    const okuyucu=new FileReader();
+    okuyucu.onload=()=>{
+      Form.bekleyenDosya={ad:dosya.name, tur:dosya.type||'application/pdf', boyut:dosya.size, data:okuyucu.result};
+      if(Form.dosyaBilgiGoster) Form.dosyaBilgiGoster();
+      // "Belge ve ek not" bölümünü aç ki görünsün
+      const bas=document.querySelector('#fatura-form .gdetay-bas');
+      if(bas && !bas.classList.contains('acik')){ bas.classList.add('acik'); if(bas.nextElementSibling) bas.nextElementSibling.style.display='block'; }
+    };
+    okuyucu.readAsDataURL(dosya);
   },
   cariBulVeyaOlustur(ad, anaKod){
     ad=(ad||'').trim(); if(!ad) return null;
