@@ -612,7 +612,7 @@ table.nakit th.bugun-sutun{background:var(--kirmizi)}
         </ul>
       </li>
     </ul>
-    <div class="menu-alt">Nizam Soft © 2026<br>Sürüm 1.16.0 • 02.08.2026</div>
+    <div class="menu-alt">Nizam Soft © 2026<br>Sürüm 1.16.1 • 02.08.2026</div>
   </nav>
 
   <!-- ANA İÇERİK -->
@@ -3986,41 +3986,19 @@ const KartSihirbaz = {
     if(!this.ic) return;
     this.ic.innerHTML = this.gosterge() + `<div id="ks-govde"></div>`;
     const g=this.ic.querySelector('#ks-govde');
-    if(this.adim===1) this.adim1(g); else if(this.adim===2) this.adim2(g); else this.adim3(g);
+    if(this.adim===1) this.adimNeIcin(g); else if(this.adim===2) this.adimHarcama(g); else this.adim3(g);
   },
   gosterge(){
-    const A=[[1,'Harcama'],[2,'Detay'],[3,'Önizle & Kaydet']];
+    const A=[[1,'Ne İçin'],[2,'Harcama'],[3,'Önizle & Kaydet']];
     return `<div class="fw-adimlar">${A.map(([n,ad])=>`<div class="fw-adim ${n===this.adim?'aktif':''} ${n<this.adim?'tamam':''}"><span class="fw-nokta">${n<this.adim?'✓':n}</span>${ad}</div>`).join('<span class="fw-cizgi"></span>')}</div>`;
   },
-  /* ADIM 1 — Harcama */
-  adim1(g){
-    const kartlar=Hesap.altHesaplarByAna('309');
-    if(!kartlar.length){ g.innerHTML=`<div class="kart"><div class="bos-mesaj">Önce <b>Hesaplar</b>'dan bir <b>Kredi Kartı (309)</b> hesabı ekleyin.</div><div class="buton-grup" style="margin-top:12px"><button class="btn btn-cizgi btn-kucuk" onclick="KartSihirbaz.yeniHesap('309')">＋ Kredi Kartı Ekle</button></div></div>`; return; }
-    g.innerHTML=`<div class="kart"><div class="form-grid">
-      <div class="form-alan"><label>Kredi Kartı <span class="zorunlu">*</span></label>
-        <div style="display:flex;gap:8px"><select id="ks-kart" style="flex:1"><option value="">— Seçiniz —</option>${kartlar.map(h=>`<option value="${h.id}" ${h.id===this.v.kartId?'selected':''}>${h.kod} - ${Yardimci.kacisHTML(Hesap.hesapAdi(h))}</option>`).join('')}</select><button class="btn btn-cizgi btn-kucuk" onclick="KartSihirbaz.yeniHesap('309')" title="Yeni Kart">＋</button></div></div>
-      <div class="form-alan"><label>İşlem Tarihi <span class="zorunlu">*</span></label><input type="date" id="ks-tarih" value="${this.v.tarih}"></div>
-      <div class="form-alan"><label>İşlem Adı <span class="zorunlu">*</span></label><input id="ks-islemad" value="${Yardimci.kacisHTML(this.v.islemAd)}" placeholder="Örn: Bilgisayar alımı"></div>
-      <div class="form-alan"><label>Toplam Tutar (₺) <span class="zorunlu">*</span></label><input id="ks-tutar" value="${this.v.tutar?Yardimci.sayiFormat(this.v.tutar):''}" placeholder="0,00"></div>
-    </div>
-    <div class="buton-grup" style="margin-top:20px;display:flex"><button class="btn btn-kirmizi" style="margin-left:auto" onclick="KartSihirbaz.ileri1()">Devam →</button></div>
-    </div>`;
-  },
-  oku1(){ const g=id=>document.getElementById(id); if(!g('ks-kart'))return; this.v.kartId=g('ks-kart').value; this.v.tarih=g('ks-tarih').value; this.v.islemAd=g('ks-islemad').value.trim(); this.v.tutar=Yardimci.paraCoz(g('ks-tutar').value); },
-  ileri1(){ this.oku1();
-    if(!this.v.kartId){ Bildirim.goster('hata','Eksik','Kredi kartı seçin.'); return; }
-    if(!this.v.tarih){ Bildirim.goster('hata','Eksik','Tarih girin.'); return; }
-    if(!this.v.islemAd){ Bildirim.goster('hata','Eksik','İşlem adı girin.'); return; }
-    if(!(this.v.tutar>0)){ Bildirim.goster('hata','Eksik','Sıfırdan büyük tutar girin.'); return; }
-    this.adim=2; this.ciz();
-  },
-  /* ADIM 2 — Detay (karşı hesap + ödeme) */
-  adim2(g){
+  /* ADIM 1 — Ne için & Ödeme */
+  adimNeIcin(g){
     const taksit=this.v.odemeTipi==='taksit';
     g.innerHTML=`<div class="kart">
       <div class="form-alan tam" style="margin-bottom:16px"><label>Bu harcama ne için? <span class="zorunlu">*</span></label>
         <div style="display:flex;gap:8px"><select id="ks-karsi" style="flex:1" onchange="KartSihirbaz.karsiChange()">${this.karsiOpsiyon(this.v.karsi)}</select></div>
-        <div style="font-size:12px;color:var(--metin-soluk);margin-top:5px">Bir faturayı ödüyorsan onu seç; değilse gider hesabı ya da satıcı seç.</div></div>
+        <div style="font-size:12px;color:var(--metin-soluk);margin-top:5px">Bir faturayı ödüyorsan onu seç (tutar otomatik gelir); değilse gider hesabı ya da satıcı seç.</div></div>
       <label style="display:block;font-size:13px;font-weight:600;color:var(--metin-soluk);margin-bottom:8px">Ödeme Tipi <span class="zorunlu">*</span></label>
       <div class="alt-secici" style="margin-bottom:16px">
         <button class="${!taksit?'aktif':''}" onclick="KartSihirbaz.odemeTipi('tek')">Tek Çekim</button>
@@ -4031,11 +4009,8 @@ const KartSihirbaz = {
         <div class="form-alan"><label>İlk Taksit Tarihi</label><input type="date" id="ks-ilktaksit" value="${this.v.ilkTaksit||''}"></div>
         <div class="form-alan"><label>Kart Ödeme Günü</label><input type="number" id="ks-odemegunu" min="1" max="31" value="${this.v.odemeGunu||''}" placeholder="Ayın günü"></div>
       </div>`:''}
-      <div class="form-alan tam" style="margin-top:6px"><label>Açıklama</label><input id="ks-aciklama" value="${Yardimci.kacisHTML(this.v.aciklama)}" placeholder="İsteğe bağlı"></div>
-      <div class="buton-grup" style="margin-top:20px;display:flex;gap:10px">
-        <button class="btn btn-cizgi" onclick="KartSihirbaz.geri(1)">← Geri</button>
-        <button class="btn btn-kirmizi" style="margin-left:auto" onclick="KartSihirbaz.ileri2()">Önizlemeye Geç →</button>
-      </div></div>`;
+      <div class="buton-grup" style="margin-top:20px;display:flex"><button class="btn btn-kirmizi" style="margin-left:auto" onclick="KartSihirbaz.ileriNeIcin()">Devam →</button></div>
+    </div>`;
   },
   karsiOpsiyon(sec){
     let h=`<option value="">— Seçiniz —</option>`;
@@ -4047,9 +4022,23 @@ const KartSihirbaz = {
     return h;
   },
   karsiChange(){ const s=document.getElementById('ks-karsi'); if(s&&s.value.startsWith('__y')){ const ak=s.value.slice(3); s.value=''; this.yeniHesap(ak); } },
-  odemeTipi(t){ this.oku2(); this.v.odemeTipi=t; if(t==='taksit'&&(!this.v.taksitSayisi||this.v.taksitSayisi<2)) this.v.taksitSayisi=2; this.adim2(this.ic.querySelector('#ks-govde')); },
-  oku2(){ const g=id=>document.getElementById(id); const k=g('ks-karsi'); if(k&&!k.value.startsWith('__')) this.v.karsi=k.value; if(g('ks-taksit')) this.v.taksitSayisi=Math.max(1,Number(g('ks-taksit').value)||1); if(g('ks-ilktaksit')) this.v.ilkTaksit=g('ks-ilktaksit').value; if(g('ks-odemegunu')) this.v.odemeGunu=Number(g('ks-odemegunu').value)||''; if(g('ks-aciklama')) this.v.aciklama=g('ks-aciklama').value.trim(); },
-  yeniHesap(anaKod){ this.oku2(); const et={'309':'Kredi Kartı','770':'Gider','320':'Satıcı'}[anaKod]||'Hesap';
+  odemeTipi(t){ this.okuNeIcin(); this.v.odemeTipi=t; if(t==='taksit'&&(!this.v.taksitSayisi||this.v.taksitSayisi<2)) this.v.taksitSayisi=2; this.ciz(); },
+  okuNeIcin(){ const g=id=>document.getElementById(id); const k=g('ks-karsi'); if(k&&!k.value.startsWith('__')) this.v.karsi=k.value; if(g('ks-taksit')) this.v.taksitSayisi=Math.max(1,Number(g('ks-taksit').value)||1); if(g('ks-ilktaksit')) this.v.ilkTaksit=g('ks-ilktaksit').value; if(g('ks-odemegunu')) this.v.odemeGunu=Number(g('ks-odemegunu').value)||''; },
+  ileriNeIcin(){ this.okuNeIcin();
+    if(!this.v.karsi){ Bildirim.goster('hata','Eksik','Bu harcamanın ne için olduğunu seç (fatura / gider / satıcı).'); return; }
+    if(this.v.odemeTipi==='taksit' && !(this.v.taksitSayisi>=1)){ Bildirim.goster('hata','Eksik','Taksit sayısı girin.'); return; }
+    // Fatura seçildiyse harcama alanlarını otomatik doldur (boşsa)
+    if(this.v.karsi.startsWith('f:')){
+      const is=Depo.veri.islemler.find(x=>x.id===this.v.karsi.slice(2));
+      if(is){
+        if(!(this.v.tutar>0)) this.v.tutar=Fatura.kalan(is);
+        if(!this.v.islemAd){ const c=Hesap.altBul(is.hesapId); this.v.islemAd=(c?Hesap.hesapAdi(c):'')+' — fatura ödemesi'; }
+        if(!this.v.tarih) this.v.tarih=Yardimci.bugun();
+      }
+    }
+    this.adim=2; this.ciz();
+  },
+  yeniHesap(anaKod){ this.okuNeIcin(); const et={'309':'Kredi Kartı','770':'Gider','320':'Satıcı'}[anaKod]||'Hesap';
     Modal.ac('Yeni '+et, `<div class="form-alan"><label>${et} Adı <span class="zorunlu">*</span></label><input id="ks-yeniad" placeholder="Ad"></div>`,
       `<button class="btn btn-gri" onclick="Modal.kapat()">Vazgeç</button><button class="btn btn-kirmizi" onclick="KartSihirbaz.yeniHesapKaydet('${anaKod}')">Ekle ve Seç</button>`);
     setTimeout(()=>{const e=document.getElementById('ks-yeniad');if(e)e.focus();},50);
@@ -4061,12 +4050,32 @@ const KartSihirbaz = {
     if(anaKod==='309') this.v.kartId=h.id; else this.v.karsi='h:'+h.id;
     Modal.kapat(); this.ciz();
   },
-  ileri2(){ this.oku2();
-    if(!this.v.karsi){ Bildirim.goster('hata','Eksik','Bu harcamanın ne için olduğunu seç (fatura / gider / satıcı).'); return; }
-    if(this.v.odemeTipi==='taksit' && !(this.v.taksitSayisi>=1)){ Bildirim.goster('hata','Eksik','Taksit sayısı girin.'); return; }
+  /* ADIM 2 — Harcama */
+  adimHarcama(g){
+    const kartlar=Hesap.altHesaplarByAna('309');
+    if(!kartlar.length){ g.innerHTML=`<div class="kart"><div class="bos-mesaj">Önce bir <b>Kredi Kartı (309)</b> hesabı ekleyin.</div><div class="buton-grup" style="margin-top:12px"><button class="btn btn-cizgi btn-kucuk" onclick="KartSihirbaz.yeniHesap('309')">＋ Kredi Kartı Ekle</button> <button class="btn btn-cizgi btn-kucuk" onclick="KartSihirbaz.geri(1)">← Geri</button></div></div>`; return; }
+    g.innerHTML=`<div class="kart"><div class="form-grid">
+      <div class="form-alan"><label>Kredi Kartı <span class="zorunlu">*</span></label>
+        <div style="display:flex;gap:8px"><select id="ks-kart" style="flex:1"><option value="">— Seçiniz —</option>${kartlar.map(h=>`<option value="${h.id}" ${h.id===this.v.kartId?'selected':''}>${h.kod} - ${Yardimci.kacisHTML(Hesap.hesapAdi(h))}</option>`).join('')}</select><button class="btn btn-cizgi btn-kucuk" onclick="KartSihirbaz.yeniHesap('309')" title="Yeni Kart">＋</button></div></div>
+      <div class="form-alan"><label>İşlem Tarihi <span class="zorunlu">*</span></label><input type="date" id="ks-tarih" value="${this.v.tarih}"></div>
+      <div class="form-alan"><label>İşlem Adı <span class="zorunlu">*</span></label><input id="ks-islemad" value="${Yardimci.kacisHTML(this.v.islemAd)}" placeholder="Örn: Bilgisayar alımı"></div>
+      <div class="form-alan"><label>Toplam Tutar (₺) <span class="zorunlu">*</span></label><input id="ks-tutar" value="${this.v.tutar?Yardimci.sayiFormat(this.v.tutar):''}" placeholder="0,00"></div>
+      <div class="form-alan tam"><label>Açıklama</label><input id="ks-aciklama" value="${Yardimci.kacisHTML(this.v.aciklama)}" placeholder="İsteğe bağlı"></div>
+    </div>
+    <div class="buton-grup" style="margin-top:20px;display:flex;gap:10px">
+      <button class="btn btn-cizgi" onclick="KartSihirbaz.geri(1)">← Geri</button>
+      <button class="btn btn-kirmizi" style="margin-left:auto" onclick="KartSihirbaz.ileriHarcama()">Önizlemeye Geç →</button>
+    </div></div>`;
+  },
+  okuHarcama(){ const g=id=>document.getElementById(id); if(!g('ks-kart'))return; this.v.kartId=g('ks-kart').value; this.v.tarih=g('ks-tarih').value; this.v.islemAd=g('ks-islemad').value.trim(); this.v.tutar=Yardimci.paraCoz(g('ks-tutar').value); if(g('ks-aciklama')) this.v.aciklama=g('ks-aciklama').value.trim(); },
+  ileriHarcama(){ this.okuHarcama();
+    if(!this.v.kartId){ Bildirim.goster('hata','Eksik','Kredi kartı seçin.'); return; }
+    if(!this.v.tarih){ Bildirim.goster('hata','Eksik','Tarih girin.'); return; }
+    if(!this.v.islemAd){ Bildirim.goster('hata','Eksik','İşlem adı girin.'); return; }
+    if(!(this.v.tutar>0)){ Bildirim.goster('hata','Eksik','Sıfırdan büyük tutar girin.'); return; }
     this.adim=3; this.ciz();
   },
-  geri(a){ if(this.adim===2)this.oku2(); else if(this.adim===1)this.oku1(); this.adim=a; this.ciz(); },
+  geri(a){ if(this.adim===1)this.okuNeIcin(); else if(this.adim===2)this.okuHarcama(); this.adim=a; this.ciz(); },
   karsiCoz(){ const k=this.v.karsi||'';
     if(k.startsWith('f:')){ const is=Depo.veri.islemler.find(x=>x.id===k.slice(2)); const c=is?Hesap.altBul(is.hesapId):null; return {tip:'fatura', islem:is, ad:c?(c.kod+' '+Hesap.hesapAdi(c)):'?', alt:'Fatura kapama (cari)'}; }
     if(k.startsWith('h:')){ const hh=Hesap.altBul(k.slice(2)); if(!hh)return null; return {tip:hh.anaKod==='770'?'gider':'cari', hesap:hh, ad:hh.kod+' '+Hesap.hesapAdi(hh), alt:hh.anaKod==='770'?'Gidere':'Cariye borç'}; }
@@ -4078,7 +4087,7 @@ const KartSihirbaz = {
     const kc=this.karsiCoz();
     const taksitBilgi=this.v.odemeTipi==='taksit'?(this.v.taksitSayisi+' taksit'):'Tek çekim';
     const plan=this.v.odemeTipi==='taksit'?Taksit.hesapla(this.v.tutar, this.v.taksitSayisi, this.v.ilkTaksit||this.v.tarih):[];
-    const bilgi=[['Kart',kartAd],['Tarih',Yardimci.tarihFormat(this.v.tarih)],['İşlem',this.v.islemAd],['Ne için',kc?kc.ad:'—'],['Tutar',P(this.v.tutar)],['Ödeme',taksitBilgi],['Açıklama',this.v.aciklama||'—']];
+    const bilgi=[['Ne için',kc?kc.ad:'—'],['Kart',kartAd],['Tarih',Yardimci.tarihFormat(this.v.tarih)],['İşlem',this.v.islemAd],['Tutar',P(this.v.tutar)],['Ödeme',taksitBilgi],['Açıklama',this.v.aciklama||'—']];
     g.innerHTML=`<div class="kart">
       <h3 style="font-size:16px;margin-bottom:14px">Önizleme — Kredi Kartı Harcaması</h3>
       <div class="fw-ozet">${bilgi.map(([k,val])=>`<div class="fw-oz-satir"><span>${k}</span><b>${Yardimci.kacisHTML(String(val))}</b></div>`).join('')}</div>
@@ -4098,7 +4107,7 @@ const KartSihirbaz = {
     this.duzenId=islemId; this.dosya=null; this.mevcutDosyaMeta=is.dosyaMeta||null; this.mevcutDosyaId=is.dosyaId||null;
     let karsi=''; if(is.kapatilanFaturaId) karsi='f:'+is.kapatilanFaturaId; else if(is.giderHesapId) karsi='h:'+is.giderHesapId; else if(is.sahisHesapId) karsi='h:'+is.sahisHesapId;
     this.v={ tarih:is.tarih, kartId:is.hesapId, islemAd:is.islemAd||'', tutar:is.tutar||0, karsi, odemeTipi:is.odemeTipi||'tek', taksitSayisi:is.taksitSayisi||1, ilkTaksit:is.ilkTaksitTarihi||'', odemeGunu:is.kartOdemeGunu||'', aciklama:is.aciklama||'' };
-    this.adim=2; this.ciz();
+    this.adim=1; this.ciz();
   },
   async kaydet(){
     const v=this.v, kc=this.karsiCoz();
