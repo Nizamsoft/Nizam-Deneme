@@ -288,6 +288,12 @@ table.veri tr.ana-hesap-satir:hover{background:var(--gri-orta)}
 .nakit-ust{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:12px;flex-wrap:wrap}
 .nakit-ust .devir{font-size:12.5px;color:var(--metin-soluk)}
 .nakit-ust .devir b{color:var(--metin);font-variant-numeric:tabular-nums}
+.nakit-ozet{display:block!important;margin:-4px 0 14px;font-size:13px;line-height:1.45;padding:10px 13px;border-radius:9px}
+.nakit-ozet.acik{color:var(--kirmizi);background:rgba(211,32,39,.07)}
+.nakit-ozet .no-et{font-size:12.5px;font-weight:600}
+.nakit-ozet .no-tut{font-size:20px;font-weight:800;font-variant-numeric:tabular-nums;margin:1px 0}
+.nakit-ozet.tamam{color:var(--yesil);background:rgba(31,157,85,.08);font-weight:600}
+.nakit-ozet .n-min{color:var(--metin-soluk);font-size:11.5px}
 .nakit-sar{max-height:432px;overflow:auto;border:1px solid var(--kenar);border-radius:10px}
 .nakit-bos{color:var(--metin-soluk);font-size:13px;text-align:center;padding:24px 0;line-height:1.6}
 .nlist{width:100%;border-collapse:collapse;font-size:13.5px}
@@ -621,7 +627,7 @@ table.nakit th.bugun-sutun{background:var(--kirmizi)}
         </ul>
       </li>
     </ul>
-    <div class="menu-alt">Nizam Soft © 2026<br>Sürüm 1.18.1 • 02.08.2026</div>
+    <div class="menu-alt">Nizam Soft © 2026<br>Sürüm 1.18.2 • 02.08.2026</div>
   </nav>
 
   <!-- ANA İÇERİK -->
@@ -1576,6 +1582,10 @@ const Sayfa = {
     const {seri, devir} = NakitAkis.projeksiyon(bas, bit, 'tahmin', bankaIds, true);
     const hareketli = seri.filter(s=>s.giris>0.005 || s.cikis>0.005);
     const esik = Number(Depo.veri.nakitAyar.dusukBakiye)||0;
+    // Ay boyunca en düşük noktaya bakıp, açığı kapatmak için bulunması gereken tutarı hesapla
+    let minKalan = devir, minTarih = bas;
+    seri.forEach(s=>{ if(s.kalan < minKalan){ minKalan = s.kalan; minTarih = s.tarih; } });
+    const acikTutar = Math.max(0, -minKalan);
     const HAFTA = ['Pazar','Pazartesi','Salı','Çarşamba','Perşembe','Cuma','Cumartesi'];
     const gunAdi = iso=>{ const p=iso.split('-'); return HAFTA[new Date(+p[0],+p[1]-1,+p[2]).getDay()]; };
     const S = Yardimci.sayiFormat, P = Yardimci.paraFormat;
@@ -1596,6 +1606,9 @@ const Sayfa = {
         <span class="devir">Bugünkü bakiye <b>${P(devir)}</b></span>
         <button class="btn btn-cizgi btn-kucuk" onclick="App.sayfaGit('nakit')">Detaylı →</button>
       </div>
+      ${acikTutar>0.005
+        ? `<div class="nakit-ozet acik"><div class="no-et">⚠ Ay sonuna kadar bulman gereken</div><div class="no-tut">${P(acikTutar)}</div><div class="n-min">en düşük bakiye ${P(minKalan)} · ${Yardimci.tarihFormat(minTarih)}</div></div>`
+        : `<div class="nakit-ozet tamam">✓ Ay boyunca nakit açığın yok</div>`}
       ${hareketli.length
         ? `<div class="nakit-sar"><table class="nlist"><thead><tr><th>Tarih</th><th class="sag-hiza">Giriş ₺</th><th class="sag-hiza">Çıkış ₺</th><th class="sag-hiza">Kalan ₺</th></tr></thead><tbody>${govde}</tbody></table></div>`
         : `<div class="nakit-bos">Önümüzdeki 1 ayda beklenen para hareketi yok.<br><span style="font-size:12px">Banka/kart işlemi girin ya da Ayarlar › Öngörülen İşlemler ekleyin.</span></div>`}`;
