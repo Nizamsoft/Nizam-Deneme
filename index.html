@@ -612,7 +612,7 @@ table.nakit th.bugun-sutun{background:var(--kirmizi)}
         </ul>
       </li>
     </ul>
-    <div class="menu-alt">Nizam Soft © 2026<br>Sürüm 1.15.1 • 02.08.2026</div>
+    <div class="menu-alt">Nizam Soft © 2026<br>Sürüm 1.15.2 • 02.08.2026</div>
   </nav>
 
   <!-- ANA İÇERİK -->
@@ -3172,34 +3172,13 @@ const Detay = {
 
   render(el, h){
     const netB = Hesap.netBakiye(h.id);
-    const {tBorc,tAlacak} = Hesap.toplamlar(h.id);
-    let detayEk = '';
-    if(h.tur==='kart'){
-      const borc = Hesap.kartBorc(h.id);
-      const limit = Number(h.limit)||0;
-      const kullanilabilir = limit - borc;
-      detayEk = `<div class="detay-ust">
-        <div class="detay-kutu"><div class="k-etiket">Kart Limiti</div><div class="k-deger">${Yardimci.paraFormat(limit)}</div></div>
-        <div class="detay-kutu"><div class="k-etiket">Güncel Borç</div><div class="k-deger" style="color:var(--kirmizi)">${Yardimci.paraFormat(borc)}</div></div>
-        <div class="detay-kutu"><div class="k-etiket">Kullanılabilir Limit</div><div class="k-deger" style="color:var(--yesil)">${Yardimci.paraFormat(kullanilabilir)}</div></div>
-        <div class="detay-kutu"><div class="k-etiket">Hesap Kesim Günü</div><div class="k-deger">${h.kesimGun?'Her ayın '+h.kesimGun+'.':'-'}</div></div>
-        <div class="detay-kutu"><div class="k-etiket">Son Ödeme Günü</div><div class="k-deger">${h.sonOdemeGun?'Her ayın '+h.sonOdemeGun+'.':'-'}</div></div>
-      </div>`;
-    }
-
     el.innerHTML = `
       <div class="kart">
         <div class="detay-ust">
-          <div class="detay-kutu"><div class="k-etiket">Hesap Kodu</div><div class="k-deger"><span class="kod-rozet">${h.kod}</span></div></div>
           <div class="detay-kutu"><div class="k-etiket">Hesap Adı</div><div class="k-deger" style="font-size:16px">${Yardimci.kacisHTML(Hesap.hesapAdi(h))}</div></div>
           <div class="detay-kutu"><div class="k-etiket">Güncel Bakiye</div><div class="k-deger" style="color:${netB>=0?'var(--yesil)':'var(--kirmizi)'}">${Yardimci.paraFormat(netB)}</div></div>
-          <div class="detay-kutu"><div class="k-etiket">Toplam Borç</div><div class="k-deger borc">${Yardimci.paraFormat(tBorc)}</div></div>
-          <div class="detay-kutu"><div class="k-etiket">Toplam Alacak</div><div class="k-deger alacak">${Yardimci.paraFormat(tAlacak)}</div></div>
         </div>
-        ${detayEk}
         <div class="buton-grup no-print" style="margin-bottom:18px">
-          ${h.anaKod==='102'?`<button class="btn btn-koyu" onclick="BankaAktar.ac('${h.id}')">📥 İçe Aktar</button>`:''}
-          <button class="btn btn-yesil" onclick="Detay.excel('${h.id}')">📊 Excel'e Aktar</button>
           <button class="btn btn-cizgi" onclick="App.sayfaGit('hesaplar')">← Geri Dön</button>
         </div>
         <div class="arac-cubuk no-print">
