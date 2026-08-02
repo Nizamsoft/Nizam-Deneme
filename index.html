@@ -655,7 +655,7 @@ table.nakit th.bugun-sutun{background:var(--kirmizi)}
         </ul>
       </li>
     </ul>
-    <div class="menu-alt">Nizam Soft © 2026<br>Sürüm 1.22.1 • 02.08.2026</div>
+    <div class="menu-alt">Nizam Soft © 2026<br>Sürüm 1.22.2 • 02.08.2026</div>
   </nav>
 
   <!-- ANA İÇERİK -->
@@ -1477,7 +1477,7 @@ const MuhasebeRapor = {
   },
   bankaSayfa(arr, bankaAd){
     const sat=arr.map(is=>{ const g=is.islemTuru==='giris';
-      return [is.no, this._tf(is.tarih), is.islemAd||'', {v:g?'Para Girişi':'Para Çıkışı', s:g?9:7}, this._karsi(is), this._faturaNo(is.kapatilanFaturaId), g?this._MG(is.tutar):this._MR(is.tutar), is.aciklama||'']; });
+      return [is.no, this._tf(is.tarih), is.islemAd||'', {v:g?'Para Girişi':'Para Çıkışı', s:g?9:7}, this._karsi(is), this._faturaNo(is.kapatilanFaturaId), g?this._MG(is.tutar):this._MR(-Math.abs(Number(is.tutar)||0)), is.aciklama||'']; });
     const satirlar = arr.length ? sat : [['','', 'Bu aralıkta hareket yok','','','','','']];
     return {ad:'Banka Hareketleri'+(bankaAd?' '+bankaAd:''), satirlar:[this._H(['İşlem No','Tarih','İşlem Adı','Yön','Karşı Hesap','Kapatılan Fatura','Tutar','Açıklama']), ...satirlar]};
   },
