@@ -655,7 +655,7 @@ table.nakit th.bugun-sutun{background:var(--kirmizi)}
         </ul>
       </li>
     </ul>
-    <div class="menu-alt">Nizam Soft © 2026<br>Sürüm 1.20.0 • 02.08.2026</div>
+    <div class="menu-alt">Nizam Soft © 2026<br>Sürüm 1.21.0 • 02.08.2026</div>
   </nav>
 
   <!-- ANA İÇERİK -->
@@ -867,6 +867,7 @@ const Depo = {
         {kod:'309', ad:'Kredi Kartları', tur:'kart'},
         {kod:'320', ad:'Satıcılar', tur:'satici'},
         {kod:'331', ad:'Ortaklara Borçlar', tur:'ortak'},
+        {kod:'336', ad:'Ödenecek Vergiler', tur:'satici'},
         {kod:'600', ad:'Yurtiçi Satışlar (Gelir)', tur:'gelir'},
         {kod:'770', ad:'Gider Hesapları', tur:'gider'}
       ],
@@ -895,6 +896,7 @@ const Depo = {
       }
       this.sistemKur();
       this.vergiGoc(); // eski KDV/vergi verilerini temizle (bir kerelik)
+      this.vergiGoc336(); // vergi carilerini 320'den 336'ya taşı (bir kerelik)
       // Ana hesapları hesap koduna göre sırala (102, 120, 255, 309, 320, ...)
       this.veri.anaHesaplar.sort((a,b)=>String(a.kod).localeCompare(String(b.kod),'tr'));
       this.kaydet();
@@ -967,6 +969,29 @@ const Depo = {
     // 5) Artık kullanılmayan vergi veri alanlarını temizle
     ['vergiAyar','kdvDonemleri','vergiNakitBaglari'].forEach(k=>{ if(k in this.veri){ delete this.veri[k]; degisti=true; } });
     return degisti;
+  },
+
+  // Vergi carilerini (320'de "Vergi Dairesi" vb.) 336 Ödenecek Vergiler'e taşı — bir kerelik.
+  // Kayıtlar hesaba id ile bağlı olduğundan işlem/hareketler korunur; yalnızca kod/anaKod değişir.
+  vergiGoc336(){
+    if(this.veri._goc336) return false;
+    this.veri._goc336 = true;
+    if(!this.veri.sayaclar.altKod['336'] && this.veri.sayaclar.altKod['336']!==0) this.veri.sayaclar.altKod['336']=0;
+    const re=/vergi|maliye|defterdar|sgk\b/i;
+    const tasinan=new Set();
+    (this.veri.altHesaplar||[]).forEach(h=>{
+      if(h.anaKod==='320' && re.test(h.ad||'')){
+        h.anaKod='336'; h.kod=this.yeniAltKod('336'); tasinan.add(h.id);
+      }
+    });
+    // İşlemlerdeki gösterim etiketlerini (is.sahis) yeni koda göre tazele
+    if(tasinan.size){
+      this.veri.islemler.forEach(is=>{
+        const hid = tasinan.has(is.sahisHesapId) ? is.sahisHesapId : (tasinan.has(is.hesapId) ? is.hesapId : null);
+        if(hid && is.sahisHesapId===hid){ const h=this.veri.altHesaplar.find(x=>x.id===hid); if(h) is.sahis=h.kod+' '+(typeof Hesap!=='undefined'?Hesap.hesapAdi(h):h.ad); }
+      });
+    }
+    return tasinan.size>0;
   },
 
   kaydet(){
@@ -1340,13 +1365,23 @@ const MuhasebeRapor = {
   veri(bas,bit){
     const ic = x => x.tarih && x.tarih>=bas && x.tarih<=bit && !x.iptal; // iptal hariç
     const sr = (a)=>a.sort((x,y)=>(x.tarih||'').localeCompare(y.tarih||'')||(x.no||'').localeCompare(y.no||''));
+    const vergiHesap = id => { const h=Hesap.altBul(id); return !!(h && h.anaKod==='336'); };
+    const alisTum = Depo.veri.islemler.filter(x=>x.tur==='alis' && ic(x));
     return {
-      alis: sr(Depo.veri.islemler.filter(x=>x.tur==='alis' && ic(x))),
+      alis: sr(alisTum.filter(x=>!vergiHesap(x.hesapId))),
+      vergi: sr(alisTum.filter(x=>vergiHesap(x.hesapId))),
       satis: sr(Depo.veri.islemler.filter(x=>x.tur==='satis' && ic(x))),
       banka: sr(Depo.veri.islemler.filter(x=>x.tur==='banka' && ic(x))),
       kart: sr(Depo.veri.islemler.filter(x=>x.tur==='kart' && ic(x)))
     };
   },
+  // Bir faturanın hangi banka/kart ile ödendiği (bağlı ödemelerden)
+  _neIleOdendi(faturaId){
+    const ods=Depo.veri.islemler.filter(x=>(x.tur==='banka'||x.tur==='kart') && x.kapatilanFaturaId===faturaId && !x.iptal);
+    const adlar=[...new Set(ods.map(o=>{const h=Hesap.altBul(o.hesapId);return h?Hesap.hesapAdi(h):'';}).filter(Boolean))];
+    return adlar.join(', ');
+  },
+  _dosyaAd(is){ return is.dosyaMeta ? (is.dosyaMeta.ad||'Var') : ''; },
   _cariAd(id){ const h=id?Hesap.altBul(id):null; return h?(h.kod+' '+Hesap.hesapAdi(h)):''; },
   _faturaNo(id){ if(!id) return ''; const f=Depo.veri.islemler.find(x=>x.id===id); return f?(f.faturaNo||f.no):''; },
   _karsi(is){ return is.sahisHesapId?this._cariAd(is.sahisHesapId):(is.giderHesapId?this._cariAd(is.giderHesapId):''); },
@@ -1386,6 +1421,7 @@ const MuhasebeRapor = {
       this._H(['Kayıt Türü','Adet','Toplam Tutar']),
       ['Alış Faturaları', N(d.alis.length), this._M(T(d.alis))],
       ['Satış Faturaları', N(d.satis.length), this._M(T(d.satis))],
+      ['Vergiler', N(d.vergi.length), this._M(T(d.vergi))],
       ['Banka Para Girişi', N(bg.length), this._M(T(bg))],
       ['Banka Para Çıkışı', N(bc.length), this._M(T(bc))],
       ['Kredi Kartı Harcaması', N(d.kart.length), this._M(T(d.kart))],
@@ -1397,12 +1433,29 @@ const MuhasebeRapor = {
     ]};
   },
   alisSayfa(arr){
-    const sat=arr.map(is=>[is.no, this._tf(is.tarih), is.faturaNo||'', this._cariAd(is.hesapId), this._M(is.tutar), Fatura.durumAd(is), this._M(Fatura.kalan(is)), is.aciklama||'', is.dosyaMeta?'Var':'']);
-    return {ad:'Alış Faturaları', genislik:[14,12,16,26,14,14,14,30,8], satirlar:[this._H(['İşlem No','Tarih','Fatura No','Satıcı','Tutar','Ödeme Durumu','Kalan','Açıklama','Dosya']), ...sat]};
+    const sat=arr.map(is=>[is.no, this._tf(is.tarih), is.faturaNo||'', this._cariAd(is.hesapId), this._M(is.tutar), Fatura.durumAd(is), this._neIleOdendi(is.id), this._M(Fatura.kalan(is)), is.aciklama||'', this._dosyaAd(is)]);
+    return {ad:'Alış Faturaları', genislik:[14,12,16,26,14,14,22,14,28,22], satirlar:[this._H(['İşlem No','Tarih','Fatura No','Satıcı','Tutar','Ödeme Durumu','Ne ile Ödendi','Kalan','Açıklama','Dosya Adı']), ...sat]};
   },
   satisSayfa(arr){
-    const sat=arr.map(is=>[is.no, this._tf(is.tarih), is.faturaNo||'', this._cariAd(is.hesapId), this._M(is.tutar), Fatura.durumAd(is), this._M(Fatura.kalan(is)), is.aciklama||'', is.dosyaMeta?'Var':'']);
-    return {ad:'Satış Faturaları', genislik:[14,12,16,26,14,14,14,30,8], satirlar:[this._H(['İşlem No','Tarih','Fatura No','Alıcı','Tutar','Tahsilat Durumu','Kalan','Açıklama','Dosya']), ...sat]};
+    const sat=arr.map(is=>[is.no, this._tf(is.tarih), is.faturaNo||'', this._cariAd(is.hesapId), this._M(is.tutar), Fatura.durumAd(is), this._neIleOdendi(is.id), this._M(Fatura.kalan(is)), is.aciklama||'', this._dosyaAd(is)]);
+    return {ad:'Satış Faturaları', genislik:[14,12,16,26,14,14,22,14,28,22], satirlar:[this._H(['İşlem No','Tarih','Fatura No','Alıcı','Tutar','Tahsilat Durumu','Ne ile Tahsil','Kalan','Açıklama','Dosya Adı']), ...sat]};
+  },
+  vergiSayfa(arr){
+    const sat=arr.map(is=>[is.no, this._tf(is.tarih), is.faturaNo||'', this._cariAd(is.hesapId), is.aciklama||'', this._M(is.tutar), Fatura.durumAd(is), this._neIleOdendi(is.id), this._M(Fatura.kalan(is)), this._dosyaAd(is)]);
+    const satirlar = arr.length ? sat : [['', '', '', 'Bu aralıkta vergi kaydı yok.', '', '', '', '', '', '']];
+    return {ad:'Vergiler', genislik:[14,12,16,26,26,14,14,22,14,22], satirlar:[this._H(['İşlem No','Tarih','Fatura No','Vergi Hesabı','Açıklama','Tutar','Ödeme Durumu','Ne ile Ödendi','Kalan','Dosya Adı']), ...satirlar]};
+  },
+  kartOzetSayfa(bas,bit){
+    const kartlar = Hesap.altHesaplarByAna('309');
+    const sat = kartlar.map(k=>{
+      const hs = Depo.veri.hareketler.filter(h=>h.hesapId===k.id && h.tarih>=bas && h.tarih<=bit);
+      const harcama = hs.reduce((s,h)=>s+(Number(h.alacak)||0),0);
+      const odeme = hs.reduce((s,h)=>s+(Number(h.borc)||0),0);
+      const guncelBorc = -Hesap.netBakiye(k.id); // kart borcu (pozitif = borç)
+      return [k.kod+' '+Hesap.hesapAdi(k), this._M(Number(k.acilis)||0), this._M(harcama), this._M(odeme), this._M(guncelBorc)];
+    });
+    const satirlar = kartlar.length ? sat : [['Kredi kartı hesabı yok','','','','']];
+    return {ad:'Kredi Kartları', genislik:[28,16,18,16,16], satirlar:[this._H(['Kart','Açılış Borcu','Dönem Harcaması','Dönem Ödemesi','Güncel Borç']), ...satirlar]};
   },
   bankaSayfa(arr){
     const sat=arr.map(is=>[is.no, this._tf(is.tarih), this._cariAd(is.hesapId), is.islemAd||'', is.islemTuru==='giris'?'Para Girişi':'Para Çıkışı', this._karsi(is), this._faturaNo(is.kapatilanFaturaId), this._M(is.tutar), is.aciklama||'']);
@@ -1455,7 +1508,8 @@ const MuhasebeRapor = {
     const box=document.getElementById('mr-onizle'); if(!box) return;
     box.innerHTML=`<div class="pop-aciklama" style="margin-bottom:8px">Aralık: <b>${this._tf(this._bas)} – ${this._tf(this._bit)}</b> · Excel sayfaları:</div>
       <div class="tablo-sar"><table class="veri"><thead><tr><th>Sayfa</th><th class="sag-hiza">Adet</th><th class="sag-hiza">Toplam Tutar</th></tr></thead><tbody>
-        ${sr('Alış Faturaları',d.alis)}${sr('Satış Faturaları',d.satis)}${sr('Banka Para Girişi',bg)}${sr('Banka Para Çıkışı',bc)}${sr('Kredi Kartı Harcaması',d.kart)}
+        ${sr('Alış Faturaları',d.alis)}${sr('Satış Faturaları',d.satis)}${sr('Vergiler',d.vergi)}${sr('Banka Para Girişi',bg)}${sr('Banka Para Çıkışı',bc)}${sr('Kredi Kartı Harcaması',d.kart)}
+        <tr><td>Kredi Kartları (özet)</td><td class="sag-hiza">${Hesap.altHesaplarByAna('309').length}</td><td class="sag-hiza">–</td></tr>
         <tr class="ana-hesap-satir"><td>Kontrol ve Uyarılar</td><td class="sag-hiza">${u.length}</td><td class="sag-hiza">${u.length?'⚠ incele':'✓ temiz'}</td></tr>
       </tbody></table></div>`;
   },
@@ -1464,7 +1518,7 @@ const MuhasebeRapor = {
     const bas=this._bas, bit=this._bit;
     const d=this.veri(bas,bit);
     const u=this.uyarilar(d);
-    const sheets=[ this.ozetSayfa(bas,bit,d,u.length), this.alisSayfa(d.alis), this.satisSayfa(d.satis), this.bankaSayfa(d.banka), this.kartSayfa(d.kart), this.kontrolSayfa(u) ];
+    const sheets=[ this.ozetSayfa(bas,bit,d,u.length), this.alisSayfa(d.alis), this.satisSayfa(d.satis), this.vergiSayfa(d.vergi), this.bankaSayfa(d.banka), this.kartOzetSayfa(bas,bit), this.kartSayfa(d.kart), this.kontrolSayfa(u) ];
     const ad=`Muhasebe-Raporu-${bas}_${bit}`;
     try{
       Xlsx.indir(sheets, ad);
@@ -2258,7 +2312,7 @@ const Form = {
   secEkle(selectId, anaKodlarCSV, selectHTML){
     return `<div class="sec-satir">${selectHTML}<button type="button" class="ekle-btn" title="Yeni ekle" onclick="Form.hizliEkle('${selectId}','${anaKodlarCSV}')">＋</button></div>`;
   },
-  anaAd(kod){ return {'102':'Banka','120':'Alıcı / Müşteri','309':'Kredi Kartı','320':'Satıcı','331':'Ortak','255':'Demirbaş','600':'Gelir','770':'Gider'}[kod]||kod; },
+  anaAd(kod){ return {'102':'Banka','120':'Alıcı / Müşteri','309':'Kredi Kartı','320':'Satıcı','331':'Ortak','336':'Vergi','255':'Demirbaş','600':'Gelir','770':'Gider'}[kod]||kod; },
   // İkon + başlık (ilk anaKod'a göre)
   ekleBaslik(grupMod, anaKodlar){
     if(grupMod) return {ik:'🏷️', ad:'Yeni Grup', alt:'Rapor/sınıflandırma grubu — yeni muhasebe hesabı açmaz.'};
@@ -4100,10 +4154,14 @@ const FaturaPDF = {
     ad=(ad||'').trim(); if(!ad) return null;
     const norm=s=>String(s||'').toLocaleLowerCase('tr').replace(/[^a-zçğıöşü0-9]/g,'');
     const na=norm(ad);
-    let h = Depo.veri.altHesaplar.find(x=>x.anaKod===anaKod && norm(Hesap.hesapAdi(x))===na);
-    if(!h && na.length>4) h = Depo.veri.altHesaplar.find(x=>{ const b=norm(Hesap.hesapAdi(x)); return x.anaKod===anaKod && b.length>4 && (b.includes(na)||na.includes(b)); });
+    // Alış tarafında vergi carilerini 336'da ara/oluştur (Satıcılar ile birlikte)
+    const araKodlar = anaKod==='320' ? ['320','336'] : [anaKod];
+    let h = Depo.veri.altHesaplar.find(x=>araKodlar.includes(x.anaKod) && norm(Hesap.hesapAdi(x))===na);
+    if(!h && na.length>4) h = Depo.veri.altHesaplar.find(x=>{ const b=norm(Hesap.hesapAdi(x)); return araKodlar.includes(x.anaKod) && b.length>4 && (b.includes(na)||na.includes(b)); });
     if(h) return h.id;
-    const tur = {'320':'satici','120':'alici'}[anaKod];
+    // Yeni cari: vergi/SGK/maliye adı geçiyorsa 336'ya, değilse verilen ana koda
+    if(anaKod==='320' && /vergi|maliye|defterdar|sgk\b/i.test(ad)) anaKod='336';
+    const tur = {'320':'satici','336':'satici','120':'alici'}[anaKod];
     h={id:Yardimci.yeniId(), kod:Depo.yeniAltKod(anaKod), anaKod, tur, ad:ad.slice(0,70), acilis:0};
     Depo.veri.altHesaplar.push(h); Depo.kaydet();
     Bildirim.goster('bilgi','Yeni Cari', h.kod+' '+h.ad+' oluşturuldu ve seçildi.',3500);
@@ -5424,7 +5482,7 @@ const KarZarar = {
     const donemBasi = bankIds.reduce((t,id)=>t+Donem.tarihliBakiye(id, Yardimci.gunEkle(bas,-1)),0);
     const donemSonu = bankIds.reduce((t,id)=>t+Donem.tarihliBakiye(id, bit),0);
     const adOf = id => { const h=Hesap.altBul(id); return h?Hesap.hesapAdi(h):'?'; };
-    const vergiMi = id => { const h=Hesap.altBul(id); return !!(h && /vergi/i.test(h.ad||'')); };
+    const vergiMi = id => { const h=Hesap.altBul(id); return !!(h && h.anaKod==='336'); };
     const odemeBilgi = fId => {
       const ods = Depo.veri.islemler.filter(x=>(x.tur==='banka'||x.tur==='kart') && x.kapatilanFaturaId===fId && !x.iptal);
       if(ods.length){
