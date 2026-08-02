@@ -655,7 +655,7 @@ table.nakit th.bugun-sutun{background:var(--kirmizi)}
         </ul>
       </li>
     </ul>
-    <div class="menu-alt">Nizam Soft © 2026<br>Sürüm 1.22.0 • 02.08.2026</div>
+    <div class="menu-alt">Nizam Soft © 2026<br>Sürüm 1.22.1 • 02.08.2026</div>
   </nav>
 
   <!-- ANA İÇERİK -->
@@ -1309,11 +1309,11 @@ const Xlsx = {
     return `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
 <styleSheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">
 <numFmts count="1"><numFmt numFmtId="164" formatCode="#,##0.00"/></numFmts>
-<fonts count="4"><font><sz val="11"/><name val="Calibri"/></font><font><b/><sz val="11"/><color rgb="FFFFFFFF"/><name val="Calibri"/></font><font><b/><sz val="11"/><name val="Calibri"/></font><font><b/><sz val="15"/><name val="Calibri"/></font></fonts>
+<fonts count="6"><font><sz val="11"/><name val="Calibri"/></font><font><b/><sz val="11"/><color rgb="FFFFFFFF"/><name val="Calibri"/></font><font><b/><sz val="11"/><name val="Calibri"/></font><font><b/><sz val="15"/><name val="Calibri"/></font><font><color rgb="FFD32027"/><sz val="11"/><name val="Calibri"/></font><font><color rgb="FF1F9D55"/><sz val="11"/><name val="Calibri"/></font></fonts>
 <fills count="3"><fill><patternFill patternType="none"/></fill><fill><patternFill patternType="gray125"/></fill><fill><patternFill patternType="solid"><fgColor rgb="FF1F2530"/><bgColor indexed="64"/></patternFill></fill></fills>
 <borders count="2"><border><left/><right/><top/><bottom/><diagonal/></border><border><left style="thin"><color rgb="FFB0B7C0"/></left><right style="thin"><color rgb="FFB0B7C0"/></right><top style="thin"><color rgb="FFB0B7C0"/></top><bottom style="thin"><color rgb="FFB0B7C0"/></bottom><diagonal/></border></borders>
 <cellStyleXfs count="1"><xf numFmtId="0" fontId="0" fillId="0" borderId="0"/></cellStyleXfs>
-<cellXfs count="7"><xf numFmtId="0" fontId="0" fillId="0" borderId="0" xfId="0"/><xf numFmtId="0" fontId="1" fillId="2" borderId="1" xfId="0" applyFont="1" applyFill="1" applyBorder="1"/><xf numFmtId="164" fontId="0" fillId="0" borderId="1" xfId="0" applyNumberFormat="1" applyBorder="1"/><xf numFmtId="164" fontId="2" fillId="0" borderId="1" xfId="0" applyNumberFormat="1" applyFont="1" applyBorder="1"/><xf numFmtId="0" fontId="3" fillId="0" borderId="0" xfId="0" applyFont="1"/><xf numFmtId="0" fontId="2" fillId="0" borderId="1" xfId="0" applyFont="1" applyBorder="1"/><xf numFmtId="0" fontId="0" fillId="0" borderId="1" xfId="0" applyBorder="1"/></cellXfs>
+<cellXfs count="11"><xf numFmtId="0" fontId="0" fillId="0" borderId="0" xfId="0"/><xf numFmtId="0" fontId="1" fillId="2" borderId="1" xfId="0" applyFont="1" applyFill="1" applyBorder="1"/><xf numFmtId="164" fontId="0" fillId="0" borderId="1" xfId="0" applyNumberFormat="1" applyBorder="1"/><xf numFmtId="164" fontId="2" fillId="0" borderId="1" xfId="0" applyNumberFormat="1" applyFont="1" applyBorder="1"/><xf numFmtId="0" fontId="3" fillId="0" borderId="0" xfId="0" applyFont="1"/><xf numFmtId="0" fontId="2" fillId="0" borderId="1" xfId="0" applyFont="1" applyBorder="1"/><xf numFmtId="0" fontId="0" fillId="0" borderId="1" xfId="0" applyBorder="1"/><xf numFmtId="0" fontId="4" fillId="0" borderId="1" xfId="0" applyFont="1" applyBorder="1"/><xf numFmtId="164" fontId="4" fillId="0" borderId="1" xfId="0" applyNumberFormat="1" applyFont="1" applyBorder="1"/><xf numFmtId="0" fontId="5" fillId="0" borderId="1" xfId="0" applyFont="1" applyBorder="1"/><xf numFmtId="164" fontId="5" fillId="0" borderId="1" xfId="0" applyNumberFormat="1" applyFont="1" applyBorder="1"/></cellXfs>
 <cellStyles count="1"><cellStyle name="Normal" xfId="0" builtinId="0"/></cellStyles>
 </styleSheet>`;
   },
@@ -1403,6 +1403,8 @@ const MuhasebeRapor = {
   _karsi(is){ return is.sahisHesapId?this._cariAd(is.sahisHesapId):(is.giderHesapId?this._cariAd(is.giderHesapId):''); },
   _tf(t){ return Yardimci.tarihFormat(t); },
   _M(n){ return {v:Math.round((Number(n)||0)*100)/100, t:'n', s:2}; },
+  _MR(n){ return {v:Math.round((Number(n)||0)*100)/100, t:'n', s:8}; },  // kırmızı sayı (çıkış)
+  _MG(n){ return {v:Math.round((Number(n)||0)*100)/100, t:'n', s:10}; }, // yeşil sayı (giriş)
   _H(arr){ return arr.map(t=>({v:t, s:1})); },
 
   uyarilar(d){
@@ -1474,7 +1476,8 @@ const MuhasebeRapor = {
     return {ad:'Kredi Kartları', genislik:[28,16,18,16,16], satirlar:[this._H(['Kart','Açılış Borcu','Dönem Harcaması','Dönem Ödemesi','Güncel Borç']), ...satirlar]};
   },
   bankaSayfa(arr, bankaAd){
-    const sat=arr.map(is=>[is.no, this._tf(is.tarih), is.islemAd||'', is.islemTuru==='giris'?'Para Girişi':'Para Çıkışı', this._karsi(is), this._faturaNo(is.kapatilanFaturaId), this._M(is.tutar), is.aciklama||'']);
+    const sat=arr.map(is=>{ const g=is.islemTuru==='giris';
+      return [is.no, this._tf(is.tarih), is.islemAd||'', {v:g?'Para Girişi':'Para Çıkışı', s:g?9:7}, this._karsi(is), this._faturaNo(is.kapatilanFaturaId), g?this._MG(is.tutar):this._MR(is.tutar), is.aciklama||'']; });
     const satirlar = arr.length ? sat : [['','', 'Bu aralıkta hareket yok','','','','','']];
     return {ad:'Banka Hareketleri'+(bankaAd?' '+bankaAd:''), satirlar:[this._H(['İşlem No','Tarih','İşlem Adı','Yön','Karşı Hesap','Kapatılan Fatura','Tutar','Açıklama']), ...satirlar]};
   },
