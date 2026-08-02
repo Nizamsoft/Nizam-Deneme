@@ -255,6 +255,20 @@ table.veri tr.ana-hesap-satir:hover{background:var(--gri-orta)}
 .alt-secici button:hover{border-color:var(--gri-koyu);color:var(--metin)}
 .alt-secici button.aktif{background:var(--antrasit);color:#fff;border-color:var(--antrasit)}
 .alt-secici button.aktif .mini-rozet{background:rgba(255,255,255,.22);color:#fff}
+/* Fatura sihirbazı adım göstergesi */
+.fw-adimlar{display:flex;align-items:center;gap:6px;margin-bottom:18px;flex-wrap:wrap}
+.fw-adim{display:flex;align-items:center;gap:9px;font-size:13.5px;font-weight:600;color:var(--metin-soluk)}
+.fw-adim .fw-nokta{width:26px;height:26px;border-radius:50%;background:var(--kart-bg);border:2px solid var(--kenar);display:flex;align-items:center;justify-content:center;font-size:13px;flex-shrink:0}
+.fw-adim.aktif{color:var(--kirmizi)}
+.fw-adim.aktif .fw-nokta{border-color:var(--kirmizi);background:var(--kirmizi);color:#fff}
+.fw-adim.tamam .fw-nokta{border-color:var(--yesil);background:var(--yesil);color:#fff}
+.fw-cizgi{flex:1;min-width:20px;height:2px;background:var(--kenar);border-radius:2px}
+.fw-ozet{border:1px solid var(--kenar);border-radius:10px;overflow:hidden}
+.fw-oz-satir{display:flex;justify-content:space-between;gap:14px;padding:11px 14px;border-bottom:1px solid var(--kenar);font-size:14px}
+.fw-oz-satir:last-child{border-bottom:none}
+.fw-oz-satir span{color:var(--metin-soluk)}
+.fw-oz-satir b{text-align:right;word-break:break-word}
+.fw-oz-satir b.borc{color:var(--yesil)}.fw-oz-satir b.alacak{color:var(--kirmizi)}
 .rozet.gider{background:rgba(211,32,39,.14);color:var(--kirmizi)}
 .rozet.gelir{background:rgba(31,157,85,.14);color:var(--yesil)}
 
@@ -595,7 +609,7 @@ table.nakit th.bugun-sutun{background:var(--kirmizi)}
         </ul>
       </li>
     </ul>
-    <div class="menu-alt">Nizam Soft © 2026<br>Sürüm 1.13.0 • 02.08.2026</div>
+    <div class="menu-alt">Nizam Soft © 2026<br>Sürüm 1.14.0 • 02.08.2026</div>
   </nav>
 
   <!-- ANA İÇERİK -->
@@ -1664,25 +1678,8 @@ const Sayfa = {
     }
   },
   faturaGrup(ic){
-    if(App.aktifTip!=='alis'&&App.aktifTip!=='satis'){ App.aktifTip='alis'; App.aktifSekme='alis'; }
-    ic.innerHTML = `
-      <div class="ba-dosya" id="fatura-pdf-kutu" style="padding:18px;margin-bottom:16px" onclick="document.getElementById('fatura-pdf-input').click()">
-        <div class="ik" style="font-size:30px">📄</div>
-        <div class="b" style="font-size:14.5px">Fatura PDF'i yükle — otomatik doldur</div>
-        <div class="a">PDF'ten tarih, firma, fatura no ve tutar okunur; Alış mı Satış mı diye sorulur. (İstersen aşağıdan elle de girebilirsin.)</div>
-        <input type="file" id="fatura-pdf-input" accept=".pdf" style="display:none">
-      </div>
-      <div class="alt-secici">
-        <button data-t="alis"><span>🧾</span> Alış Faturası <span class="mini-rozet gider">GİDER</span></button>
-        <button data-t="satis"><span>🧾</span> Satış Faturası <span class="mini-rozet gelir">GELİR</span></button>
-      </div><div id="fatura-form"></div>`;
-    ic.querySelectorAll('.alt-secici button').forEach(b=>{ b.classList.toggle('aktif', b.dataset.t===App.aktifTip); b.addEventListener('click',()=>{ App.tipAyarla(b.dataset.t); this.faturaGrup(ic); }); });
-    const kutu=ic.querySelector('#fatura-pdf-kutu'), inp=ic.querySelector('#fatura-pdf-input');
-    inp.addEventListener('change', e=>{ if(e.target.files[0]) FaturaPDF.isle(e.target.files[0]); });
-    ['dragover','dragenter'].forEach(ev=>kutu.addEventListener(ev,e=>{e.preventDefault();kutu.classList.add('uzerinde');}));
-    ['dragleave','drop'].forEach(ev=>kutu.addEventListener(ev,e=>{e.preventDefault();kutu.classList.remove('uzerinde');}));
-    kutu.addEventListener('drop', e=>{ e.preventDefault(); const f=e.dataTransfer.files[0]; if(f) FaturaPDF.isle(f); });
-    Form.render(ic.querySelector('#fatura-form'), App.aktifTip);
+    App.aktifTip='alis'; App.aktifSekme='alis';
+    FaturaSihirbaz.baslat(ic);
   },
 
   /* ---------- HESAPLAR ---------- */
@@ -2803,6 +2800,8 @@ const Form = {
   yukle(tur, id){
     const is = Depo.veri.islemler.find(x=>x.id===id);
     if(!is) return;
+    // Alış/Satış faturaları artık sihirbazda düzenlenir
+    if(tur==='alis'||tur==='satis'){ FaturaSihirbaz.duzenle(id); return; }
     this.aktifKayit[tur]=id;
     this.bekleyenDosya = null;
     if(tur==='alis'||tur==='satis'){
@@ -3839,6 +3838,167 @@ const FaturaPDF = {
     Bildirim.goster('bilgi','Yeni Cari', h.kod+' '+h.ad+' oluşturuldu ve seçildi.',3500);
     return h.id;
   }
+};
+
+/* ==================================================================
+   Bölüm 10d: Fatura Sihirbazı (Yükle → Düzenle → Önizle & Kaydet)
+   ================================================================== */
+const FaturaSihirbaz = {
+  ic:null, adim:1, tip:'alis', dosya:null, v:null,
+  duzenId:null, mevcutDosyaMeta:null, mevcutDosyaId:null,
+  _bos(){ return {tarih:Yardimci.bugun(), firma:'', faturaNo:'', tutar:0, aciklama:'', hesapId:'', yabanci:false, paraBirimi:'TL', demirbasHesapId:'', iptal:false}; },
+  baslat(ic){ this.ic=ic; this.adim=1; this.tip='alis'; this.dosya=null; this.duzenId=null; this.mevcutDosyaMeta=null; this.mevcutDosyaId=null; this.v=this._bos(); this.ciz(); },
+  ciz(){
+    if(!this.ic) return;
+    this.ic.innerHTML = this.gostergeHTML() + `<div id="fw-govde"></div>`;
+    const g=this.ic.querySelector('#fw-govde');
+    if(this.adim===1) this.adim1(g);
+    else if(this.adim===2) this.adim2(g);
+    else this.adim3(g);
+  },
+  gostergeHTML(){
+    const A=[[1,'Yükle'],[2,'Düzenle'],[3,'Önizle & Kaydet']];
+    return `<div class="fw-adimlar">${A.map(([n,ad])=>`<div class="fw-adim ${n===this.adim?'aktif':''} ${n<this.adim?'tamam':''}"><span class="fw-nokta">${n<this.adim?'✓':n}</span>${ad}</div>`).join('<span class="fw-cizgi"></span>')}</div>`;
+  },
+  /* ADIM 1 — Yükle */
+  adim1(g){
+    g.innerHTML=`<div class="kart" style="text-align:center;padding:26px">
+      <div class="ba-dosya" id="fw-kutu" style="padding:36px" onclick="document.getElementById('fw-input').click()">
+        <div class="ik" style="font-size:44px">📄</div>
+        <div class="b">Fatura PDF'ini buraya sürükle veya tıkla</div>
+        <div class="a">Tarih, firma, fatura no ve tutar otomatik okunur — .pdf</div>
+        <input type="file" id="fw-input" accept=".pdf" style="display:none">
+      </div>
+      <div style="margin:16px 0 10px;color:var(--metin-soluk);font-size:13px">— veya —</div>
+      <button class="btn btn-cizgi" onclick="FaturaSihirbaz.elle()">✍️ PDF olmadan elle gir</button>
+    </div>`;
+    const kutu=g.querySelector('#fw-kutu'), inp=g.querySelector('#fw-input');
+    inp.addEventListener('change',e=>{ if(e.target.files[0]) this.pdfSec(e.target.files[0]); });
+    ['dragover','dragenter'].forEach(ev=>kutu.addEventListener(ev,e=>{e.preventDefault();kutu.classList.add('uzerinde');}));
+    ['dragleave','drop'].forEach(ev=>kutu.addEventListener(ev,e=>{e.preventDefault();kutu.classList.remove('uzerinde');}));
+    kutu.addEventListener('drop',e=>{e.preventDefault(); const f=e.dataTransfer.files[0]; if(f) this.pdfSec(f);});
+  },
+  async pdfSec(dosya){
+    Bildirim.goster('bilgi','Okunuyor','PDF okunuyor…',1500);
+    this.dosya=dosya;
+    try{
+      const a=FaturaPDF.ayikla(await FaturaPDF.metinCoz(dosya));
+      this.tip='alis';
+      this.v={ tarih:a.tarih||Yardimci.bugun(), firma:a.firma||'', faturaNo:a.faturaNo||'', tutar:a.yabanci?0:(a.tutar||0),
+        aciklama:(a.firma||'')+(a.yabanci?(' — '+Yardimci.sayiFormat(a.tutar)+' '+a.paraBirimi+' (TL gir)'):''),
+        hesapId:a.firma?(FaturaPDF.cariBulVeyaOlustur(a.firma,'320')||''):'', yabanci:a.yabanci, paraBirimi:a.paraBirimi, demirbasHesapId:'', iptal:false };
+      this.adim=2; this.ciz();
+    }catch(e){ console.error(e); Bildirim.goster('hata','Okunamadı','PDF okunamadı: '+e.message); }
+  },
+  elle(){ this.dosya=null; this.v=this._bos(); this.tip='alis'; this.adim=2; this.ciz(); },
+  /* ADIM 2 — Düzenle */
+  adim2(g){
+    const anaKod=this.tip==='alis'?'320':'120';
+    const cariEt=this.tip==='alis'?'Satıcı':'Alıcı';
+    const cariler=Hesap.altHesaplarByAna(anaKod);
+    const belge = this.dosya ? ('📎 '+this.dosya.name+' ('+Yardimci.boyutFormat(this.dosya.size)+')')
+                : (this.mevcutDosyaMeta ? ('📎 '+this.mevcutDosyaMeta.ad+' (mevcut)') : '');
+    g.innerHTML=`<div class="kart">
+      <div class="alt-secici" style="margin-bottom:18px">
+        <button class="${this.tip==='alis'?'aktif':''}" onclick="FaturaSihirbaz.tipDegis('alis')">🧾 Alış <span class="mini-rozet gider">GİDER</span></button>
+        <button class="${this.tip==='satis'?'aktif':''}" onclick="FaturaSihirbaz.tipDegis('satis')">🧾 Satış <span class="mini-rozet gelir">GELİR</span></button>
+      </div>
+      ${this.v.yabanci?`<div class="uyari-serit" style="border-color:var(--sari);margin-bottom:14px;padding:10px 12px">⚠ Yabancı para (<b>${this.v.paraBirimi}</b>) fatura — lütfen <b>TL tutarını</b> gir.</div>`:''}
+      <div class="form-grid">
+        <div class="form-alan"><label>Tarih <span class="zorunlu">*</span></label><input type="date" id="fw-tarih" value="${this.v.tarih}"></div>
+        <div class="form-alan"><label>${cariEt} Hesabı <span class="zorunlu">*</span></label>
+          <div style="display:flex;gap:8px"><select id="fw-hesap" style="flex:1"><option value="">— Seçiniz —</option>${cariler.map(h=>`<option value="${h.id}" ${h.id===this.v.hesapId?'selected':''}>${h.kod} - ${Yardimci.kacisHTML(Hesap.hesapAdi(h))}</option>`).join('')}</select><button class="btn btn-cizgi btn-kucuk" onclick="FaturaSihirbaz.yeniCari()" title="Yeni ${cariEt}">＋</button></div></div>
+        <div class="form-alan"><label>Fatura No <span class="zorunlu">*</span></label><input id="fw-faturano" value="${Yardimci.kacisHTML(this.v.faturaNo)}" placeholder="Örn: A-2026-001"></div>
+        <div class="form-alan"><label>Tutar (₺) <span class="zorunlu">*</span></label><input id="fw-tutar" value="${this.v.tutar?Yardimci.sayiFormat(this.v.tutar):''}" placeholder="0,00"></div>
+        <div class="form-alan tam"><label>Açıklama</label><input id="fw-aciklama" value="${Yardimci.kacisHTML(this.v.aciklama)}" placeholder="İsteğe bağlı"></div>
+      </div>
+      <div style="margin-top:14px;display:flex;align-items:center;gap:16px;flex-wrap:wrap">
+        ${belge?`<span class="dosya-adi">${Yardimci.kacisHTML(belge)}</span>`:`<span style="color:var(--metin-soluk);font-size:13px">Belge eklenmedi</span>`}
+        <label class="gsw" style="margin-left:auto;font-size:13px"><input type="checkbox" id="fw-iptal" ${this.v.iptal?'checked':''}> İptal edildi</label>
+      </div>
+      <div class="buton-grup" style="margin-top:22px;display:flex;gap:10px">
+        <button class="btn btn-cizgi" onclick="FaturaSihirbaz.geri(1)">← Geri</button>
+        <button class="btn btn-kirmizi" style="margin-left:auto" onclick="FaturaSihirbaz.ileri()">Önizlemeye Geç →</button>
+      </div>
+    </div>`;
+  },
+  oku2(){
+    const g=id=>document.getElementById(id);
+    if(!g('fw-tarih')) return;
+    this.v.tarih=g('fw-tarih').value;
+    this.v.hesapId=g('fw-hesap').value;
+    this.v.faturaNo=g('fw-faturano').value.trim();
+    this.v.tutar=Yardimci.paraCoz(g('fw-tutar').value);
+    this.v.aciklama=g('fw-aciklama').value.trim();
+    this.v.iptal=g('fw-iptal').checked;
+  },
+  tipDegis(t){ this.oku2(); if(this.tip!==t){ this.tip=t; this.v.hesapId=''; } this.ciz(); },
+  yeniCari(){
+    this.oku2();
+    const anaKod=this.tip==='alis'?'320':'120', et=this.tip==='alis'?'Satıcı':'Alıcı';
+    Modal.ac('Yeni '+et, `<div class="form-alan"><label>${et} Adı <span class="zorunlu">*</span></label><input id="fw-yeniad" placeholder="Firma / kişi adı"></div>`,
+      `<button class="btn btn-gri" onclick="Modal.kapat()">Vazgeç</button><button class="btn btn-kirmizi" onclick="FaturaSihirbaz.yeniCariKaydet()">Ekle ve Seç</button>`);
+    setTimeout(()=>{ const el=document.getElementById('fw-yeniad'); if(el) el.focus(); },50);
+  },
+  yeniCariKaydet(){
+    const ad=(document.getElementById('fw-yeniad').value||'').trim();
+    if(!ad){ Bildirim.goster('hata','Eksik','Ad girin.'); return; }
+    this.v.hesapId = FaturaPDF.cariBulVeyaOlustur(ad, this.tip==='alis'?'320':'120');
+    Modal.kapat(); this.ciz();
+  },
+  ileri(){
+    this.oku2();
+    if(!this.v.tarih){ Bildirim.goster('hata','Eksik','Tarih girin.'); return; }
+    if(!this.v.hesapId){ Bildirim.goster('hata','Eksik',(this.tip==='alis'?'Satıcı':'Alıcı')+' hesabı seçin.'); return; }
+    if(!this.v.faturaNo){ Bildirim.goster('hata','Eksik','Fatura No girin.'); return; }
+    if(!(this.v.tutar>0)){ Bildirim.goster('hata','Eksik','Sıfırdan büyük tutar girin.'+(this.v.yabanci?' (TL karşılığı)':'')); return; }
+    this.adim=3; this.ciz();
+  },
+  geri(a){ if(this.adim===2) this.oku2(); this.adim=a; this.ciz(); },
+  /* ADIM 3 — Önizle & Kaydet */
+  adim3(g){
+    const cari=Hesap.altBul(this.v.hesapId), cariAd=cari?(cari.kod+' '+Hesap.hesapAdi(cari)):'—', P=Yardimci.paraFormat;
+    const belge=this.dosya?('📎 '+this.dosya.name):(this.mevcutDosyaMeta?('📎 '+this.mevcutDosyaMeta.ad):'—');
+    const bilgi=[['Tür',this.tip==='alis'?'Alış Faturası (Gider)':'Satış Faturası (Gelir)'],['Tarih',Yardimci.tarihFormat(this.v.tarih)],[this.tip==='alis'?'Satıcı':'Alıcı',cariAd],['Fatura No',this.v.faturaNo],['Tutar',P(this.v.tutar)],['Açıklama',this.v.aciklama||'—'],['Belge',belge],['Durum',this.v.iptal?'İPTAL edildi':'Açık (ödenmemiş)']];
+    g.innerHTML=`<div class="kart">
+      <h3 style="font-size:16px;margin-bottom:14px">Önizleme — ${this.tip==='alis'?'Alış':'Satış'} Faturası</h3>
+      <div class="fw-ozet">${bilgi.map(([k,val])=>`<div class="fw-oz-satir"><span>${k}</span><b>${Yardimci.kacisHTML(String(val))}</b></div>`).join('')}</div>
+      <div style="margin-top:16px;background:var(--gri);border-radius:10px;padding:14px">
+        <div style="font-size:12px;font-weight:700;color:var(--metin-soluk);margin-bottom:8px">MUHASEBE KAYDI</div>
+        <div class="fw-oz-satir" style="border:none;padding:6px 0"><span>${Yardimci.kacisHTML(cariAd)}</span><b class="${this.tip==='alis'?'alacak':'borc'}">${this.tip==='alis'?'Alacak':'Borç'} ${P(this.v.tutar)}</b></div>
+        <div style="font-size:12.5px;color:var(--metin-soluk);margin-top:4px">${this.tip==='alis'?'Tutar dönem giderine yansır. Ödemesini':'Tutar dönem gelirine yansır. Tahsilatını'} Banka/Kart ekranından bu faturayı seçerek yaparsın.</div>
+      </div>
+      <div class="buton-grup" style="margin-top:22px;display:flex;gap:10px">
+        <button class="btn btn-cizgi" onclick="FaturaSihirbaz.geri(2)">← Düzenle</button>
+        <button class="btn btn-yesil" style="margin-left:auto" onclick="FaturaSihirbaz.kaydet()">💾 Kaydet</button>
+      </div>
+    </div>`;
+  },
+  duzenle(islemId){
+    const is=Depo.veri.islemler.find(x=>x.id===islemId); if(!is) return;
+    this.duzenId=islemId; this.tip=is.tur; this.dosya=null;
+    this.mevcutDosyaMeta=is.dosyaMeta||null; this.mevcutDosyaId=is.dosyaId||null;
+    this.v={ tarih:is.tarih, firma:'', faturaNo:is.faturaNo||'', tutar:is.tutar||0, aciklama:is.aciklama||'', hesapId:is.hesapId||'', yabanci:false, paraBirimi:'TL', demirbasHesapId:is.demirbasHesapId||'', iptal:!!is.iptal };
+    this.adim=2; this.ciz();
+  },
+  async kaydet(){
+    const v=this.v, duzenId=this.duzenId, eski=duzenId?Depo.veri.islemler.find(x=>x.id===duzenId):null;
+    let dosyaId=null, dosyaMeta=null;
+    if(this.dosya){
+      if(eski&&eski.dosyaId) await DosyaDepo.sil(eski.dosyaId);
+      const data=await this._dataUrl(this.dosya); dosyaId=Yardimci.yeniId();
+      await DosyaDepo.kaydet({id:dosyaId, ad:this.dosya.name, tur:this.dosya.type||'application/pdf', boyut:this.dosya.size, data});
+      dosyaMeta={ad:this.dosya.name, tur:this.dosya.type||'application/pdf', boyut:this.dosya.size};
+    }else if(eski){ dosyaId=eski.dosyaId; dosyaMeta=eski.dosyaMeta; }
+    const islem={ id:duzenId||Yardimci.yeniId(), no:duzenId?eski.no:Depo.yeniIslemNo(), tur:this.tip, tarih:v.tarih, hesapId:v.hesapId, faturaNo:v.faturaNo, aciklama:v.aciklama, tutar:v.tutar, matrah:v.tutar, kdvOran:0, kdvTutar:0, demirbasHesapId:v.demirbasHesapId||null, iptal:v.iptal, ekNot:eski?eski.ekNot:'', dosyaId, dosyaMeta };
+    if(duzenId){ const i=Depo.veri.islemler.findIndex(x=>x.id===duzenId); Depo.veri.islemler[i]=islem; }
+    else Depo.veri.islemler.push(islem);
+    Form.hareketUret(islem);
+    Depo.kaydet();
+    Bildirim.goster('basari','Kaydedildi', (this.tip==='alis'?'Alış':'Satış')+' faturası '+(duzenId?'güncellendi':'kaydedildi')+(dosyaMeta?' (PDF eklendi)':'')+'.');
+    this.baslat(this.ic);
+  },
+  _dataUrl(dosya){ return new Promise((res,rej)=>{ const r=new FileReader(); r.onload=()=>res(r.result); r.onerror=rej; r.readAsDataURL(dosya); }); }
 };
 
 /* ==================================================================
