@@ -612,7 +612,7 @@ table.nakit th.bugun-sutun{background:var(--kirmizi)}
         </ul>
       </li>
     </ul>
-    <div class="menu-alt">Nizam Soft © 2026<br>Sürüm 1.16.1 • 02.08.2026</div>
+    <div class="menu-alt">Nizam Soft © 2026<br>Sürüm 1.16.2 • 02.08.2026</div>
   </nav>
 
   <!-- ANA İÇERİK -->
@@ -1068,6 +1068,10 @@ const Hesap = {
     const list = Depo.veri.hareketler.filter(h=>h.hesapId===hesapId);
     list.sort((a,b)=>{
       if(a.tarih!==b.tarih) return a.tarih.localeCompare(b.tarih);
+      // Aynı gün: önce para girişleri (borç), sonra çıkışlar (alacak) —
+      // yürüyen "Güncel Bakiye" yapay olarak eksiye düşmesin.
+      const ag=(Number(a.borc)||0)>0?0:1, bg=(Number(b.borc)||0)>0?0:1;
+      if(ag!==bg) return ag-bg;
       return (a.islemNo||'').localeCompare(b.islemNo||'');
     });
     const hesap = this.altBul(hesapId);
