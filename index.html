@@ -183,12 +183,15 @@ h2.bolum-baslik::before{content:"";width:5px;height:22px;background:var(--kirmiz
 .tablo-sar{overflow-x:auto;border-radius:var(--radius);border:1px solid var(--kenar)}
 table.veri{width:100%;border-collapse:collapse;background:var(--kart-bg);font-size:14px}
 table.veri th{
-  background:var(--antrasit);color:#fff;text-align:left;padding:12px 14px;
-  font-weight:600;font-size:13px;white-space:nowrap;position:sticky;top:0;
+  background:var(--antrasit);color:#fff;text-align:left;padding:13px 16px;
+  font-weight:600;font-size:12.5px;letter-spacing:.02em;white-space:nowrap;position:sticky;top:0;
 }
-table.veri td{padding:11px 14px;border-bottom:1px solid var(--kenar);white-space:nowrap}
+table.veri td{padding:13px 16px;border-bottom:1px solid var(--kenar);white-space:nowrap}
+table.veri th.sag-hiza,table.veri td.sag-hiza{font-variant-numeric:tabular-nums}
+table.veri tbody tr:nth-child(even){background:rgba(0,0,0,.028)}
+body.tema-koyu table.veri tbody tr:nth-child(even){background:rgba(255,255,255,.035)}
 table.veri tbody tr{cursor:default;transition:background .15s}
-table.veri tbody tr:hover{background:rgba(211,32,39,.06)}
+table.veri tbody tr:hover{background:rgba(211,32,39,.08)}
 table.veri tbody tr.secili{background:rgba(211,32,39,.14);box-shadow:inset 3px 0 0 var(--kirmizi)}
 table.veri tr.ana-hesap-satir{background:var(--gri);font-weight:700}
 body.tema-koyu table.veri tr.ana-hesap-satir{background:var(--gri-orta)}
@@ -609,7 +612,7 @@ table.nakit th.bugun-sutun{background:var(--kirmizi)}
         </ul>
       </li>
     </ul>
-    <div class="menu-alt">Nizam Soft © 2026<br>Sürüm 1.15.0 • 02.08.2026</div>
+    <div class="menu-alt">Nizam Soft © 2026<br>Sürüm 1.15.1 • 02.08.2026</div>
   </nav>
 
   <!-- ANA İÇERİK -->
@@ -3195,12 +3198,8 @@ const Detay = {
         </div>
         ${detayEk}
         <div class="buton-grup no-print" style="margin-bottom:18px">
-          <button class="btn btn-kirmizi" onclick="Detay.yeniIslem('${h.id}')">＋ Yeni İşlem</button>
-          <button class="btn btn-gri" onclick="AltHesap.duzenleModal('${h.id}')">✎ Düzenle</button>
-          <button class="btn btn-gri" onclick="AltHesap.sil('${h.id}')">🗑 Sil</button>
-          <button class="btn btn-koyu" onclick="Detay.yazdir('${h.id}')">🖨 Yazdır</button>
-          <button class="btn btn-yesil" onclick="Detay.excel('${h.id}')">📊 Excel'e Aktar</button>
           ${h.anaKod==='102'?`<button class="btn btn-koyu" onclick="BankaAktar.ac('${h.id}')">📥 İçe Aktar</button>`:''}
+          <button class="btn btn-yesil" onclick="Detay.excel('${h.id}')">📊 Excel'e Aktar</button>
           <button class="btn btn-cizgi" onclick="App.sayfaGit('hesaplar')">← Geri Dön</button>
         </div>
         <div class="arac-cubuk no-print">
