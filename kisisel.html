@@ -62,8 +62,10 @@ body.menu-kapali .menu-oge{justify-content:center}
 /* Tablo */
 .tablo-sar{overflow-x:auto;border-radius:var(--radius);border:1px solid var(--kenar)}
 table.veri{width:100%;border-collapse:collapse;background:var(--kart-bg);font-size:14px}
-table.veri th{background:var(--antrasit);color:#fff;text-align:left;padding:11px 13px;font-size:12.5px;white-space:nowrap}
-table.veri td{padding:10px 13px;border-bottom:1px solid var(--kenar);white-space:nowrap}
+table.veri th{background:var(--antrasit);color:#fff;text-align:left;padding:11px 13px;font-size:12.5px;white-space:nowrap;border-right:1px solid rgba(255,255,255,.10)}
+table.veri td{padding:10px 13px;border-bottom:1px solid var(--kenar);border-right:1px solid rgba(0,0,0,.05);white-space:nowrap}
+table.veri th:last-child,table.veri td:last-child{border-right:none}
+body.tema-koyu table.veri td{border-right-color:rgba(255,255,255,.06)}
 table.veri tbody tr:hover{background:var(--gri)}
 .sag-hiza{text-align:right}
 .gelir{color:var(--yesil);font-weight:700}.gider-r{color:var(--kirmizi);font-weight:700}
@@ -191,7 +193,7 @@ table.veri tbody tr:hover{background:var(--gri)}
       <li class="menu-oge" data-sayfa="kategoriler"><span class="ik">🏷️</span><span class="etiket">Kategoriler</span></li>
       <li class="menu-oge" data-sayfa="yedek"><span class="ik">💾</span><span class="etiket">Yedekleme</span></li>
     </ul>
-    <div class="menu-alt">Nizam Soft © 2026<br>Kişisel • Sürüm 0.4.0</div>
+    <div class="menu-alt">Nizam Soft © 2026<br>Kişisel • Sürüm 0.4.1</div>
   </nav>
   <div class="icerik">
     <header class="ust-bar">
