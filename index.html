@@ -193,6 +193,10 @@ body.tema-koyu table.veri tbody tr:nth-child(even){background:rgba(255,255,255,.
 table.veri tbody tr{cursor:default;transition:background .15s}
 table.veri tbody tr:hover{background:rgba(211,32,39,.08)}
 table.veri tbody tr.secili{background:rgba(211,32,39,.14);box-shadow:inset 3px 0 0 var(--kirmizi)}
+/* Hareket yön göstergesi: giriş yeşil, çıkış kırmızı ince sol şerit */
+table.veri tbody tr.har-g td:first-child,table.veri tr.har-g td:first-child{box-shadow:inset 4px 0 0 var(--yesil)}
+table.veri tr.har-c td:first-child{box-shadow:inset 4px 0 0 var(--kirmizi)}
+table.veri td .kod-onek{font-family:"Consolas","SF Mono",monospace;font-size:12.5px;color:var(--metin-soluk);margin-right:6px}
 table.veri tr.ana-hesap-satir{background:var(--gri);font-weight:700}
 body.tema-koyu table.veri tr.ana-hesap-satir{background:var(--gri-orta)}
 table.veri tr.ana-hesap-satir:hover{background:var(--gri-orta)}
@@ -612,7 +616,7 @@ table.nakit th.bugun-sutun{background:var(--kirmizi)}
         </ul>
       </li>
     </ul>
-    <div class="menu-alt">Nizam Soft © 2026<br>Sürüm 1.16.4 • 02.08.2026</div>
+    <div class="menu-alt">Nizam Soft © 2026<br>Sürüm 1.16.5 • 02.08.2026</div>
   </nav>
 
   <!-- ANA İÇERİK -->
@@ -3232,16 +3236,18 @@ const Detay = {
       const etkiRenk = x.etki>=0 ? 'borc' : 'alacak';
       const etkiYazi = (x.etki>=0?'+':'') + Yardimci.paraFormat(x.etki);
       const ba = this._bankaAcik;
-      const karsiAd = is.sahis || (gider?(gider.kod+' '+Hesap.hesapAdi(gider)):'') || '-';
-      return `<tr>
+      const karsiAd = is.sahis || (gider?(gider.kod+' '+Hesap.hesapAdi(gider)):'') || '';
+      const kp = karsiAd ? karsiAd.split(' ') : null;
+      const karsiHtml = kp ? `<span class="kod-onek">${Yardimci.kacisHTML(kp[0])}</span>${Yardimci.kacisHTML(kp.slice(1).join(' '))}` : '-';
+      return `<tr class="${x.borc>0?'har-g':'har-c'}">
         <td>${Yardimci.tarihFormat(x.tarih)}</td>
         <td>${Yardimci.kacisHTML(is.islemAd||'')}</td>
-        <td>${Yardimci.kacisHTML(karsiAd)}</td>
+        <td>${karsiHtml}</td>
         <td>${Yardimci.kacisHTML(is.aciklama||'')}</td>
         ${ba?`<td style="color:var(--metin-soluk);font-size:12.5px">${Yardimci.kacisHTML(is.bankaAciklama||'')}</td>`:''}
         <td class="sag-hiza borc">${x.borc?Yardimci.paraFormat(x.borc):'-'}</td>
         <td class="sag-hiza alacak">${x.alacak?Yardimci.paraFormat(x.alacak):'-'}</td>
-        <td class="sag-hiza"><b>${Yardimci.paraFormat(x.guncelBakiye)}</b></td>
+        <td class="sag-hiza"><b style="color:${x.guncelBakiye<0?'var(--kirmizi)':'inherit'}">${Yardimci.paraFormat(x.guncelBakiye)}</b></td>
         <td class="no-print satir-ic">
           <button class="btn btn-cizgi btn-kucuk" onclick="Detay.islemDuzenle('${x.islemId}')">✎</button>
           <button class="btn btn-cizgi btn-kucuk" onclick="Detay.islemSil('${x.islemId}','${h.id}')">🗑</button>
@@ -3269,12 +3275,12 @@ const Detay = {
             <button class="btn btn-cizgi btn-kucuk no-print" onclick="DosyaGoster.islemDosya('${is.id}','indir')">⬇</button>`;
         }
       }
-      return `<tr>
+      return `<tr class="${x.borc>0?'har-g':'har-c'}">
         <td>${Yardimci.tarihFormat(x.tarih)}</td>
         <td>${Yardimci.kacisHTML(x.aciklama||'')}</td>
         <td class="sag-hiza borc">${x.borc?Yardimci.paraFormat(x.borc):'-'}</td>
         <td class="sag-hiza alacak">${x.alacak?Yardimci.paraFormat(x.alacak):'-'}</td>
-        <td class="sag-hiza"><b>${Yardimci.paraFormat(x.guncelBakiye)}</b></td>
+        <td class="sag-hiza"><b style="color:${x.guncelBakiye<0?'var(--kirmizi)':'inherit'}">${Yardimci.paraFormat(x.guncelBakiye)}</b></td>
         <td>${faturaHtml}</td>
         <td>${Yardimci.kacisHTML(is.faturaNo||'-')}</td>
         <td class="no-print satir-ic">
