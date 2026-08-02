@@ -595,7 +595,7 @@ table.nakit th.bugun-sutun{background:var(--kirmizi)}
         </ul>
       </li>
     </ul>
-    <div class="menu-alt">Nizam Soft © 2026<br>Sürüm 1.11.0 • 02.08.2026</div>
+    <div class="menu-alt">Nizam Soft © 2026<br>Sürüm 1.11.1 • 02.08.2026</div>
   </nav>
 
   <!-- ANA İÇERİK -->
@@ -3479,7 +3479,7 @@ const BankaAktar = {
         <button class="btn btn-yesil" style="margin-left:auto" onclick="BankaAktar.aktar()">💾 Seçili Satırları Aktar</button>
       </div>
       <div class="ba-tsar"><table class="ba-tablo">
-        <thead><tr><th style="width:34px">Al</th><th style="width:82px">Tarih</th><th>Banka Açıklaması</th><th style="width:64px">Yön</th><th class="sag-hiza" style="width:110px">Tutar</th><th style="width:240px">Karşı Hesap</th><th style="width:150px">İşlem Adı</th></tr></thead>
+        <thead><tr><th style="width:34px">Al</th><th style="width:82px">Tarih</th><th>Banka Açıklaması</th><th style="width:64px">Yön</th><th class="sag-hiza" style="width:110px">Tutar</th><th style="width:230px">Karşı Hesap</th><th style="width:140px">İşlem Adı</th><th style="width:180px">Açıklama (kendi notun)</th></tr></thead>
         <tbody>${this.satirlar.map((s,i)=>this.satirHTML(s,i)).join('')}</tbody>
       </table></div>`;
     this.guncelle();
@@ -3495,6 +3495,7 @@ const BankaAktar = {
       <td class="sag-hiza" style="font-weight:700;color:${s.yon==='giris'?'var(--yesil)':'var(--kirmizi)'}">${s.yon==='giris'?'+':'−'}${Yardimci.paraFormat(s.tutar)}</td>
       <td><select class="ba-k" data-i="${i}" onchange="BankaAktar.selChange(${i})">${this.hesapOpsiyon(s.oneri)}</select></td>
       <td><input type="text" class="ba-n" data-i="${i}" value="${Yardimci.kacisHTML(this.islemAdOner(s,s.oneri))}"></td>
+      <td><input type="text" class="ba-a" data-i="${i}" placeholder="İsteğe bağlı not"></td>
     </tr>`;
   },
   hesapOpsiyon(sec){
@@ -3559,6 +3560,7 @@ const BankaAktar = {
       if(!karsiId || karsiId.startsWith('__')){ atlanan++; return; }
       const karsi = Hesap.altBul(karsiId); if(!karsi){ atlanan++; return; }
       const islemAd = (tr.querySelector('.ba-n').value||'').trim() || this.islemAdOner(s, karsiId);
+      const aciklama = (tr.querySelector('.ba-a').value||'').trim();
       const gider = karsi.anaKod==='770';
       const islem = {
         id: Yardimci.yeniId(),
@@ -3573,7 +3575,7 @@ const BankaAktar = {
         giderHesapId: gider ? karsiId : null,
         kapatilanFaturaId: null,
         tutar: s.tutar,
-        aciklama: '',
+        aciklama: aciklama,
         bankaAciklama: s.bankaAc,
         fisNo: s.fisNo || '',
         kaynak: 'banka-ice'
