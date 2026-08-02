@@ -612,7 +612,7 @@ table.nakit th.bugun-sutun{background:var(--kirmizi)}
         </ul>
       </li>
     </ul>
-    <div class="menu-alt">Nizam Soft © 2026<br>Sürüm 1.15.2 • 02.08.2026</div>
+    <div class="menu-alt">Nizam Soft © 2026<br>Sürüm 1.16.0 • 02.08.2026</div>
   </nav>
 
   <!-- ANA İÇERİK -->
@@ -1655,7 +1655,7 @@ const Sayfa = {
     const ic = el.querySelector('#grup-icerik');
     if(App.aktifGrup==='banka') this.bankaGrup(ic);
     else if(App.aktifGrup==='fatura') this.faturaGrup(ic);
-    else { App.aktifTip='kart'; App.aktifSekme='kart'; Form.render(ic,'kart'); }
+    else { App.aktifTip='kart'; App.aktifSekme='kart'; KartSihirbaz.baslat(ic); }
   },
   bankaGrup(ic){
     // Banka grubu artık yalnızca dosyadan toplu aktarım. Manuel banka formu
@@ -2795,8 +2795,9 @@ const Form = {
   yukle(tur, id){
     const is = Depo.veri.islemler.find(x=>x.id===id);
     if(!is) return;
-    // Alış/Satış faturaları artık sihirbazda düzenlenir
+    // Alış/Satış faturaları ve kredi kartı artık sihirbazda düzenlenir
     if(tur==='alis'||tur==='satis'){ FaturaSihirbaz.duzenle(id); return; }
+    if(tur==='kart'){ KartSihirbaz.duzenle(id); return; }
     this.aktifKayit[tur]=id;
     this.bekleyenDosya = null;
     if(tur==='alis'||tur==='satis'){
@@ -3970,6 +3971,157 @@ const FaturaSihirbaz = {
     this.baslat(this.ic);
   },
   _dataUrl(dosya){ return new Promise((res,rej)=>{ const r=new FileReader(); r.onload=()=>res(r.result); r.onerror=rej; r.readAsDataURL(dosya); }); }
+};
+
+/* ==================================================================
+   Bölüm 10e: Kredi Kartı Sihirbazı (Harcama → Detay → Önizle & Kaydet)
+   ================================================================== */
+const KartSihirbaz = {
+  ic:null, adim:1, duzenId:null, mevcutDosyaMeta:null, mevcutDosyaId:null, dosya:null, v:null,
+  _bos(){ return {tarih:Yardimci.bugun(), kartId:'', islemAd:'', tutar:0, karsi:'', odemeTipi:'tek', taksitSayisi:1, ilkTaksit:'', odemeGunu:'', aciklama:''}; },
+  baslat(ic){ this.ic=ic; this.adim=1; this.duzenId=null; this.mevcutDosyaMeta=null; this.mevcutDosyaId=null; this.dosya=null; this.v=this._bos();
+    const kartlar=Hesap.altHesaplarByAna('309'); if(kartlar.length===1) this.v.kartId=kartlar[0].id;
+    this.ciz(); },
+  ciz(){
+    if(!this.ic) return;
+    this.ic.innerHTML = this.gosterge() + `<div id="ks-govde"></div>`;
+    const g=this.ic.querySelector('#ks-govde');
+    if(this.adim===1) this.adim1(g); else if(this.adim===2) this.adim2(g); else this.adim3(g);
+  },
+  gosterge(){
+    const A=[[1,'Harcama'],[2,'Detay'],[3,'Önizle & Kaydet']];
+    return `<div class="fw-adimlar">${A.map(([n,ad])=>`<div class="fw-adim ${n===this.adim?'aktif':''} ${n<this.adim?'tamam':''}"><span class="fw-nokta">${n<this.adim?'✓':n}</span>${ad}</div>`).join('<span class="fw-cizgi"></span>')}</div>`;
+  },
+  /* ADIM 1 — Harcama */
+  adim1(g){
+    const kartlar=Hesap.altHesaplarByAna('309');
+    if(!kartlar.length){ g.innerHTML=`<div class="kart"><div class="bos-mesaj">Önce <b>Hesaplar</b>'dan bir <b>Kredi Kartı (309)</b> hesabı ekleyin.</div><div class="buton-grup" style="margin-top:12px"><button class="btn btn-cizgi btn-kucuk" onclick="KartSihirbaz.yeniHesap('309')">＋ Kredi Kartı Ekle</button></div></div>`; return; }
+    g.innerHTML=`<div class="kart"><div class="form-grid">
+      <div class="form-alan"><label>Kredi Kartı <span class="zorunlu">*</span></label>
+        <div style="display:flex;gap:8px"><select id="ks-kart" style="flex:1"><option value="">— Seçiniz —</option>${kartlar.map(h=>`<option value="${h.id}" ${h.id===this.v.kartId?'selected':''}>${h.kod} - ${Yardimci.kacisHTML(Hesap.hesapAdi(h))}</option>`).join('')}</select><button class="btn btn-cizgi btn-kucuk" onclick="KartSihirbaz.yeniHesap('309')" title="Yeni Kart">＋</button></div></div>
+      <div class="form-alan"><label>İşlem Tarihi <span class="zorunlu">*</span></label><input type="date" id="ks-tarih" value="${this.v.tarih}"></div>
+      <div class="form-alan"><label>İşlem Adı <span class="zorunlu">*</span></label><input id="ks-islemad" value="${Yardimci.kacisHTML(this.v.islemAd)}" placeholder="Örn: Bilgisayar alımı"></div>
+      <div class="form-alan"><label>Toplam Tutar (₺) <span class="zorunlu">*</span></label><input id="ks-tutar" value="${this.v.tutar?Yardimci.sayiFormat(this.v.tutar):''}" placeholder="0,00"></div>
+    </div>
+    <div class="buton-grup" style="margin-top:20px;display:flex"><button class="btn btn-kirmizi" style="margin-left:auto" onclick="KartSihirbaz.ileri1()">Devam →</button></div>
+    </div>`;
+  },
+  oku1(){ const g=id=>document.getElementById(id); if(!g('ks-kart'))return; this.v.kartId=g('ks-kart').value; this.v.tarih=g('ks-tarih').value; this.v.islemAd=g('ks-islemad').value.trim(); this.v.tutar=Yardimci.paraCoz(g('ks-tutar').value); },
+  ileri1(){ this.oku1();
+    if(!this.v.kartId){ Bildirim.goster('hata','Eksik','Kredi kartı seçin.'); return; }
+    if(!this.v.tarih){ Bildirim.goster('hata','Eksik','Tarih girin.'); return; }
+    if(!this.v.islemAd){ Bildirim.goster('hata','Eksik','İşlem adı girin.'); return; }
+    if(!(this.v.tutar>0)){ Bildirim.goster('hata','Eksik','Sıfırdan büyük tutar girin.'); return; }
+    this.adim=2; this.ciz();
+  },
+  /* ADIM 2 — Detay (karşı hesap + ödeme) */
+  adim2(g){
+    const taksit=this.v.odemeTipi==='taksit';
+    g.innerHTML=`<div class="kart">
+      <div class="form-alan tam" style="margin-bottom:16px"><label>Bu harcama ne için? <span class="zorunlu">*</span></label>
+        <div style="display:flex;gap:8px"><select id="ks-karsi" style="flex:1" onchange="KartSihirbaz.karsiChange()">${this.karsiOpsiyon(this.v.karsi)}</select></div>
+        <div style="font-size:12px;color:var(--metin-soluk);margin-top:5px">Bir faturayı ödüyorsan onu seç; değilse gider hesabı ya da satıcı seç.</div></div>
+      <label style="display:block;font-size:13px;font-weight:600;color:var(--metin-soluk);margin-bottom:8px">Ödeme Tipi <span class="zorunlu">*</span></label>
+      <div class="alt-secici" style="margin-bottom:16px">
+        <button class="${!taksit?'aktif':''}" onclick="KartSihirbaz.odemeTipi('tek')">Tek Çekim</button>
+        <button class="${taksit?'aktif':''}" onclick="KartSihirbaz.odemeTipi('taksit')">Taksitli</button>
+      </div>
+      ${taksit?`<div class="form-grid">
+        <div class="form-alan"><label>Taksit Sayısı <span class="zorunlu">*</span></label><input type="number" id="ks-taksit" min="1" max="120" value="${this.v.taksitSayisi||2}"></div>
+        <div class="form-alan"><label>İlk Taksit Tarihi</label><input type="date" id="ks-ilktaksit" value="${this.v.ilkTaksit||''}"></div>
+        <div class="form-alan"><label>Kart Ödeme Günü</label><input type="number" id="ks-odemegunu" min="1" max="31" value="${this.v.odemeGunu||''}" placeholder="Ayın günü"></div>
+      </div>`:''}
+      <div class="form-alan tam" style="margin-top:6px"><label>Açıklama</label><input id="ks-aciklama" value="${Yardimci.kacisHTML(this.v.aciklama)}" placeholder="İsteğe bağlı"></div>
+      <div class="buton-grup" style="margin-top:20px;display:flex;gap:10px">
+        <button class="btn btn-cizgi" onclick="KartSihirbaz.geri(1)">← Geri</button>
+        <button class="btn btn-kirmizi" style="margin-left:auto" onclick="KartSihirbaz.ileri2()">Önizlemeye Geç →</button>
+      </div></div>`;
+  },
+  karsiOpsiyon(sec){
+    let h=`<option value="">— Seçiniz —</option>`;
+    const fat=Fatura.acikFaturalar('cikis');
+    if(fat.length){ h+=`<optgroup label="Ödenecek Faturalar">`+fat.map(is=>{const c=Hesap.altBul(is.hesapId);return `<option value="f:${is.id}" ${('f:'+is.id)===sec?'selected':''}>${Yardimci.kacisHTML(is.faturaNo||is.no)} · ${c?Yardimci.kacisHTML(Hesap.hesapAdi(c)):'?'} · Kalan ${Yardimci.paraFormat(Fatura.kalan(is))}</option>`;}).join('')+`</optgroup>`; }
+    const grup=(lbl,kod)=>{const l=Hesap.altHesaplarByAna(kod);return l.length?`<optgroup label="${lbl}">`+l.map(x=>`<option value="h:${x.id}" ${('h:'+x.id)===sec?'selected':''}>${x.kod} - ${Yardimci.kacisHTML(Hesap.hesapAdi(x))}</option>`).join('')+`</optgroup>`:'';};
+    h+=grup('Gider (770)','770')+grup('Satıcılar (320)','320')+grup('Ortaklar (331)','331')+grup('Alıcılar (120)','120');
+    h+=`<optgroup label="Yeni Ekle"><option value="__y770">＋ Yeni Gider</option><option value="__y320">＋ Yeni Satıcı</option></optgroup>`;
+    return h;
+  },
+  karsiChange(){ const s=document.getElementById('ks-karsi'); if(s&&s.value.startsWith('__y')){ const ak=s.value.slice(3); s.value=''; this.yeniHesap(ak); } },
+  odemeTipi(t){ this.oku2(); this.v.odemeTipi=t; if(t==='taksit'&&(!this.v.taksitSayisi||this.v.taksitSayisi<2)) this.v.taksitSayisi=2; this.adim2(this.ic.querySelector('#ks-govde')); },
+  oku2(){ const g=id=>document.getElementById(id); const k=g('ks-karsi'); if(k&&!k.value.startsWith('__')) this.v.karsi=k.value; if(g('ks-taksit')) this.v.taksitSayisi=Math.max(1,Number(g('ks-taksit').value)||1); if(g('ks-ilktaksit')) this.v.ilkTaksit=g('ks-ilktaksit').value; if(g('ks-odemegunu')) this.v.odemeGunu=Number(g('ks-odemegunu').value)||''; if(g('ks-aciklama')) this.v.aciklama=g('ks-aciklama').value.trim(); },
+  yeniHesap(anaKod){ this.oku2(); const et={'309':'Kredi Kartı','770':'Gider','320':'Satıcı'}[anaKod]||'Hesap';
+    Modal.ac('Yeni '+et, `<div class="form-alan"><label>${et} Adı <span class="zorunlu">*</span></label><input id="ks-yeniad" placeholder="Ad"></div>`,
+      `<button class="btn btn-gri" onclick="Modal.kapat()">Vazgeç</button><button class="btn btn-kirmizi" onclick="KartSihirbaz.yeniHesapKaydet('${anaKod}')">Ekle ve Seç</button>`);
+    setTimeout(()=>{const e=document.getElementById('ks-yeniad');if(e)e.focus();},50);
+  },
+  yeniHesapKaydet(anaKod){ const ad=(document.getElementById('ks-yeniad').value||'').trim(); if(!ad){Bildirim.goster('hata','Eksik','Ad girin.');return;}
+    const tur={'309':'kart','770':'gider','320':'satici'}[anaKod];
+    let h=Depo.veri.altHesaplar.find(x=>x.anaKod===anaKod&&(x.ad||'').toLocaleLowerCase('tr')===ad.toLocaleLowerCase('tr'));
+    if(!h){h={id:Yardimci.yeniId(),kod:Depo.yeniAltKod(anaKod),anaKod,tur,ad,acilis:0};Depo.veri.altHesaplar.push(h);Depo.kaydet();Bildirim.goster('basari','Eklendi',h.kod+' '+ad+' oluşturuldu.');}
+    if(anaKod==='309') this.v.kartId=h.id; else this.v.karsi='h:'+h.id;
+    Modal.kapat(); this.ciz();
+  },
+  ileri2(){ this.oku2();
+    if(!this.v.karsi){ Bildirim.goster('hata','Eksik','Bu harcamanın ne için olduğunu seç (fatura / gider / satıcı).'); return; }
+    if(this.v.odemeTipi==='taksit' && !(this.v.taksitSayisi>=1)){ Bildirim.goster('hata','Eksik','Taksit sayısı girin.'); return; }
+    this.adim=3; this.ciz();
+  },
+  geri(a){ if(this.adim===2)this.oku2(); else if(this.adim===1)this.oku1(); this.adim=a; this.ciz(); },
+  karsiCoz(){ const k=this.v.karsi||'';
+    if(k.startsWith('f:')){ const is=Depo.veri.islemler.find(x=>x.id===k.slice(2)); const c=is?Hesap.altBul(is.hesapId):null; return {tip:'fatura', islem:is, ad:c?(c.kod+' '+Hesap.hesapAdi(c)):'?', alt:'Fatura kapama (cari)'}; }
+    if(k.startsWith('h:')){ const hh=Hesap.altBul(k.slice(2)); if(!hh)return null; return {tip:hh.anaKod==='770'?'gider':'cari', hesap:hh, ad:hh.kod+' '+Hesap.hesapAdi(hh), alt:hh.anaKod==='770'?'Gidere':'Cariye borç'}; }
+    return null;
+  },
+  /* ADIM 3 — Önizle & Kaydet */
+  adim3(g){
+    const kart=Hesap.altBul(this.v.kartId), kartAd=kart?(kart.kod+' '+Hesap.hesapAdi(kart)):'—', P=Yardimci.paraFormat;
+    const kc=this.karsiCoz();
+    const taksitBilgi=this.v.odemeTipi==='taksit'?(this.v.taksitSayisi+' taksit'):'Tek çekim';
+    const plan=this.v.odemeTipi==='taksit'?Taksit.hesapla(this.v.tutar, this.v.taksitSayisi, this.v.ilkTaksit||this.v.tarih):[];
+    const bilgi=[['Kart',kartAd],['Tarih',Yardimci.tarihFormat(this.v.tarih)],['İşlem',this.v.islemAd],['Ne için',kc?kc.ad:'—'],['Tutar',P(this.v.tutar)],['Ödeme',taksitBilgi],['Açıklama',this.v.aciklama||'—']];
+    g.innerHTML=`<div class="kart">
+      <h3 style="font-size:16px;margin-bottom:14px">Önizleme — Kredi Kartı Harcaması</h3>
+      <div class="fw-ozet">${bilgi.map(([k,val])=>`<div class="fw-oz-satir"><span>${k}</span><b>${Yardimci.kacisHTML(String(val))}</b></div>`).join('')}</div>
+      <div style="margin-top:16px;background:var(--gri);border-radius:10px;padding:14px">
+        <div style="font-size:12px;font-weight:700;color:var(--metin-soluk);margin-bottom:8px">MUHASEBE KAYDI</div>
+        <div class="fw-oz-satir" style="border:none;padding:5px 0"><span>${Yardimci.kacisHTML(kartAd)}<br><small style="color:var(--metin-soluk)">Kart borcu artar</small></span><b class="alacak">Alacak ${P(this.v.tutar)}</b></div>
+        ${kc?`<div class="fw-oz-satir" style="border:none;padding:5px 0"><span>${Yardimci.kacisHTML(kc.ad)}<br><small style="color:var(--metin-soluk)">${kc.alt}</small></span><b class="borc">Borç ${P(this.v.tutar)}</b></div>`:''}
+      </div>
+      ${plan.length?`<div style="margin-top:16px"><div class="mini-liste-baslik">Taksit Planı (${plan.length})</div><div class="tablo-sar"><table class="veri"><thead><tr><th>Taksit</th><th>Tarih</th><th class="sag-hiza">Tutar</th></tr></thead><tbody>${plan.map(t=>`<tr><td>${t.no}. Taksit</td><td>${t.tarih?Yardimci.tarihFormat(t.tarih):'-'}</td><td class="sag-hiza">${P(t.tutar)}</td></tr>`).join('')}</tbody></table></div></div>`:''}
+      <div class="buton-grup" style="margin-top:20px;display:flex;gap:10px">
+        <button class="btn btn-cizgi" onclick="KartSihirbaz.geri(2)">← Düzenle</button>
+        <button class="btn btn-yesil" style="margin-left:auto" onclick="KartSihirbaz.kaydet()">💾 Kaydet</button>
+      </div></div>`;
+  },
+  duzenle(islemId){
+    const is=Depo.veri.islemler.find(x=>x.id===islemId); if(!is) return;
+    this.duzenId=islemId; this.dosya=null; this.mevcutDosyaMeta=is.dosyaMeta||null; this.mevcutDosyaId=is.dosyaId||null;
+    let karsi=''; if(is.kapatilanFaturaId) karsi='f:'+is.kapatilanFaturaId; else if(is.giderHesapId) karsi='h:'+is.giderHesapId; else if(is.sahisHesapId) karsi='h:'+is.sahisHesapId;
+    this.v={ tarih:is.tarih, kartId:is.hesapId, islemAd:is.islemAd||'', tutar:is.tutar||0, karsi, odemeTipi:is.odemeTipi||'tek', taksitSayisi:is.taksitSayisi||1, ilkTaksit:is.ilkTaksitTarihi||'', odemeGunu:is.kartOdemeGunu||'', aciklama:is.aciklama||'' };
+    this.adim=2; this.ciz();
+  },
+  async kaydet(){
+    const v=this.v, kc=this.karsiCoz();
+    let sahisId=null, giderId=null, faturaId=null;
+    if(kc){ if(kc.tip==='fatura'){ faturaId=kc.islem.id; sahisId=kc.islem.hesapId; } else if(kc.tip==='gider'){ giderId=kc.hesap.id; } else { sahisId=kc.hesap.id; } }
+    const duzenId=this.duzenId, eski=duzenId?Depo.veri.islemler.find(x=>x.id===duzenId):null;
+    let dosyaId=null,dosyaMeta=null;
+    if(this.dosya){ if(eski&&eski.dosyaId)await DosyaDepo.sil(eski.dosyaId); const data=await FaturaSihirbaz._dataUrl(this.dosya); dosyaId=Yardimci.yeniId(); await DosyaDepo.kaydet({id:dosyaId,ad:this.dosya.name,tur:this.dosya.type,boyut:this.dosya.size,data}); dosyaMeta={ad:this.dosya.name,tur:this.dosya.type,boyut:this.dosya.size}; }
+    else if(eski){ dosyaId=eski.dosyaId; dosyaMeta=eski.dosyaMeta; }
+    const sahisH=sahisId?Hesap.altBul(sahisId):null;
+    const adet=v.odemeTipi==='tek'?1:Math.max(1,v.taksitSayisi||1);
+    const islem={ id:duzenId||Yardimci.yeniId(), no:duzenId?eski.no:Depo.yeniIslemNo(), tur:'kart', tarih:v.tarih, hesapId:v.kartId,
+      islemAd:v.islemAd, sahisHesapId:sahisId, sahis:sahisH?(sahisH.kod+' '+Hesap.hesapAdi(sahisH)):'', giderHesapId:giderId, kapatilanFaturaId:faturaId,
+      tutar:v.tutar, odemeTipi:v.odemeTipi, taksitSayisi:adet, ilkTaksitTarihi:(v.ilkTaksit||v.tarih), kartOdemeGunu:Number(v.odemeGunu)||null,
+      aciklama:v.aciklama, ekNot:eski?eski.ekNot:'', dosyaId, dosyaMeta };
+    if(duzenId){ const i=Depo.veri.islemler.findIndex(x=>x.id===duzenId); Depo.veri.islemler[i]=islem; }
+    else Depo.veri.islemler.push(islem);
+    Form.hareketUret(islem);
+    Taksit.olustur(islem);
+    Depo.kaydet();
+    Bildirim.goster('basari','Kaydedildi','Kredi kartı harcaması '+(duzenId?'güncellendi':'kaydedildi')+' ('+adet+' taksit).');
+    this.baslat(this.ic);
+  }
 };
 
 /* ==================================================================
