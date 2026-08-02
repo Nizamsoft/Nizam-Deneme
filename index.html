@@ -621,7 +621,7 @@ table.nakit th.bugun-sutun{background:var(--kirmizi)}
         </ul>
       </li>
     </ul>
-    <div class="menu-alt">Nizam Soft © 2026<br>Sürüm 1.17.3 • 02.08.2026</div>
+    <div class="menu-alt">Nizam Soft © 2026<br>Sürüm 1.18.0 • 02.08.2026</div>
   </nav>
 
   <!-- ANA İÇERİK -->
@@ -1954,6 +1954,106 @@ const Fatura = {
 };
 
 /* ==================================================================
+   Bölüm 8b: Fatura Öde / Tahsil Et penceresi
+   Satıcı/Alıcı detayındaki faturaya "Öde" (veya "Tahsil Et") ile
+   banka/kredi kartı seçilerek ödeme kaydı üretir. Dış banka seçilirse
+   (ödemeleri ortak karşılayan banka) otomatik olarak önce ortaktan
+   bankaya giriş, sonra ödeme yapılır; banka bakiyesi net değişmez.
+   ================================================================== */
+const Ode = {
+  faturaId:null, yon:'ode',
+  ac(faturaId){
+    const is = Depo.veri.islemler.find(x=>x.id===faturaId); if(!is) return;
+    this.faturaId = faturaId;
+    this.yon = is.tur==='satis' ? 'tahsil' : 'ode';
+    const kalan = Fatura.kalan(is);
+    if(kalan<=0.005){ Bildirim.goster('bilgi','Zaten Kapalı','Bu fatura zaten tamamen '+(this.yon==='tahsil'?'tahsil edildi':'ödendi')+'.'); return; }
+    const kac = Yardimci.kacisHTML;
+    const cari = Hesap.altBul(is.hesapId);
+    const bankalar = Hesap.altHesaplarByAna('102');
+    const kartlar = Hesap.altHesaplarByAna('309');
+    const ortaklar = Hesap.altHesaplarByAna('331');
+    let kaynakOpt = `<option value="">— Seç —</option>`;
+    if(bankalar.length) kaynakOpt += `<optgroup label="🏦 Bankalar">`+bankalar.map(b=>`<option value="b:${b.id}"${b.disBanka?' data-dis="1"':''}>${b.kod} - ${kac(Hesap.hesapAdi(b))}${b.disBanka?' · dış banka':''}</option>`).join('')+`</optgroup>`;
+    if(this.yon==='ode' && kartlar.length) kaynakOpt += `<optgroup label="💳 Kredi Kartları">`+kartlar.map(k=>`<option value="k:${k.id}">${k.kod} - ${kac(Hesap.hesapAdi(k))}</option>`).join('')+`</optgroup>`;
+    const ortakOpt = ortaklar.map(o=>`<option value="${o.id}">${o.kod} - ${kac(Hesap.hesapAdi(o))}</option>`).join('');
+    const baslik = (this.yon==='tahsil'?'💰 Tahsil Et':'💳 Öde') + ' — ' + kac(is.faturaNo||is.no);
+    const govde = `<div style="font-size:13.5px;color:var(--metin-soluk);margin-bottom:15px">
+        ${kac(Hesap.hesapAdi(cari))} · Kalan: <b style="color:var(--metin)">${Yardimci.paraFormat(kalan)}</b></div>
+      <div class="form-grid" style="grid-template-columns:1fr 1fr;gap:14px">
+        <div class="form-alan tam"><label>${this.yon==='tahsil'?'Neyle tahsil ettin?':'Ne ile ödüyorsun?'} <span class="zorunlu">*</span></label>
+          <select id="ode-kaynak" onchange="Ode.kaynakChange()">${kaynakOpt}</select></div>
+        <div class="form-alan"><label>Tarih</label><input type="date" id="ode-tarih" value="${Yardimci.bugun()}"></div>
+        <div class="form-alan"><label>Tutar <span class="zorunlu">*</span></label><input type="number" min="0" step="0.01" id="ode-tutar" value="${kalan}"></div>
+      </div>
+      <div id="ode-ortak-satir" style="display:none;margin-top:4px">
+        <div class="form-alan tam"><label>Parayı koyan ortak <span class="zorunlu">*</span></label>
+          <select id="ode-ortak">${ortakOpt||'<option value="">Ortak hesabı yok</option>'}</select>
+          <div style="font-size:12px;color:var(--metin-soluk);margin-top:6px;line-height:1.5">Dış banka: önce ortağa borç yazılıp bankaya para girecek, sonra ${this.yon==='tahsil'?'tahsilat ortağa aktarılacak':'o parayla ödeme yapılacak'}. Banka bakiyesi net değişmez.</div></div>
+      </div>`;
+    const alt = `<button class="btn btn-gri" onclick="Modal.kapat()">Vazgeç</button>
+      <button class="btn btn-yesil" onclick="Ode.kaydet()">${this.yon==='tahsil'?'💰 Tahsil Et':'💳 Öde'}</button>`;
+    Modal.ac(baslik, govde, alt, false);
+    document.getElementById('modal-kutu').classList.add('dar');
+  },
+  kaynakChange(){
+    const sel = document.getElementById('ode-kaynak');
+    const opt = sel.options[sel.selectedIndex];
+    const dis = !!(opt && opt.dataset && opt.dataset.dis==='1');
+    document.getElementById('ode-ortak-satir').style.display = dis ? 'block' : 'none';
+  },
+  kaydet(){
+    const is = Depo.veri.islemler.find(x=>x.id===this.faturaId); if(!is) return;
+    const kaynak = document.getElementById('ode-kaynak').value;
+    if(!kaynak){ Bildirim.goster('hata','Kaynak Seç', this.yon==='tahsil'?'Neyle tahsil ettiğini seç.':'Ne ile ödediğini seç.'); return; }
+    const tarih = document.getElementById('ode-tarih').value || Yardimci.bugun();
+    let tutar = Math.round((Number(document.getElementById('ode-tutar').value)||0)*100)/100;
+    if(!(tutar>0)){ Bildirim.goster('hata','Geçersiz Tutar','Tutar sıfırdan büyük olmalı.'); return; }
+    const kalan = Fatura.kalan(is);
+    if(tutar>kalan+0.005) tutar = kalan; // kalandan fazlasını kabul etme
+    const [tip,id] = kaynak.split(':');
+    const cari = Hesap.altBul(is.hesapId);
+    const cariEt = cari ? (cari.kod+' '+Hesap.hesapAdi(cari)) : '';
+    const islemAd = this.yon==='tahsil' ? 'Tahsilat' : 'Fatura Ödeme';
+    const yeni = [];
+    if(tip==='k'){
+      // Kredi kartı ile ödeme
+      yeni.push({ id:Yardimci.yeniId(), no:Depo.yeniIslemNo(), tur:'kart', tarih, hesapId:id,
+        islemAd, sahisHesapId:is.hesapId, sahis:cariEt, giderHesapId:null, kapatilanFaturaId:is.id,
+        tutar, odemeTipi:'tek', taksitSayisi:1, ilkTaksitTarihi:tarih, kartOdemeGunu:null, aciklama:'' });
+    } else {
+      const banka = Hesap.altBul(id);
+      if(banka && banka.disBanka){
+        const ortakId = document.getElementById('ode-ortak').value;
+        if(!ortakId){ Bildirim.goster('hata','Ortak Seç','Dış banka için parayı koyan ortağı seç. (Yoksa Hesaplar\'dan bir Ortak ekle.)'); return; }
+        const ortak = Hesap.altBul(ortakId); const ortakEt = ortak ? (ortak.kod+' '+Hesap.hesapAdi(ortak)) : '';
+        if(this.yon==='ode'){
+          yeni.push({ id:Yardimci.yeniId(), no:Depo.yeniIslemNo(), tur:'banka', tarih, hesapId:id, islemTuru:'giris',
+            islemAd:'Ortak Girişi (ödeme için)', sahisHesapId:ortakId, sahis:ortakEt, kapatilanFaturaId:null, tutar, aciklama:'Ödeme için ortak girişi', bankaAciklama:'' });
+          yeni.push({ id:Yardimci.yeniId(), no:Depo.yeniIslemNo(), tur:'banka', tarih, hesapId:id, islemTuru:'cikis',
+            islemAd, sahisHesapId:is.hesapId, sahis:cariEt, kapatilanFaturaId:is.id, tutar, aciklama:'', bankaAciklama:'' });
+        } else {
+          yeni.push({ id:Yardimci.yeniId(), no:Depo.yeniIslemNo(), tur:'banka', tarih, hesapId:id, islemTuru:'giris',
+            islemAd, sahisHesapId:is.hesapId, sahis:cariEt, kapatilanFaturaId:is.id, tutar, aciklama:'', bankaAciklama:'' });
+          yeni.push({ id:Yardimci.yeniId(), no:Depo.yeniIslemNo(), tur:'banka', tarih, hesapId:id, islemTuru:'cikis',
+            islemAd:'Ortak Çıkışı (tahsilat)', sahisHesapId:ortakId, sahis:ortakEt, kapatilanFaturaId:null, tutar, aciklama:'Tahsilat ortağa aktarıldı', bankaAciklama:'' });
+        }
+      } else {
+        // Normal banka
+        yeni.push({ id:Yardimci.yeniId(), no:Depo.yeniIslemNo(), tur:'banka', tarih, hesapId:id,
+          islemTuru: this.yon==='tahsil'?'giris':'cikis', islemAd, sahisHesapId:is.hesapId, sahis:cariEt,
+          kapatilanFaturaId:is.id, tutar, aciklama:'', bankaAciklama:'' });
+      }
+    }
+    yeni.forEach(o=>{ Depo.veri.islemler.push(o); Form.hareketUret(o); if(o.tur==='kart' && typeof Taksit!=='undefined') Taksit.olustur(o); });
+    Depo.kaydet();
+    Modal.kapat();
+    Bildirim.goster('basari', this.yon==='tahsil'?'Tahsil Edildi':'Ödendi', Yardimci.paraFormat(tutar)+' '+(this.yon==='tahsil'?'tahsil edildi':'ödendi')+'.');
+    if(Detay.aktifId) Detay.ac(Detay.aktifId);
+  }
+};
+
+/* ==================================================================
    Bölüm 8: İşlem Giriş Formları
    ================================================================== */
 const Form = {
@@ -3002,6 +3102,7 @@ const AltHesap = {
       {id:'iban', ad:'IBAN', iban:true},
       {id:'hesapNo', ad:'Hesap Numarası'},
       {id:'acilis', ad:'Açılış Bakiyesi', para:true},
+      {id:'disBanka', ad:'Ödemeleri ortak karşılar (dış banka — bakiyesi tutulmaz)', onay:true},
       {id:'aciklama', ad:'Açıklama', tam:true}
     ];
     if(tur==='alici') return [
@@ -3083,7 +3184,9 @@ const AltHesap = {
     alanlar.forEach(a=>{
       const deger = veri ? (veri[a.id]!==undefined?veri[a.id]:'') : '';
       const zorunlu = a.zorunlu?' <span class="zorunlu">*</span>':'';
-      if(a.tam){
+      if(a.onay){
+        govde += `<div class="form-alan tam"><label style="display:flex;align-items:center;gap:9px;cursor:pointer;font-weight:500"><input type="checkbox" id="ah-${a.id}" ${deger?'checked':''} style="width:18px;height:18px;accent-color:var(--kirmizi);flex:none">${a.ad}</label></div>`;
+      }else if(a.tam){
         govde += `<div class="form-alan tam"><label>${a.ad}${zorunlu}</label><textarea id="ah-${a.id}">${Yardimci.kacisHTML(deger)}</textarea></div>`;
       }else if(a.para){
         govde += `<div class="form-alan"><label>${a.ad}${zorunlu}</label><input type="number" min="0" step="0.01" id="ah-${a.id}" value="${deger||''}" placeholder="0,00"></div>`;
@@ -3106,6 +3209,7 @@ const AltHesap = {
     const kayit = {};
     for(const a of alanlar){
       const el = document.getElementById('ah-'+a.id);
+      if(a.onay){ kayit[a.id] = el ? el.checked : false; continue; }
       let deger = el ? el.value.trim() : '';
       if(a.zorunlu && !deger){ Bildirim.goster('hata','Eksik Alan', a.ad + ' zorunludur.'); el.focus(); return; }
       if(a.iban && deger && !Yardimci.ibanGecerli(deger)){ Bildirim.goster('hata','Geçersiz IBAN','IBAN "TR" ile başlamalı ve 26 karakter olmalıdır.'); el.focus(); return; }
@@ -3289,6 +3393,7 @@ const Detay = {
         <td>${faturaHtml}</td>
         <td>${Yardimci.kacisHTML(is.faturaNo||'-')}</td>
         <td class="no-print satir-ic">
+          ${((is.tur==='alis'||is.tur==='satis') && Fatura.kalan(is)>0.005) ? `<button class="btn btn-yesil btn-kucuk" onclick="Ode.ac('${is.id}')">${is.tur==='satis'?'💰 Tahsil':'💳 Öde'}</button>` : ((is.tur==='alis'||is.tur==='satis') ? `<span title="Kapandı" style="color:var(--yesil);font-weight:700;margin-right:4px">✓</span>` : '')}
           <button class="btn btn-cizgi btn-kucuk" onclick="Detay.duzenleModal('${x.islemId}')">✎</button>
           <button class="btn btn-cizgi btn-kucuk" onclick="Detay.islemSil('${x.islemId}','${h.id}')">🗑</button>
         </td>
