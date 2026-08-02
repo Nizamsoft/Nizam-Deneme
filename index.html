@@ -650,7 +650,7 @@ table.nakit th.bugun-sutun{background:var(--kirmizi)}
         </ul>
       </li>
     </ul>
-    <div class="menu-alt">Nizam Soft © 2026<br>Sürüm 1.19.0 • 02.08.2026</div>
+    <div class="menu-alt">Nizam Soft © 2026<br>Sürüm 1.19.1 • 02.08.2026</div>
   </nav>
 
   <!-- ANA İÇERİK -->
@@ -1955,11 +1955,44 @@ const Sayfa = {
    Bölüm 8a: Fatura Ödeme Durumu (bankadan/karttan yapılan ödemelerden türetilir)
    ================================================================== */
 const Fatura = {
-  // Bir faturaya bağlı (kapatilanFaturaId) ödemelerin toplamı
-  odenen(faturaId){
+  // Bir faturaya DOĞRUDAN bağlı (kapatilanFaturaId) ödemelerin toplamı
+  _bagli(faturaId){
     return Depo.veri.islemler
       .filter(x=>(x.tur==='banka'||x.tur==='kart') && x.kapatilanFaturaId===faturaId && !x.iptal)
       .reduce((s,x)=>s+(Number(x.tutar)||0),0);
+  },
+  // Bir cariye yapılmış ama hiçbir faturaya bağlanmamış serbest ödeme havuzu
+  _havuz(hesapId){
+    let h=0;
+    Depo.veri.islemler.forEach(x=>{
+      if((x.tur==='banka'||x.tur==='kart') && !x.iptal && x.sahisHesapId===hesapId && !x.kapatilanFaturaId){
+        h += Number(x.tutar)||0;
+      }
+    });
+    return Math.round(h*100)/100;
+  },
+  // Carinin açık faturalarına, serbest ödeme havuzunu tarih sırasıyla (FIFO) dağıt.
+  // Böylece faturaya elle bağlanmamış ödemeler de faturayı "ödendi" yapar.
+  dagitim(hesapId){
+    const fatlar = Depo.veri.islemler
+      .filter(is=>(is.tur==='alis'||is.tur==='satis') && is.hesapId===hesapId && !is.iptal)
+      .sort((a,b)=>(a.tarih||'').localeCompare(b.tarih||'')||(a.no||'').localeCompare(b.no||''));
+    let havuz = this._havuz(hesapId);
+    const sonuc = {};
+    fatlar.forEach(is=>{
+      const t = Number(is.tutar)||0;
+      let odenen = Math.min(this._bagli(is.id), t);
+      const eksik = t - odenen;
+      if(eksik>0.005 && havuz>0.005){ const kullan=Math.min(eksik, havuz); odenen+=kullan; havuz-=kullan; }
+      sonuc[is.id] = odenen;
+    });
+    return sonuc;
+  },
+  // Bir faturanın ödenen tutarı: doğrudan bağlı ödemeler + havuzdan FIFO payı
+  odenen(faturaId){
+    const is = Depo.veri.islemler.find(x=>x.id===faturaId);
+    if(is && is.hesapId){ const d=this.dagitim(is.hesapId); if(d[faturaId]!==undefined) return d[faturaId]; }
+    return this._bagli(faturaId);
   },
   kalan(is){ return Math.max(0, Math.round(((Number(is.tutar)||0)-this.odenen(is.id))*100)/100); },
   durum(is){
@@ -5379,10 +5412,13 @@ const KarZarar = {
     const vergiMi = id => { const h=Hesap.altBul(id); return !!(h && /vergi/i.test(h.ad||'')); };
     const odemeBilgi = fId => {
       const ods = Depo.veri.islemler.filter(x=>(x.tur==='banka'||x.tur==='kart') && x.kapatilanFaturaId===fId && !x.iptal);
-      if(!ods.length) return 'henüz ödenmedi';
-      const kart=ods.some(o=>o.tur==='kart'), banka=ods.some(o=>o.tur==='banka');
-      if(kart&&banka) return 'kart + bankadan ödendi';
-      return kart ? 'kredi kartıyla ödendi' : 'bankadan ödendi';
+      if(ods.length){
+        const kart=ods.some(o=>o.tur==='kart'), banka=ods.some(o=>o.tur==='banka');
+        if(kart&&banka) return 'kart + bankadan ödendi';
+        return kart ? 'kredi kartıyla ödendi' : 'bankadan ödendi';
+      }
+      const isF = Depo.veri.islemler.find(x=>x.id===fId);
+      return (isF && Fatura.kalan(isF)<=0.005) ? 'ödendi' : 'henüz ödenmedi';
     };
     const gelirler=[], giderler=[], demirbaslar=[], vergiler=[], borclar=[];
     Depo.veri.islemler.forEach(is=>{
