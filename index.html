@@ -612,7 +612,7 @@ table.nakit th.bugun-sutun{background:var(--kirmizi)}
         </ul>
       </li>
     </ul>
-    <div class="menu-alt">Nizam Soft © 2026<br>Sürüm 1.16.3 • 02.08.2026</div>
+    <div class="menu-alt">Nizam Soft © 2026<br>Sürüm 1.16.4 • 02.08.2026</div>
   </nav>
 
   <!-- ANA İÇERİK -->
@@ -3232,13 +3232,13 @@ const Detay = {
       const etkiRenk = x.etki>=0 ? 'borc' : 'alacak';
       const etkiYazi = (x.etki>=0?'+':'') + Yardimci.paraFormat(x.etki);
       const ba = this._bankaAcik;
+      const karsiAd = is.sahis || (gider?(gider.kod+' '+Hesap.hesapAdi(gider)):'') || '-';
       return `<tr>
         <td>${Yardimci.tarihFormat(x.tarih)}</td>
         <td>${Yardimci.kacisHTML(is.islemAd||'')}</td>
-        <td>${Yardimci.kacisHTML(is.sahis||'')}</td>
+        <td>${Yardimci.kacisHTML(karsiAd)}</td>
         <td>${Yardimci.kacisHTML(is.aciklama||'')}</td>
         ${ba?`<td style="color:var(--metin-soluk);font-size:12.5px">${Yardimci.kacisHTML(is.bankaAciklama||'')}</td>`:''}
-        <td>${gider?Yardimci.kacisHTML(gider.kod+' '+Hesap.hesapAdi(gider)):'-'}</td>
         <td class="sag-hiza borc">${x.borc?Yardimci.paraFormat(x.borc):'-'}</td>
         <td class="sag-hiza alacak">${x.alacak?Yardimci.paraFormat(x.alacak):'-'}</td>
         <td class="sag-hiza"><b>${Yardimci.paraFormat(x.guncelBakiye)}</b></td>
@@ -3249,7 +3249,7 @@ const Detay = {
       </tr>`;
     }).join('');
     return `<div class="tablo-sar"><table class="veri"><thead><tr>
-      <th>Tarih</th><th>İşlem Adı</th><th>Şahıs</th><th>Açıklama</th>${this._bankaAcik?'<th>Banka Açıklaması</th>':''}<th>Gider Hesabı</th>
+      <th>Tarih</th><th>İşlem Adı</th><th>Karşı Hesap</th><th>Açıklama</th>${this._bankaAcik?'<th>Banka Açıklaması</th>':''}
       <th class="sag-hiza">Borç</th><th class="sag-hiza">Alacak</th><th class="sag-hiza">Güncel Bakiye</th><th class="no-print">İşlemler</th>
     </tr></thead><tbody>${satir}</tbody></table></div>`;
   },
