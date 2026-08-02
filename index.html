@@ -655,7 +655,7 @@ table.nakit th.bugun-sutun{background:var(--kirmizi)}
         </ul>
       </li>
     </ul>
-    <div class="menu-alt">Nizam Soft © 2026<br>Sürüm 1.22.2 • 02.08.2026</div>
+    <div class="menu-alt">Nizam Soft © 2026<br>Sürüm 1.22.3 • 02.08.2026</div>
   </nav>
 
   <!-- ANA İÇERİK -->
@@ -3643,10 +3643,11 @@ const Detay = {
         + A('Karşı Hesap',`<select id="dz-karsi">${this._karsiOpsiyon(this._karsiDeger(is))}</select>`,true)
         + aciklama;
     } else if(t==='alis'||t==='satis'){
-      const anaKod=t==='alis'?'320':'120', et=t==='alis'?'Satıcı':'Alıcı';
-      const cariler=Hesap.altHesaplarByAna(anaKod);
+      const et=t==='alis'?'Satıcı / Vergi':'Alıcı';
+      const grup=(lbl,kod)=>{ const l=Hesap.altHesaplarByAna(kod); return l.length?`<optgroup label="${lbl}">`+l.map(x=>`<option value="${x.id}" ${x.id===is.hesapId?'selected':''}>${x.kod} - ${kac(Hesap.hesapAdi(x))}</option>`).join('')+`</optgroup>`:''; };
+      const ops = t==='alis' ? (grup('Satıcılar (320)','320')+grup('Vergiler (336)','336')) : grup('Alıcılar (120)','120');
       ic = tarih + tutar
-        + A(et,`<select id="dz-hesap">${cariler.map(x=>`<option value="${x.id}" ${x.id===is.hesapId?'selected':''}>${x.kod} - ${kac(Hesap.hesapAdi(x))}</option>`).join('')}</select>`)
+        + A(et,`<select id="dz-hesap">${ops}</select>`)
         + A('Fatura No',`<input id="dz-faturano" value="${kac(is.faturaNo||'')}">`)
         + aciklama;
     } else { ic = tarih + tutar + aciklama; }
