@@ -612,7 +612,7 @@ table.nakit th.bugun-sutun{background:var(--kirmizi)}
         </ul>
       </li>
     </ul>
-    <div class="menu-alt">Nizam Soft © 2026<br>Sürüm 1.16.2 • 02.08.2026</div>
+    <div class="menu-alt">Nizam Soft © 2026<br>Sürüm 1.16.3 • 02.08.2026</div>
   </nav>
 
   <!-- ANA İÇERİK -->
@@ -3241,7 +3241,6 @@ const Detay = {
         <td>${gider?Yardimci.kacisHTML(gider.kod+' '+Hesap.hesapAdi(gider)):'-'}</td>
         <td class="sag-hiza borc">${x.borc?Yardimci.paraFormat(x.borc):'-'}</td>
         <td class="sag-hiza alacak">${x.alacak?Yardimci.paraFormat(x.alacak):'-'}</td>
-        <td class="sag-hiza ${etkiRenk}">${etkiYazi}</td>
         <td class="sag-hiza"><b>${Yardimci.paraFormat(x.guncelBakiye)}</b></td>
         <td class="no-print satir-ic">
           <button class="btn btn-cizgi btn-kucuk" onclick="Detay.islemDuzenle('${x.islemId}')">✎</button>
@@ -3251,7 +3250,7 @@ const Detay = {
     }).join('');
     return `<div class="tablo-sar"><table class="veri"><thead><tr>
       <th>Tarih</th><th>İşlem Adı</th><th>Şahıs</th><th>Açıklama</th>${this._bankaAcik?'<th>Banka Açıklaması</th>':''}<th>Gider Hesabı</th>
-      <th class="sag-hiza">Borç</th><th class="sag-hiza">Alacak</th><th class="sag-hiza">Bakiye</th><th class="sag-hiza">Güncel Bakiye</th><th class="no-print">İşlemler</th>
+      <th class="sag-hiza">Borç</th><th class="sag-hiza">Alacak</th><th class="sag-hiza">Güncel Bakiye</th><th class="no-print">İşlemler</th>
     </tr></thead><tbody>${satir}</tbody></table></div>`;
   },
 
@@ -3275,7 +3274,6 @@ const Detay = {
         <td>${Yardimci.kacisHTML(x.aciklama||'')}</td>
         <td class="sag-hiza borc">${x.borc?Yardimci.paraFormat(x.borc):'-'}</td>
         <td class="sag-hiza alacak">${x.alacak?Yardimci.paraFormat(x.alacak):'-'}</td>
-        <td class="sag-hiza ${etkiRenk}">${etkiYazi}</td>
         <td class="sag-hiza"><b>${Yardimci.paraFormat(x.guncelBakiye)}</b></td>
         <td>${faturaHtml}</td>
         <td>${Yardimci.kacisHTML(is.faturaNo||'-')}</td>
@@ -3287,7 +3285,7 @@ const Detay = {
     }).join('');
     return `<div class="tablo-sar"><table class="veri"><thead><tr>
       <th>Tarih</th><th>Açıklama</th><th class="sag-hiza">Borç</th><th class="sag-hiza">Alacak</th>
-      <th class="sag-hiza">Bakiye</th><th class="sag-hiza">Güncel Bakiye</th><th>Fatura</th><th>Fatura No</th><th class="no-print">İşlemler</th>
+      <th class="sag-hiza">Güncel Bakiye</th><th>Fatura</th><th>Fatura No</th><th class="no-print">İşlemler</th>
     </tr></thead><tbody>${satir}</tbody></table></div>`;
   },
 
