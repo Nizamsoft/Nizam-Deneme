@@ -616,7 +616,7 @@ table.nakit th.bugun-sutun{background:var(--kirmizi)}
         </ul>
       </li>
     </ul>
-    <div class="menu-alt">Nizam Soft © 2026<br>Sürüm 1.16.5 • 02.08.2026</div>
+    <div class="menu-alt">Nizam Soft © 2026<br>Sürüm 1.17.0 • 02.08.2026</div>
   </nav>
 
   <!-- ANA İÇERİK -->
@@ -3249,7 +3249,7 @@ const Detay = {
         <td class="sag-hiza alacak">${x.alacak?Yardimci.paraFormat(x.alacak):'-'}</td>
         <td class="sag-hiza"><b style="color:${x.guncelBakiye<0?'var(--kirmizi)':'inherit'}">${Yardimci.paraFormat(x.guncelBakiye)}</b></td>
         <td class="no-print satir-ic">
-          <button class="btn btn-cizgi btn-kucuk" onclick="Detay.islemDuzenle('${x.islemId}')">✎</button>
+          <button class="btn btn-cizgi btn-kucuk" onclick="Detay.duzenleModal('${x.islemId}')">✎</button>
           <button class="btn btn-cizgi btn-kucuk" onclick="Detay.islemSil('${x.islemId}','${h.id}')">🗑</button>
         </td>
       </tr>`;
@@ -3284,7 +3284,7 @@ const Detay = {
         <td>${faturaHtml}</td>
         <td>${Yardimci.kacisHTML(is.faturaNo||'-')}</td>
         <td class="no-print satir-ic">
-          <button class="btn btn-cizgi btn-kucuk" onclick="Detay.islemDuzenle('${x.islemId}')">✎</button>
+          <button class="btn btn-cizgi btn-kucuk" onclick="Detay.duzenleModal('${x.islemId}')">✎</button>
           <button class="btn btn-cizgi btn-kucuk" onclick="Detay.islemSil('${x.islemId}','${h.id}')">🗑</button>
         </td>
       </tr>`;
@@ -3317,6 +3317,76 @@ const Detay = {
     App.tipAyarla(App.islemTipi(is));
     App.sayfaGit('islemler');
     setTimeout(()=>Form.yukle(is.tur, islemId), 120);
+  },
+
+  // Kalem (✎) ile açılan basit düzenleme penceresi
+  _karsiDeger(is){ if(is.kapatilanFaturaId)return 'f:'+is.kapatilanFaturaId; if(is.sahisHesapId)return 'h:'+is.sahisHesapId; if(is.giderHesapId)return 'h:'+is.giderHesapId; return ''; },
+  _karsiOpsiyon(sec){
+    let h=`<option value="">— Seçiniz —</option>`;
+    let fat=Depo.veri.islemler.filter(is=>(is.tur==='alis'||is.tur==='satis')&&!is.iptal&&Fatura.kalan(is)>0.005);
+    if(sec&&sec.startsWith('f:')){ const fid=sec.slice(2); if(!fat.some(x=>x.id===fid)){ const cur=Depo.veri.islemler.find(x=>x.id===fid); if(cur) fat=[cur,...fat]; } }
+    if(fat.length){ h+=`<optgroup label="Faturalar">`+fat.map(is=>{const c=Hesap.altBul(is.hesapId);return `<option value="f:${is.id}" ${('f:'+is.id)===sec?'selected':''}>${Yardimci.kacisHTML(is.faturaNo||is.no)} · ${c?Yardimci.kacisHTML(Hesap.hesapAdi(c)):'?'}</option>`;}).join('')+`</optgroup>`; }
+    const grup=(lbl,kod)=>{const l=Hesap.altHesaplarByAna(kod);return l.length?`<optgroup label="${lbl}">`+l.map(x=>`<option value="h:${x.id}" ${('h:'+x.id)===sec?'selected':''}>${x.kod} - ${Yardimci.kacisHTML(Hesap.hesapAdi(x))}</option>`).join('')+`</optgroup>`:'';};
+    return h + grup('Satıcılar (320)','320')+grup('Ortaklar (331)','331')+grup('Alıcılar (120)','120')+grup('Gider (770)','770');
+  },
+  duzenleModal(islemId){
+    const is = Depo.veri.islemler.find(x=>x.id===islemId); if(!is) return;
+    const t=is.tur;
+    const F=(lbl,inner,tam)=>`<div class="form-alan${tam?' tam':''}"><label>${lbl}</label>${inner}</div>`;
+    const tarih=F('Tarih',`<input type="date" id="dz-tarih" value="${is.tarih||''}">`);
+    const tutar=F('Tutar (₺)',`<input id="dz-tutar" value="${Yardimci.sayiFormat(is.tutar)}">`);
+    const aciklama=F('Açıklama',`<input id="dz-aciklama" value="${Yardimci.kacisHTML(is.aciklama||'')}">`,true);
+    let ic='';
+    if(t==='banka'||t==='kart'){
+      const islemad=F('İşlem Adı',`<input id="dz-islemad" value="${Yardimci.kacisHTML(is.islemAd||'')}">`);
+      const yon = t==='banka'?F('Yön',`<select id="dz-yon"><option value="giris" ${is.islemTuru==='giris'?'selected':''}>⬆ Giriş (para geldi)</option><option value="cikis" ${is.islemTuru!=='giris'?'selected':''}>⬇ Çıkış (para gitti)</option></select>`):'';
+      const karsi=F('Karşı Hesap',`<select id="dz-karsi">${this._karsiOpsiyon(this._karsiDeger(is))}</select>`,true);
+      ic=`<div class="form-grid">${tarih}${islemad}${yon}${tutar}${karsi}${aciklama}</div>`;
+    } else if(t==='alis'||t==='satis'){
+      const anaKod=t==='alis'?'320':'120', et=t==='alis'?'Satıcı':'Alıcı';
+      const cariler=Hesap.altHesaplarByAna(anaKod);
+      const cari=F(et,`<select id="dz-hesap">${cariler.map(x=>`<option value="${x.id}" ${x.id===is.hesapId?'selected':''}>${x.kod} - ${Yardimci.kacisHTML(Hesap.hesapAdi(x))}</option>`).join('')}</select>`);
+      const fno=F('Fatura No',`<input id="dz-faturano" value="${Yardimci.kacisHTML(is.faturaNo||'')}">`);
+      ic=`<div class="form-grid">${tarih}${cari}${fno}${tutar}${aciklama}</div>`;
+    } else { ic=`<div class="form-grid">${tarih}${tutar}${aciklama}</div>`; }
+    Modal.ac('Kaydı Düzenle', ic, `<button class="btn btn-gri" onclick="Modal.kapat()">Vazgeç</button><button class="btn btn-kirmizi" onclick="Detay.duzenleKaydet('${islemId}')">Kaydet</button>`, true);
+  },
+  duzenleKaydet(islemId){
+    const is = Depo.veri.islemler.find(x=>x.id===islemId); if(!is) return;
+    const g=id=>document.getElementById(id);
+    const tt=Yardimci.paraCoz(g('dz-tutar').value);
+    if(!(tt>0)){ Bildirim.goster('hata','Tutar','Sıfırdan büyük tutar girin.'); return; }
+    const eskiAd=is.islemAd;
+    is.tarih=g('dz-tarih').value||is.tarih;
+    is.tutar=tt; if(is.matrah!==undefined) is.matrah=tt;
+    if(g('dz-aciklama')) is.aciklama=g('dz-aciklama').value.trim();
+    if(is.tur==='banka'||is.tur==='kart'){
+      if(g('dz-islemad')) is.islemAd=g('dz-islemad').value.trim();
+      if(g('dz-yon')) is.islemTuru=g('dz-yon').value;
+      const k=(g('dz-karsi')||{}).value||'';
+      is.sahisHesapId=null; is.giderHesapId=null; is.kapatilanFaturaId=null; is.sahis='';
+      if(k.startsWith('f:')){ is.kapatilanFaturaId=k.slice(2); const fa=Depo.veri.islemler.find(x=>x.id===is.kapatilanFaturaId); if(fa){ is.sahisHesapId=fa.hesapId; const c=Hesap.altBul(fa.hesapId); is.sahis=c?(c.kod+' '+Hesap.hesapAdi(c)):''; } }
+      else if(k.startsWith('h:')){ const hh=Hesap.altBul(k.slice(2)); if(hh){ if(hh.anaKod==='770') is.giderHesapId=hh.id; else { is.sahisHesapId=hh.id; is.sahis=hh.kod+' '+Hesap.hesapAdi(hh); } } }
+    } else if(is.tur==='alis'||is.tur==='satis'){
+      if(g('dz-hesap')) is.hesapId=g('dz-hesap').value;
+      if(g('dz-faturano')) is.faturaNo=g('dz-faturano').value.trim();
+    }
+    Form.hareketUret(is);
+    if(is.tur==='kart') Taksit.olustur(is);
+    Depo.kaydet();
+    Modal.kapat();
+    Detay.ac(Detay.aktifId);
+    Bildirim.goster('basari','Güncellendi','Kayıt güncellendi.');
+    // İşlem adı değiştiyse: aynı isimli diğer kayıtları da güncelle?
+    const yeniAd=is.islemAd;
+    if((is.tur==='banka'||is.tur==='kart') && yeniAd && eskiAd && yeniAd!==eskiAd){
+      const digerler=Depo.veri.islemler.filter(x=>x.id!==is.id && (x.tur==='banka'||x.tur==='kart') && x.islemAd===eskiAd);
+      if(digerler.length){
+        Modal.onay('Aynı İşlem Adı', `"${eskiAd}" adına sahip ${digerler.length} kayıt daha var. Hepsi "${yeniAd}" olarak değişsin mi?`,
+          ()=>{ digerler.forEach(x=>x.islemAd=yeniAd); Depo.kaydet(); Detay.ac(Detay.aktifId); Bildirim.goster('basari','Güncellendi', digerler.length+' kayıt daha güncellendi.'); },
+          'Evet, Hepsini Değiştir');
+      }
+    }
   },
 
   islemSil(islemId, hesapId){
