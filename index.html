@@ -666,7 +666,7 @@ details.kz-asama .kz-bos-olay{padding:0 18px 14px}
         </ul>
       </li>
     </ul>
-    <div class="menu-alt">Nizam Soft © 2026<br>Sürüm 1.24.0 • 02.08.2026</div>
+    <div class="menu-alt">Nizam Soft © 2026<br>Sürüm 1.25.0 • 02.08.2026</div>
   </nav>
 
   <!-- ANA İÇERİK -->
@@ -5620,8 +5620,8 @@ const KarZarar = {
     this._son = {bas,bit};
     const H = this.hikaye(bas,bit);
     const P = Yardimci.paraFormat, kac = Yardimci.kacisHTML, tf = Yardimci.tarihFormat;
-    const brut = Math.round((H.gg.gelir - H.gg.gider)*100)/100;
-    const nakitFark = Math.round((H.donemSonu - H.donemBasi)*100)/100;
+    const gelirTop = Math.round((H.gg.gelir + H.girisTop)*100)/100; // satış + banka girişleri (tahsilat/ön ödeme)
+    const brut = Math.round((gelirTop - H.gg.gider)*100)/100;
     const isletmeGider = Math.max(0, Math.round((H.gg.gider - H.vergiTop)*100)/100);
     const olayHTML = (arr, yon) => arr.length
       ? `<div class="kz-olaylar">`+arr.map(o=>`<div class="kz-olay"><div class="kz-sol"><span class="kz-t">${tf(o.tarih)}</span>${kac(o.ad)}${o.alt?`<div class="kz-alt">${kac(o.alt)}</div>`:''}</div><div class="kz-tut ${yon}">${yon==='art'?'+':'−'}${P(o.tutar)}</div></div>`).join('')+`</div>`
@@ -5638,7 +5638,7 @@ const KarZarar = {
       <div class="kz-anlat"><b>${tf(bas)}</b> tarihinde bankandaki toplam paran <b>${P(H.donemBasi)}</b>${H.donemBasi<-0.005?' — yani eksideydin':''}. Hikâye buradan başlıyor.</div>`));
     // 2) Paran girenler
     asama.push(acKart('a-gelir','💰 Paran girenler',
-      `Bu dönem <b>${P(H.gg.gelir)}</b> satış/gelir${H.girisTop>0.5?`, ayrıca <b>${P(H.girisTop)}</b> banka girişi (tahsilat/ön ödeme)`:''} oldu.`,
+      `Bu dönem toplam <b>${P(gelirTop)}</b> para girdi${H.girisTop>0.5?` (satış/gelir ${P(H.gg.gelir)} + banka girişi ${P(H.girisTop)})`:''}. Bu senin <b>kazancın</b>.`,
       olayHTML(girenler,'art')));
     // 3) Harcadıkların (giderler)
     asama.push(acKart('a-gider','🛒 Harcadıkların',
@@ -5657,13 +5657,10 @@ const KarZarar = {
       `Nakit ihtiyacın için ortaktan toplam <b>${P(H.borcTop)}</b> girdi. Bu <b>gelir değil</b> — o kadar <b>ortağa borçlandın</b>, sonra geri ödeyeceksin.`,
       olayHTML(H.borclar,'art')));
     // 6) Sonuç (açılır değil — hep görünür)
-    const saticiBorc=-Hesap.anaBakiye('320'), kartBorc=-Hesap.anaBakiye('309'), ortakBorc=-Hesap.anaBakiye('331');
-    const borcParcalar=[saticiBorc>0.5?'satıcılara '+P(saticiBorc):'', kartBorc>0.5?'kredi kartına '+P(kartBorc):'', ortakBorc>0.5?'ortağa '+P(ortakBorc):''].filter(Boolean);
     asama.push(`<div class="kz-asama a-sonuc"><h3>✅ Sonuç</h3>
       <div class="kz-sonuc-buyuk"><span>Bu dönem ${brut>=0?'KÂR ettin':'ZARAR ettin'}</span><span class="rakam ${brut>=0?'kz-kar':'kz-zarar'}">${brut>=0?'+':'−'}${P(Math.abs(brut))}</span></div>
-      <div class="kz-sonuc-satir"><span>Kazandığın (gelirler)</span><span class="kz-kar">+${P(H.gg.gelir)}</span></div>
+      <div class="kz-sonuc-satir"><span>Kazandığın (gelirler)</span><span class="kz-kar">+${P(gelirTop)}</span></div>
       <div class="kz-sonuc-satir"><span>Harcadığın (giderler + vergiler)</span><span class="kz-zarar">−${P(H.gg.gider)}</span></div>
-      <div class="kz-not"><b>Kâr ile kasandaki para aynı şey değildir.</b> Dönem başında bankanda <b>${P(H.donemBasi)}</b> vardı, sonunda <b>${P(H.donemSonu)}</b> oldu (${nakitFark>=0?'+':'−'}${P(Math.abs(nakitFark))}). Aradaki fark; demirbaşa bağladığın para, kredi kartı/ortak borçları ve faturaların tahsil/ödeme zamanlamasından gelir.${borcParcalar.length?`<br><br><b>Bugün itibarıyla borçların:</b> ${borcParcalar.join(' · ')}.`:''}</div>
     </div>`);
 
     const tablo = `<div class="kart"><h2 class="bolum-baslik">Özet Tablo</h2>
@@ -5671,12 +5668,34 @@ const KarZarar = {
         <thead><tr><th>Kalem</th><th class="sag-hiza">Tutar</th></tr></thead>
         <tbody>
           <tr><td>Gelirler (satış / hizmet)</td><td class="sag-hiza"><span class="kz-kar">+${P(H.gg.gelir)}</span></td></tr>
+          ${H.girisTop>0.5?`<tr><td>Banka girişi (tahsilat / ön ödeme)</td><td class="sag-hiza"><span class="kz-kar">+${P(H.girisTop)}</span></td></tr>`:''}
           <tr><td>İşletme giderleri</td><td class="sag-hiza"><span class="kz-zarar">−${P(isletmeGider)}</span></td></tr>
           ${H.vergiTop>0.5?`<tr><td>Vergiler</td><td class="sag-hiza"><span class="kz-zarar">−${P(H.vergiTop)}</span></td></tr>`:''}
         </tbody>
         <tfoot><tr class="ana-hesap-satir"><td><b>NET ${brut>=0?'KÂR':'ZARAR'}</b></td><td class="sag-hiza"><b class="${brut>=0?'kz-kar':'kz-zarar'}">${brut>=0?'+':'−'}${P(Math.abs(brut))}</b></td></tr></tfoot>
       </table></div>
-      <div class="kz-not" style="margin-top:12px">Kâr/zarara <b>dahil olmayan</b> bilgiler: Demirbaş alımı <b>${P(H.demirbasTop)}</b> · Dönem başı nakit <b>${P(H.donemBasi)}</b> · Dönem sonu nakit <b>${P(H.donemSonu)}</b>.</div>
+    </div>`;
+
+    // Mevcut Durum: şu anki varlıklar ve borçlar
+    const banka=Hesap.anaBakiye('102'), demirbas=Hesap.anaBakiye('255'), alici=Hesap.anaBakiye('120');
+    const sB=-Hesap.anaBakiye('320'), kB=-Hesap.anaBakiye('309'), oB=-Hesap.anaBakiye('331'), vB=-Hesap.anaBakiye('336');
+    const net = banka + demirbas + Math.max(0,alici) - Math.max(0,sB) - Math.max(0,kB) - Math.max(0,oB) - Math.max(0,vB);
+    const borcSatir=(et,tutar)=> tutar>0.5 ? `<tr><td>${et}</td><td class="sag-hiza"><span class="kz-zarar">−${P(tutar)}</span></td></tr>` : '';
+    const mevcut = `<div class="kart"><h2 class="bolum-baslik">Mevcut Durum</h2>
+      <p class="kz-anlat" style="margin-bottom:8px">Şu anki genel durumun: neyin var, ne kadar borcun var.</p>
+      <div class="tablo-sar"><table class="veri">
+        <thead><tr><th>Kalem</th><th class="sag-hiza">Tutar</th></tr></thead>
+        <tbody>
+          <tr><td>🏦 Bankadaki para</td><td class="sag-hiza"><b class="${banka<-0.005?'kz-zarar':''}">${P(banka)}</b></td></tr>
+          <tr><td>💻 Demirbaşlar (şirket malı)</td><td class="sag-hiza">${P(demirbas)}</td></tr>
+          ${alici>0.5?`<tr><td>📥 Alıcılardan alacak</td><td class="sag-hiza"><span class="kz-kar">${P(alici)}</span></td></tr>`:''}
+          ${borcSatir('📤 Satıcılara borç',sB)}
+          ${borcSatir('💳 Kredi kartı borcu',kB)}
+          ${borcSatir('🧾 Vergi borcu',vB)}
+          ${borcSatir('🤝 Ortağa borç',oB)}
+        </tbody>
+        <tfoot><tr class="ana-hesap-satir"><td><b>NET DURUM (varlık − borç)</b></td><td class="sag-hiza"><b class="${net>=0?'kz-kar':'kz-zarar'}">${net<0?'−':''}${P(Math.abs(net))}</b></td></tr></tfoot>
+      </table></div>
     </div>`;
 
     el.innerHTML = `
@@ -5694,7 +5713,8 @@ const KarZarar = {
         <p class="kz-anlat" style="margin-bottom:4px">Bu dönemde paranın nereden gelip nereye gittiğini adım adım anlatıyoruz.</p>
         <div class="kz-hikaye">${asama.join('')}</div>
       </div>
-      ${tablo}`;
+      ${tablo}
+      ${mevcut}`;
   },
 
   hpop(ev, key, tur){
