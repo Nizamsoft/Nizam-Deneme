@@ -655,7 +655,7 @@ table.nakit th.bugun-sutun{background:var(--kirmizi)}
         </ul>
       </li>
     </ul>
-    <div class="menu-alt">Nizam Soft © 2026<br>Sürüm 1.22.3 • 02.08.2026</div>
+    <div class="menu-alt">Nizam Soft © 2026<br>Sürüm 1.23.0 • 02.08.2026</div>
   </nav>
 
   <!-- ANA İÇERİK -->
@@ -1339,7 +1339,7 @@ const Xlsx = {
     const out=new Uint8Array(total); let p=0; chunks.forEach(c=>{ out.set(c,p); p+=c.length; });
     return out;
   },
-  olustur(sheets){
+  bytes(sheets){
     const enc=new TextEncoder(), n=sheets.length;
     // Sayfa adlarını benzersizleştir (31 karakter kırpması çakışabilir)
     const kullanilan={};
@@ -1356,14 +1356,15 @@ const Xlsx = {
       {ad:'xl/styles.xml', data:enc.encode(this._stylesXml())}
     ];
     sheets.forEach((s,i)=>files.push({ad:`xl/worksheets/sheet${i+1}.xml`, data:enc.encode(this._sheetXml(s))}));
-    return new Blob([this._zip(files)], {type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'});
+    return this._zip(files);
   },
-  indir(sheets, dosyaAd){
-    const blob=this.olustur(sheets);
-    const url=URL.createObjectURL(blob);
-    const a=document.createElement('a'); a.href=url; a.download=String(dosyaAd).replace(/\.xlsx$/,'')+'.xlsx'; a.click();
-    URL.revokeObjectURL(url);
-  }
+  olustur(sheets){ return new Blob([this.bytes(sheets)], {type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'}); },
+  indir(sheets, dosyaAd){ this._indirBlob(this.olustur(sheets), String(dosyaAd).replace(/\.xlsx$/,'')+'.xlsx'); },
+  // ZIP paketi indir: entries = [{ad:'klasor/dosya', data:Uint8Array}]
+  zipIndir(entries, dosyaAd){ this._indirBlob(new Blob([this._zip(entries)],{type:'application/zip'}), String(dosyaAd).replace(/\.zip$/,'')+'.zip'); },
+  _indirBlob(blob, ad){ const url=URL.createObjectURL(blob); const a=document.createElement('a'); a.href=url; a.download=ad; a.click(); URL.revokeObjectURL(url); },
+  // dataURL (base64) -> Uint8Array
+  dataUrlBytes(dataUrl){ const i=String(dataUrl||'').indexOf(','); if(i<0) return new Uint8Array(); const bin=atob(dataUrl.slice(i+1)); const u=new Uint8Array(bin.length); for(let j=0;j<bin.length;j++) u[j]=bin.charCodeAt(j); return u; }
 };
 
 /* ==================================================================
@@ -1499,6 +1500,53 @@ const MuhasebeRapor = {
     const sat = uyarilar.length ? uyarilar : [['', '', 'Bu aralıkta uyarı bulunamadı. ✓']];
     return {ad:'Kontrol ve Uyarılar', genislik:[14,20,44], satirlar:[this._H(['İşlem No','Kayıt Türü','Uyarı']), ...sat]};
   },
+  // Mevcut hesap bakiyeleri + mutabakat (banka bakiyeleri kontrolü için)
+  bakiyeSayfa(){
+    const sat=[];
+    Depo.veri.anaHesaplar.forEach(ana=>{
+      Hesap.altHesaplarByAna(ana.kod).forEach(h=>{
+        sat.push([h.kod, Hesap.hesapAdi(h), ana.ad, this._M(Hesap.netBakiye(h.id)), '']);
+      });
+    });
+    const satirlar = sat.length ? sat : [['','','Hesap yok','','']];
+    return {ad:'Hesap Bakiyeleri', satirlar:[this._H(['Hesap Kodu','Hesap Adı','Grup','Güncel Bakiye','Mutabık (✓)']), ...satirlar]};
+  },
+  // Rapor sayfalarını üret (hem Excel hem ZIP kullanır)
+  _sheets(bas,bit,d,u){
+    return [ this.ozetSayfa(bas,bit,d,u.length), this.bakiyeSayfa(), this.alisSayfa(d.alis), this.satisSayfa(d.satis), this.vergiSayfa(d.vergi), ...this.bankaSayfalari(d.banka), this.kartOzetSayfa(bas,bit), this.kartSayfa(d.kart), this.kontrolSayfa(u) ];
+  },
+  // ZIP: Excel + tüm ekli fatura dosyaları (Faturalar klasörü)
+  async olusturZip(){
+    this._senkTarih();
+    const bas=this._bas, bit=this._bit;
+    const d=this.veri(bas,bit);
+    const u=this.uyarilar(d);
+    const klasor='Muhasebe-Raporu-'+bas+'_'+bit;
+    const entries=[{ad:klasor+'/'+klasor+'.xlsx', data:Xlsx.bytes(this._sheets(bas,bit,d,u))}];
+    const kayitlar=[...d.alis,...d.vergi,...d.satis,...d.kart].filter(is=>is.dosyaId);
+    const kullanilan={}; let ekli=0;
+    for(const is of kayitlar){
+      try{
+        const dosya=await DosyaDepo.getir(is.dosyaId);
+        if(dosya && dosya.data){
+          let ad=this._belgeAd(is, dosya.ad); let taban=ad, i=2;
+          while(kullanilan[ad.toLowerCase()]){ const nokta=taban.lastIndexOf('.'); ad = nokta>0 ? taban.slice(0,nokta)+'_'+i+taban.slice(nokta) : taban+'_'+i; i++; }
+          kullanilan[ad.toLowerCase()]=1;
+          entries.push({ad:klasor+'/Faturalar/'+ad, data:Xlsx.dataUrlBytes(dosya.data)}); ekli++;
+        }
+      }catch(e){ console.warn('dosya alınamadı', is.no, e); }
+    }
+    try{
+      Xlsx.zipIndir(entries, klasor);
+      Bildirim.goster('basari','ZIP İndirildi', klasor+'.zip indirildi — Excel + '+ekli+' belge ("Faturalar" klasörü).', 5000);
+    }catch(e){ console.error(e); Bildirim.goster('hata','Oluşturulamadı','ZIP oluşturulurken hata: '+e.message); }
+  },
+  _belgeAd(is, origAd){
+    const uzanti = (origAd && origAd.includes('.')) ? origAd.slice(origAd.lastIndexOf('.')) : '';
+    const cari = this._cariAd(is.hesapId).replace(/^[0-9.]+\s*/,'');
+    const base = [is.tarih||'', (is.faturaNo||is.no||''), cari].filter(Boolean).join('_');
+    return (base.replace(/[\/\\:*?"<>|]+/g,'-').replace(/\s+/g,' ').trim().slice(0,90) || (is.no||'belge')) + uzanti;
+  },
 
   sayfa(el){
     const [bas,bit]=this.aralik();
@@ -1516,6 +1564,7 @@ const MuhasebeRapor = {
         <div id="mr-onizle" style="margin-top:16px"></div>
         <div class="buton-grup no-print" style="margin-top:18px">
           <button class="btn btn-yesil" onclick="MuhasebeRapor.olustur()">📊 Excel Oluştur ve İndir</button>
+          <button class="btn btn-koyu" onclick="MuhasebeRapor.olusturZip()">📦 Excel + Belgeler (ZIP)</button>
         </div>
         <div class="uyari-serit" style="margin-top:14px;background:rgba(47,109,143,.10);border-color:#2f6d8f;color:var(--metin)">ℹ Dosya <b>İndirilenler</b> klasörüne iner. Her seferinde klasörü kendin seçmek istersen Chrome ▸ Ayarlar ▸ İndirilenler ▸ <b>“İndirmeden önce her dosyanın nereye kaydedileceğini sor”</b> seçeneğini açman yeterli.</div>
       </div>`;
@@ -1538,6 +1587,7 @@ const MuhasebeRapor = {
     const box=document.getElementById('mr-onizle'); if(!box) return;
     box.innerHTML=`<div class="pop-aciklama" style="margin-bottom:8px">Aralık: <b>${this._tf(this._bas)} – ${this._tf(this._bit)}</b> · Excel sayfaları:</div>
       <div class="tablo-sar"><table class="veri"><thead><tr><th>Sayfa</th><th class="sag-hiza">Adet</th><th class="sag-hiza">Toplam Tutar</th></tr></thead><tbody>
+        <tr><td>Hesap Bakiyeleri (mutabakat)</td><td class="sag-hiza">${Depo.veri.altHesaplar.length}</td><td class="sag-hiza">–</td></tr>
         ${sr('Alış Faturaları',d.alis)}${sr('Satış Faturaları',d.satis)}${sr('Vergiler',d.vergi)}${sr('Banka Para Girişi',bg)}${sr('Banka Para Çıkışı',bc)}${sr('Kredi Kartı Harcaması',d.kart)}
         <tr><td>Kredi Kartları (özet)</td><td class="sag-hiza">${Hesap.altHesaplarByAna('309').length}</td><td class="sag-hiza">–</td></tr>
         <tr class="ana-hesap-satir"><td>Kontrol ve Uyarılar</td><td class="sag-hiza">${u.length}</td><td class="sag-hiza">${u.length?'⚠ incele':'✓ temiz'}</td></tr>
@@ -1548,7 +1598,7 @@ const MuhasebeRapor = {
     const bas=this._bas, bit=this._bit;
     const d=this.veri(bas,bit);
     const u=this.uyarilar(d);
-    const sheets=[ this.ozetSayfa(bas,bit,d,u.length), this.alisSayfa(d.alis), this.satisSayfa(d.satis), this.vergiSayfa(d.vergi), ...this.bankaSayfalari(d.banka), this.kartOzetSayfa(bas,bit), this.kartSayfa(d.kart), this.kontrolSayfa(u) ];
+    const sheets=this._sheets(bas,bit,d,u);
     const ad=`Muhasebe-Raporu-${bas}_${bit}`;
     try{
       Xlsx.indir(sheets, ad);
