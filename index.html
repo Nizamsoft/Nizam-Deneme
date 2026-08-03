@@ -567,6 +567,17 @@ table.nakit th.bugun-sutun{background:var(--kirmizi)}
 .kz-sonuc-satir{display:flex;justify-content:space-between;padding:5px 0;font-size:13.5px;border-top:1px dashed var(--kenar)}
 .kz-not{font-size:12.5px;color:var(--metin-soluk);line-height:1.55;margin-top:10px;padding:10px 12px;background:var(--gri);border-radius:9px}
 .kz-bos-olay{font-size:13px;color:var(--metin-soluk);font-style:italic;padding:6px 0}
+/* Açılır aşama kartları (hareketler gizli, dokununca açılır) */
+details.kz-asama{padding:0}
+details.kz-asama>summary{list-style:none;cursor:pointer;padding:15px 42px 15px 18px;position:relative}
+details.kz-asama>summary::-webkit-details-marker{display:none}
+details.kz-asama>summary::after{content:'▸';position:absolute;right:18px;top:16px;color:var(--metin-soluk);font-size:12px;transition:transform .15s}
+details.kz-asama[open]>summary::after{transform:rotate(90deg)}
+details.kz-asama>summary:hover h3{color:var(--kirmizi)}
+details.kz-asama>summary h3{margin-bottom:5px}
+details.kz-asama>summary .kz-anlat{margin-bottom:0}
+details.kz-asama .kz-olaylar{margin-top:0;padding:2px 18px 15px}
+details.kz-asama .kz-bos-olay{padding:0 18px 14px}
 /* Öde penceresi mod seçimi (yeni ödeme / eşleştir) */
 .ode-mod-secim{display:flex;gap:8px;margin-bottom:16px}
 .ode-mod-btn{flex:1;padding:9px 10px;border:1.5px solid var(--kenar);border-radius:9px;background:var(--kart-bg);color:var(--metin-soluk);font-size:13px;font-weight:600;cursor:pointer;font-family:inherit;transition:.15s}
@@ -655,7 +666,7 @@ table.nakit th.bugun-sutun{background:var(--kirmizi)}
         </ul>
       </li>
     </ul>
-    <div class="menu-alt">Nizam Soft © 2026<br>Sürüm 1.23.0 • 02.08.2026</div>
+    <div class="menu-alt">Nizam Soft © 2026<br>Sürüm 1.24.0 • 02.08.2026</div>
   </nav>
 
   <!-- ANA İÇERİK -->
@@ -5574,7 +5585,7 @@ const KarZarar = {
       const isF = Depo.veri.islemler.find(x=>x.id===fId);
       return (isF && Fatura.kalan(isF)<=0.005) ? 'ödendi' : 'henüz ödenmedi';
     };
-    const gelirler=[], giderler=[], demirbaslar=[], vergiler=[], borclar=[];
+    const gelirler=[], giderler=[], demirbaslar=[], vergiler=[], borclar=[], girisler=[];
     Depo.veri.islemler.forEach(is=>{
       if(is.iptal || !icinde(is.tarih)) return;
       const t = Math.round((Number(is.tutar)||0)*100)/100;
@@ -5587,17 +5598,21 @@ const KarZarar = {
       } else if((is.tur==='banka'||is.tur==='kart') && is.giderHesapId && !is.kapatilanFaturaId && is.islemTuru!=='giris'){
         giderler.push({tarih:is.tarih, ad:adOf(is.giderHesapId), tutar:t, alt:(is.tur==='kart'?'kredi kartıyla':'bankadan')+' ödendi'});
       }
-      if(is.tur==='banka' && is.islemTuru==='giris' && is.sahisHesapId){
-        const h=Hesap.altBul(is.sahisHesapId);
-        if(h && h.anaKod==='331') borclar.push({tarih:is.tarih, ad:Hesap.hesapAdi(h), tutar:t, alt:'ortaktan giriş — ortağa borçlandın'});
+      if(is.tur==='banka' && is.islemTuru==='giris'){
+        const h = is.sahisHesapId ? Hesap.altBul(is.sahisHesapId) : null;
+        if(h && h.anaKod==='331'){ borclar.push({tarih:is.tarih, ad:Hesap.hesapAdi(h), tutar:t, alt:'ortaktan giriş — ortağa borçlandın'}); }
+        else if(!is.kapatilanFaturaId){ // ortak değil, faturaya bağlı değil = serbest para girişi (tahsilat/ön ödeme)
+          girisler.push({tarih:is.tarih, ad: h?Hesap.hesapAdi(h):(is.islemAd||'Banka girişi'), tutar:t, alt:(is.islemAd||'tahsilat')+(is.aciklama?' · '+is.aciklama:'')});
+        }
       }
     });
-    [gelirler,giderler,demirbaslar,vergiler,borclar].forEach(a=>a.sort((x,y)=>x.tarih.localeCompare(y.tarih)));
+    [gelirler,giderler,demirbaslar,vergiler,borclar,girisler].forEach(a=>a.sort((x,y)=>x.tarih.localeCompare(y.tarih)));
     const gg=this.gelirGider(bas,bit);
-    return {donemBasi, donemSonu, gelirler, giderler, demirbaslar, vergiler, borclar, gg,
+    return {donemBasi, donemSonu, gelirler, giderler, demirbaslar, vergiler, borclar, girisler, gg,
       vergiTop: vergiler.reduce((s,x)=>s+x.tutar,0),
       demirbasTop: demirbaslar.reduce((s,x)=>s+x.tutar,0),
-      borcTop: borclar.reduce((s,x)=>s+x.tutar,0)};
+      borcTop: borclar.reduce((s,x)=>s+x.tutar,0),
+      girisTop: girisler.reduce((s,x)=>s+x.tutar,0)};
   },
 
   sayfa(el){
@@ -5612,26 +5627,36 @@ const KarZarar = {
       ? `<div class="kz-olaylar">`+arr.map(o=>`<div class="kz-olay"><div class="kz-sol"><span class="kz-t">${tf(o.tarih)}</span>${kac(o.ad)}${o.alt?`<div class="kz-alt">${kac(o.alt)}</div>`:''}</div><div class="kz-tut ${yon}">${yon==='art'?'+':'−'}${P(o.tutar)}</div></div>`).join('')+`</div>`
       : `<div class="kz-bos-olay">Bu dönemde kayıt yok.</div>`;
 
+    // Aşama kartları: hareketler gizli, başlığa dokununca açılır (details/summary)
+    const kart = (cls, ic) => `<div class="kz-asama ${cls}">${ic}</div>`;
+    const acKart = (cls, h3, anlat, olaylar) => `<details class="kz-asama ${cls}"><summary><h3>${h3}</h3><div class="kz-anlat">${anlat}</div></summary>${olaylar}</details>`;
+    const girenler = [...H.gelirler, ...H.girisler].sort((a,b)=>a.tarih.localeCompare(b.tarih));
+
     const asama = [];
-    // 1) Dönem başı
-    asama.push(`<div class="kz-asama a-baslangic"><h3>🏦 Dönem başı</h3>
-      <div class="kz-anlat"><b>${tf(bas)}</b> tarihinde bankandaki toplam paran <b>${P(H.donemBasi)}</b>${H.donemBasi<-0.005?' — yani eksideydin':''}. Hikâye buradan başlıyor.</div></div>`);
+    // 1) Dönem başı (açılır değil — tek cümle)
+    asama.push(kart('a-baslangic', `<h3>🏦 Dönem başı</h3>
+      <div class="kz-anlat"><b>${tf(bas)}</b> tarihinde bankandaki toplam paran <b>${P(H.donemBasi)}</b>${H.donemBasi<-0.005?' — yani eksideydin':''}. Hikâye buradan başlıyor.</div>`));
     // 2) Paran girenler
-    asama.push(`<div class="kz-asama a-gelir"><h3>💰 Paran girenler</h3>
-      <div class="kz-anlat">Bu dönem toplam <b>${P(H.gg.gelir)}</b> satış/gelir yaptın. Bu senin <b>kazancın</b>.</div>${olayHTML(H.gelirler,'art')}</div>`);
+    asama.push(acKart('a-gelir','💰 Paran girenler',
+      `Bu dönem <b>${P(H.gg.gelir)}</b> satış/gelir${H.girisTop>0.5?`, ayrıca <b>${P(H.girisTop)}</b> banka girişi (tahsilat/ön ödeme)`:''} oldu.`,
+      olayHTML(girenler,'art')));
     // 3) Harcadıkların (giderler)
-    asama.push(`<div class="kz-asama a-gider"><h3>🛒 Harcadıkların</h3>
-      <div class="kz-anlat">İşletme giderlerin (vergiler hariç) toplam <b>${P(isletmeGider)}</b>. Bunlar doğrudan <b>kârını düşürür</b>.</div>${olayHTML(H.giderler,'eksi')}</div>`);
+    asama.push(acKart('a-gider','🛒 Harcadıkların',
+      `İşletme giderlerin (vergiler hariç) toplam <b>${P(isletmeGider)}</b>. Bunlar doğrudan <b>kârını düşürür</b>.`,
+      olayHTML(H.giderler,'eksi')));
     // 3b) Demirbaşlar
-    if(H.demirbaslar.length) asama.push(`<div class="kz-asama a-demirbas"><h3>💻 Aldığın demirbaşlar</h3>
-      <div class="kz-anlat">Toplam <b>${P(H.demirbasTop)}</b> demirbaş aldın. <b>Bunlar gider değil</b> — parası çıksa da şirketin malı oldu, kâr/zararı düşürmez (ödemesi kart/banka üzerinden borç olarak görünür).</div>${olayHTML(H.demirbaslar,'eksi')}</div>`);
+    if(H.demirbaslar.length) asama.push(acKart('a-demirbas','💻 Aldığın demirbaşlar',
+      `Toplam <b>${P(H.demirbasTop)}</b> demirbaş aldın. <b>Bunlar gider değil</b> — parası çıksa da şirketin malı oldu, kâr/zararı düşürmez (ödemesi kart/banka üzerinden borç olarak görünür).`,
+      olayHTML(H.demirbaslar,'eksi')));
     // 4) Vergiler
-    if(H.vergiler.length) asama.push(`<div class="kz-asama a-vergi"><h3>🧾 Vergiler</h3>
-      <div class="kz-anlat">Bu dönem toplam <b>${P(H.vergiTop)}</b> vergi çıktı. (Yukarıdaki gider toplamının içinde sayılır.)</div>${olayHTML(H.vergiler,'eksi')}</div>`);
+    if(H.vergiler.length) asama.push(acKart('a-vergi','🧾 Vergiler',
+      `Bu dönem toplam <b>${P(H.vergiTop)}</b> vergi çıktı. (Yukarıdaki gider toplamının içinde sayılır.)`,
+      olayHTML(H.vergiler,'eksi')));
     // 5) Borç / ortak
-    if(H.borclar.length) asama.push(`<div class="kz-asama a-borc"><h3>🤝 Dışarıdan gelen (borç / ortak)</h3>
-      <div class="kz-anlat">Nakit ihtiyacın için ortaktan toplam <b>${P(H.borcTop)}</b> girdi. Bu <b>gelir değil</b> — o kadar <b>ortağa borçlandın</b>, sonra geri ödeyeceksin.</div>${olayHTML(H.borclar,'art')}</div>`);
-    // 6) Sonuç
+    if(H.borclar.length) asama.push(acKart('a-borc','🤝 Dışarıdan gelen (borç / ortak)',
+      `Nakit ihtiyacın için ortaktan toplam <b>${P(H.borcTop)}</b> girdi. Bu <b>gelir değil</b> — o kadar <b>ortağa borçlandın</b>, sonra geri ödeyeceksin.`,
+      olayHTML(H.borclar,'art')));
+    // 6) Sonuç (açılır değil — hep görünür)
     const saticiBorc=-Hesap.anaBakiye('320'), kartBorc=-Hesap.anaBakiye('309'), ortakBorc=-Hesap.anaBakiye('331');
     const borcParcalar=[saticiBorc>0.5?'satıcılara '+P(saticiBorc):'', kartBorc>0.5?'kredi kartına '+P(kartBorc):'', ortakBorc>0.5?'ortağa '+P(ortakBorc):''].filter(Boolean);
     asama.push(`<div class="kz-asama a-sonuc"><h3>✅ Sonuç</h3>
